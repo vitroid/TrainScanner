@@ -1,0 +1,44 @@
+* SUMMARY *
+
+The trainscanner stitches a train movie to make a long photo strip.
+
+
+* REQUIREMENTS *
+
+OpenCV library is required to compile this program.
+Please install it via HomeBrew.
+https://github.com/mxcl/homebrew/wiki/installation
+
+Then,
+% brew install opencv
+
+
+* COMPILE *
+
+% make all
+% make samples
+
+will make the trainscan of sample.mov.
+
+
+
+* USAGE *
+
+usage: trainscanner [-q][-v][-d x,y][-S][-s n][-o n][-a x] moviefile
+	-q	Quiet.
+	-v	Verbose.
+	-S	Straighten (experimental).
+	-a x	Straighten with angle x.
+	-s n	Split the output in n pixels.
+	-d x,y	Default delta between frames.
+	-o n	Let the overlaid frame larger (in percent).
+
+* UTILITIES *
+
+gut and spiral are programs to convert very long trainscan images into compact form.
+
+Usage: [gut|spiral] --size=x --height=y imagefile
+
+--size=x: Specify the size of output image (in pixels).
+--height=y: Specify the relative height of the strip in the output image. 2.0 means the full height, and default value is 0.2.
+
