@@ -3,9 +3,6 @@
 using namespace std;
 
 
-
-
-
 void Skew( IplImage* i0, IplImage* i1, int vanishx, int vanishy )
 {
   int w = i0->width;
@@ -318,14 +315,16 @@ FirstPass::FirstPass( const char* filename,
 {
   //retrieve the file name
   //The name is also used for the prefix of the output file.
-  capture = cvCaptureFromFile( filename );
+  capture = VideoCapture( filename );
   
   //Capture the first frame to determine the image size.
-  IplImage* one = cvQueryFrame (capture);
-  tmp1 = cvCloneImage( one );
+  //IplImage* one = cvQueryFrame (capture);
+  Mat one;
+  capture >> one;
+  Mat tmp1 = one.clone();
   last_img = 0;
-  int w = one->width;
-  int h = one->height;
+  int w = one.size().width;
+  int h = one.size().height;
   //determine gradient
   mat[2] = w / 2;
   mat[5] = h / 2;
@@ -347,13 +346,13 @@ FirstPass::FirstPass( const char* filename,
   cvInitMatHeader (&M, 2, 3, CV_32FC1, mat, CV_AUTOSTEP);
 
   frame   = cvCreateImage (cvSize (w, h), IPL_DEPTH_8U, 3);
-  tmp2    = cvCloneImage( frame );
+  Mat tmp2    = frame.clone();
   last_img= cvCreateImage (cvSize (w, h), IPL_DEPTH_8U, 3);
   cvGetQuadrangleSubPix ( one,tmp1, &M);
-  IplImage* guideimage = cvCloneImage( tmp1 );
+  Mat guideimage = tmp1.clone();
   if ( vanishx || vanishy ){
-    int w = tmp1->width;
-    int h = tmp1->height;
+    int w = tmp1.size().width;
+    int h = tmp1.size().height;
     cout << vanishx <<":" <<vanishy << endl;
     for(int i=0; i<8; i++){
       cvLine(guideimage, cvPoint(vanishx,vanishy), cvPoint(w*i/8,0), CV_RGB (255, 0, 0), 1, 8, 0);
@@ -365,7 +364,7 @@ FirstPass::FirstPass( const char* filename,
       cvLine(guideimage, cvPoint(0,h*i/4), cvPoint(w,h*i/4), CV_RGB (255, 0, 0), 1, 8, 0);
       cvLine(guideimage, cvPoint(w*i/4,0), cvPoint(w*i/4,h), CV_RGB (255, 0, 0), 1, 8, 0);
     }
-    IplImage* skew = cvCloneImage( guideimage );
+    Mat skew = guideimage.clone();
     Skew( guideimage, skew, vanishx, vanishy );
     cvShowImage ("First frame", guideimage);
     cvShowImage ("Skew image", skew);
@@ -389,7 +388,7 @@ FirstPass::FirstPass( const char* filename,
   // Number of frames
   counter=1;
   succ = 0;
-  canvas = new TSCanvas( cvCloneImage( last_img ) );
+  canvas = new TSCanvas( last_img.clone() );
   //cvReleaseImage( &one );
 }
 
@@ -557,13 +556,13 @@ SecondPass::SecondPass( const char* filename,
   basename = strdup( filename );
   //retrieve the file name
   //The name is also used for the prefix of the output file.
-  capture = cvCaptureFromFile( filename );
+  capture = VideoCapture( filename );
   
   //Capture the first frame to determine the image size.
   IplImage* one = cvQueryFrame (capture);
 
-  int w = one->width;
-  int h = one->height;
+  int w = one.size().width;
+  int h = one.size().height;
   
   //canvas = cvCreateImage (cvSize (w, h), IPL_DEPTH_8U, 3);
   //cvNot( canvas, canvas );
@@ -637,13 +636,13 @@ SecondPass::SecondPass( const char* filename,
     cvCopy( tmp1, last_img );
   }
   
-  canvas = new TSCanvas( cvCloneImage( last_img ) );
+  canvas = new TSCanvas( last_img.clone() );
   //canvas->add( last_img, 0,0, 100, verbosity );
   cvShowImage ("Canvas", canvas->getImage() );
   //cvReleaseImage( &one );
   elem = 0;
   frame   = cvCreateImage (cvSize (w, h), IPL_DEPTH_8U, 3);
-  masked = cvCloneImage( frame );
+  masked = frame.clone();
 }
 
 
@@ -779,8 +778,8 @@ float regression0( vector<int>& v, int verbosity, float tolerance, float& a, flo
   b = (sxx*sy - sxy*sx) / (n*sxx - sx*sx);
   float convergence = 0.0;
   for ( int i=0; i<v.size(); i++ ){
-    if ( fabsf(v[i]-(int)(a*i+b)) < tolerance ){
-      convergence += fabsf(v[i]-(int)(a*i+b));
+    if ( std::abs(v[i]-(int)(a*i+b)) < tolerance ){
+      convergence += std::abs(v[i]-(int)(a*i+b));
     }
   }
   convergence /= n;

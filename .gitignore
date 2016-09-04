@@ -5,3 +5,4 @@ trainscanner
 work/*
 *.o
 *~
+*.tif

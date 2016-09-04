@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-#Absolute marger
+
+def draw_focus_area(f, focus):
+    pos = [int(i) for i in w*focus[0],w*focus[1],h*focus[2],h*focus[3]]
+    cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
+
 
 def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666)):
     hi,wi = img.shape[0:2]
@@ -25,7 +31,7 @@ def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666)):
 
 alphas = dict()
 
-def make_alpha( d, img_size, slit=0.0 ):
+def make_alpha( d, img_size, slit=0.0, width=1 ):
     if (d[0], d[1], img_size[1], img_size[0], slit) in alphas:
         return alphas[(d[0], d[1], img_size[1], img_size[0], slit)]
     r = (d[0]**2 + d[1]**2)**0.5
@@ -35,9 +41,9 @@ def make_alpha( d, img_size, slit=0.0 ):
     dy = d[1] / r
     ih, iw = img_size
     diag = (ih**2 + iw**2)**0.5
-    centerx = iw/2 + dx * diag * slit
-    centery = ih/2 + dy * diag * slit
-    alpha = np.fromfunction(lambda y, x, v: (dx*(x-centerx)+dy*(y-centery))/r, (ih, iw, 3))
+    centerx = iw/2 - dx * diag * slit
+    centery = ih/2 - dy * diag * slit
+    alpha = np.fromfunction(lambda y, x, v: (dx*(x-centerx)+dy*(y-centery))/(r*width), (ih, iw, 3))
     np.clip(alpha,0,1,out=alpha)  # float 0..1 values
     alphas[(d[0], d[1], img_size[1], img_size[0], slit)] = alpha
     if debug:
@@ -95,12 +101,24 @@ debug = False #True
 guide = 0
 zero  = False
 gpts = None #np.float32([380, 350, 1680, 1715])
+slitpos = 0.1
+slitwidth = 1
+visual = True
+
+commandline = " ".join(sys.argv)
+
 focus = (0.3333, 0.6666, 0.3333, 0.6666)
 while len(sys.argv) > 2:
     if sys.argv[1] == "-d":
         debug = True
+    if sys.argv[1] == "-q":
+        visual = False
     if sys.argv[1] == "-g":
         guide = int(sys.argv.pop(2))
+    if sys.argv[1] == "-s":
+        slitpos = float(sys.argv.pop(2))
+    if sys.argv[1] == "-w":
+        slitwidth = float(sys.argv.pop(2))
     if sys.argv[1] == "-z":
         zero  = True
     if sys.argv[1] == "-p":
@@ -114,11 +132,14 @@ while len(sys.argv) > 2:
     sys.argv.pop(1)
 
 if len(sys.argv) != 2:
-    print "usage: {0} [-p tl,bl,tr,br][-g][-d][-z] movie".format(sys.argv[0])
+    print "usage: {0} [-p tl,bl,tr,br][-g n][-d][-z][-f xmin,xmax,ymin,ymax][-s r][-q] movie".format(sys.argv[0])
     print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
-    print "\t-g nframe\tShow guide for perspective correction at the nth frame."
+    print "\t-g n\tShow guide for perspective correction at the nth frame."
+    print "\t-s r\tSet slit position to r (default=0.2)."
+    print "\t-f xmin,xmax,ymin,ymax\tSpecify the motion detection frame (default=0.333,0.666,0.333,0.666)."
     print "\t-z\t\tSuppress drift."
     print "\t-d\t\tDebug mode."
+    print "\t-q\t\tnDo not show the snapshots."
     sys.exit(1)
 
 movie = sys.argv[1]
@@ -158,8 +179,17 @@ if gpts is not None:
 
 
 canvas = (frame.copy(), (0, 0)) #absolute position of the canvas are given
+
+f = frame.copy()
+draw_focus_area(f, focus)
+ratio = 700./max(w,h)
+scaled = cv2.resize(f,None,fx=ratio, fy=ratio, interpolation = cv2.INTER_CUBIC)
+cv2.imshow("First frame", scaled)
+cv2.waitKey(1)
+
 onWork = False
 absx,absy = 0,0
+
 while True:
     ret, nextframe = cap.read()
     if not ret:
@@ -177,22 +207,23 @@ while True:
     absy += dy
     if not onWork and (dx != 0 or dy != 0):
         onWork = True
-        f = nextframe.copy()
-        pos = [int(i) for i in w*focus[0],w*focus[1],h*focus[2],h*focus[3]]
-        cv2.line(f, (pos[0],pos[2]),(pos[1],pos[2]), (0, 255, 0), 1)
-        cv2.line(f, (pos[0],pos[3]),(pos[1],pos[3]), (0, 255, 0), 1)
-        cv2.line(f, (pos[0],pos[2]),(pos[0],pos[3]), (0, 255, 0), 1)
-        cv2.line(f, (pos[1],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
-        cv2.imshow("first frame", f)
-        cv2.waitKey(1)
     elif onWork and dx == 0 and dy == 0:
         break
     if onWork:
-        alpha = make_alpha( (dx,dy), (h,w), slit=-0.2 )
+        alpha = make_alpha( (dx,dy), (h,w), slitpos, slitwidth )
         canvas = abs_merge(canvas, nextframe, absx, absy, alpha=alpha, split=3)
         if debug:
             cv2.imshow("canvas", canvas[0])
             cv2.waitKey()
+        if visual:
+            f = nextframe.copy()
+            #Red mask indicates the overlay alpha
+            f[:,:,0:2] = np.uint8(f[:,:,0:2] * alpha[:,:,0:2])
+            draw_focus_area(f, focus)
+            ratio = 700./max(w,h)
+            scaled = cv2.resize(f,None,fx=ratio, fy=ratio, interpolation = cv2.INTER_CUBIC)
+            cv2.imshow("Snapshot", scaled)
+            cv2.waitKey(1)
     frame = nextframe
 
 canvases.append(canvas)
@@ -207,5 +238,4 @@ for c in canvases:
     merged = abs_merge(merged, c[0], c[1][0], c[1][1])
 #the image may be huge.
 cv2.imwrite("{0}.full.png".format(movie), merged[0])
-
-
+open("{0}.log".format(movie), "w").write(commandline)

@@ -1,5 +1,5 @@
-#include <opencv/cv.h>
-#include <opencv/highgui.h>
+#include <opencv2/opencv.hpp>
+//#include <opencv2/highgui.h>
 #include <ctype.h>
 #include <iostream>
 #include <vector>
@@ -7,6 +7,9 @@
 #include <cstdio>
 #include <cmath>
 #include "tscanvas.hpp"
+#include <unistd.h>
+
+using namespace cv;
 
 float match_rgbimages( IplImage* i0, IplImage* i1,
                    int xs, int xe, int ys, int ye,
@@ -35,7 +38,7 @@ private:
   float mat[6];
   vector<int> mx;
   vector<int> my;
-  CvCapture* capture;
+  VideoCapture capture;
   //IplImage* one;
   IplImage* tmp1;
   IplImage* tmp2;
@@ -79,7 +82,7 @@ private:
   IplImage* masked;
   IplImage* tmp1;
   IplImage* last_img;
-  CvCapture* capture;
+  VideoCapture capture;
   //CvMat M;
   float mat[6];
   int npurge;
