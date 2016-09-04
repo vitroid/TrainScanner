@@ -54,6 +54,9 @@ canvases = []
 
 #Absolute merger
 #x,y is the absolute position of the image
+#The canvas may often become huge, then the merging takes very long time.
+#So the canvas will be split automatically and the fragments will be stored in canvases on demand.
+#Later the fragments are stitched together to recover the full canvas.
 def abs_merge(canvas, image, x, y, alpha=None, split=0):
     absx, absy = canvas[1]   #absolute coordinate of the top left of the canvas
     if debug:
@@ -109,24 +112,24 @@ commandline = " ".join(sys.argv)
 
 focus = (0.3333, 0.6666, 0.3333, 0.6666)
 while len(sys.argv) > 2:
-    if sys.argv[1] == "-d":
+    if sys.argv[1] in ("-d", "--debug"):
         debug = True
-    if sys.argv[1] == "-q":
+    if sys.argv[1] in ("-q", "--quiet"):
         visual = False
-    if sys.argv[1] == "-g":
+    if sys.argv[1] in ("-g", "--guide"):
         guide = int(sys.argv.pop(2))
-    if sys.argv[1] == "-s":
+    if sys.argv[1] in ("-s", "--slit"):
         slitpos = float(sys.argv.pop(2))
-    if sys.argv[1] == "-w":
+    if sys.argv[1] in ("-w", "--width"):
         slitwidth = float(sys.argv.pop(2))
-    if sys.argv[1] == "-z":
+    if sys.argv[1] in ("-z", "--zero"):
         zero  = True
-    if sys.argv[1] == "-p":
+    if sys.argv[1] in ("-p", "--pers", "--perspective"):
         #followed by four numbers separated by comma.
         #left top, bottom, right top, bottom
         param = sys.argv.pop(2)
         gpts  = np.float32([float(x) for x in param.split(",")])
-    if sys.argv[1] == "-f":
+    if sys.argv[1] in ("-f", "--focus", "--frame"):
         param = sys.argv.pop(2)
         focus = np.float32([float(x) for x in param.split(",")])
     sys.argv.pop(1)
@@ -135,8 +138,9 @@ if len(sys.argv) != 2:
     print "usage: {0} [-p tl,bl,tr,br][-g n][-d][-z][-f xmin,xmax,ymin,ymax][-s r][-q] movie".format(sys.argv[0])
     print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
     print "\t-g n\tShow guide for perspective correction at the nth frame."
-    print "\t-s r\tSet slit position to r (default=0.2)."
-    print "\t-f xmin,xmax,ymin,ymax\tSpecify the motion detection frame (default=0.333,0.666,0.333,0.666)."
+    print "\t-s r\tSet slit position to r (0.2)."
+    print "\t-w r\tSet slit width (1=same as the length of the interframe motion vector)."
+    print "\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)"
     print "\t-z\t\tSuppress drift."
     print "\t-d\t\tDebug mode."
     print "\t-q\t\tnDo not show the snapshots."
@@ -145,10 +149,11 @@ if len(sys.argv) != 2:
 movie = sys.argv[1]
 cap = cv2.VideoCapture(movie)
 
-
 ret, frame = cap.read()
 h, w, d = frame.shape
+
 if guide:
+    #Show the perspective guides and quit.
     for i in range(guide-1):  #skip frames
         ret, frame = cap.read()
     fontFace = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
@@ -168,6 +173,7 @@ if guide:
     sys.exit(0)
 
 if gpts is not None:
+    #Warp.  Save the perspective matrix to the file for future use.
     p1 = np.float32([(gpts[0],h/4), (gpts[1],h*3/4), (gpts[2],h/4), (gpts[3],h*3/4)])
     #Unskew
     p2 = np.float32([((gpts[0]*gpts[1])**0.5, h/4), ((gpts[0]*gpts[1])**0.5, h*3/4),
@@ -178,7 +184,8 @@ if gpts is not None:
     np.save("{0}.perspective.npy".format(movie), M) #Required to recover the perspective
 
 
-canvas = (frame.copy(), (0, 0)) #absolute position of the canvas are given
+#Prepare a scalable canvas with the origin.
+canvas = (frame.copy(), (0, 0))
 
 f = frame.copy()
 draw_focus_area(f, focus)
@@ -208,6 +215,7 @@ while True:
     if not onWork and (dx != 0 or dy != 0):
         onWork = True
     elif onWork and dx == 0 and dy == 0:
+        #end of work
         break
     if onWork:
         alpha = make_alpha( (dx,dy), (h,w), slitpos, slitwidth )
@@ -227,15 +235,17 @@ while True:
     frame = nextframe
 
 canvases.append(canvas)
+#Store the fragments
 for c in canvases:
     cv2.imwrite("{0}.{1:+d}{2:+d}.png".format(movie,c[1][0],c[1][1]), c[0])
 
 if gpts is not None:
     print M
 
+#Stitch all the fragments to make a huge canvas.
 merged = (np.zeros_like(nextframe), (0,0))
 for c in canvases:
     merged = abs_merge(merged, c[0], c[1][0], c[1][1])
-#the image may be huge.
 cv2.imwrite("{0}.full.png".format(movie), merged[0])
+#Store the command line for convenience.
 open("{0}.log".format(movie), "w").write(commandline)

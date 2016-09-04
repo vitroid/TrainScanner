@@ -4,12 +4,14 @@ Convert a video to a slitscanned train image.
 ##Requirement
 OpenCV2 for Python2 implementation.
 ##Usage
-    usage: ./trainscanner.py [-p tl,bl,tr,br][-g][-d][-z][-f xmin,xmax,ymin,ymax] movie
-    -p a,b,c,d	Set perspective points. Note that perspective correction works for the vertically scrolling picture only.
-    -g n	Show guide for perspective correction at the nth frame.
-    -z		Suppress drift.
-    -f xmin,xmax,ymin,ymax  Motion detection area relative to the image size. (0.333,0.666,0.333,0.666)
-    -d		Debug mode.
+    usage: ./trainscanner.py [-p tl,bl,tr,br][-g n][-d][-z][-f xmin,xmax,ymin,ymax][-s r][-q] movie
+	-p a,b,c,d	Set perspective points. Note that perspective correction works for the vertically scrolling picture only.
+	-g n	Show guide for perspective correction at the nth frame.
+	-s r	Set slit position to r (default=0.2).
+	-f xmin,xmax,ymin,ymax	Motion detection area relative to the image size. (0.333,0.666,0.333,0.666)
+	-z		Suppress drift.
+	-d		Debug mode.
+	-q		nDo not show the snapshots.
 
 ##Procedure
 
@@ -52,4 +54,9 @@ Follow the procedure to learn how to fix the perspective distortion.
     trainscanner.py -g 20 -p 181,185,411,403 sample3.mov
     trainscanner.py       -p 181,185,411,403 sample3.mov
     
-
+###Overlap between the frames
+Trainscanner overlays the two successive video frames at a narrow
+area (that is, slit).
+Two images are stirtched together using a smooth alpha mask.  You can
+see the position of the slit in the "snapshot" window.  You can also
+change the position and width of the slit with `-s` and `-w` options.

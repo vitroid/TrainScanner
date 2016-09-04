@@ -6,3 +6,5 @@ work/*
 *.o
 *~
 *.tif
+*.log
+*.npy
