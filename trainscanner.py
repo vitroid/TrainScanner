@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
+from __future__ import print_function, division
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-
 def draw_focus_area(f, focus):
-    pos = [int(i) for i in w*focus[0],w*focus[1],h*focus[2],h*focus[3]]
+    pos = [int(i) for i in (w*focus[0],w*focus[1],h*focus[2],h*focus[3])]
     cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
 
 
@@ -60,8 +59,8 @@ canvases = []
 def abs_merge(canvas, image, x, y, alpha=None, split=0):
     absx, absy = canvas[1]   #absolute coordinate of the top left of the canvas
     if debug:
-        print "canvas:  {0}x{1} {2:+d}{3:+d}".format(canvas[0].shape[1],canvas[0].shape[0],absx,absy)
-        print "overlay: {0}x{1} {2:+d}{3:+d}".format(image.shape[1], image.shape[0],x,y)
+        print("canvas:  {0}x{1} {2:+d}{3:+d}".format(canvas[0].shape[1],canvas[0].shape[0],absx,absy))
+        print("overlay: {0}x{1} {2:+d}{3:+d}".format(image.shape[1], image.shape[0],x,y))
     cxmin = absx
     cymin = absy
     cxmax = canvas[0].shape[1] + absx
@@ -86,7 +85,7 @@ def abs_merge(canvas, image, x, y, alpha=None, split=0):
         newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = image[:,:,:]*alpha[:,:,:] + newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:]*(1-alpha[:,:,:])
     if split:
         if debug:
-            print np.product(canvas[0].shape),np.product(image.shape)
+            print(np.product(canvas[0].shape),np.product(image.shape))
         if np.product(canvas[0].shape) > np.product(image.shape) * split:
             canvases.append((newcanvas, (xmin,ymin)))
             if debug:
@@ -95,7 +94,7 @@ def abs_merge(canvas, image, x, y, alpha=None, split=0):
             xmin = ixmin
             ymin = iymin
     if debug:
-        print "newcanvas:  {0}x{1} {2:+d}{3:+d}".format(newcanvas.shape[1],newcanvas.shape[0],xmin,ymin)
+        print("newcanvas:  {0}x{1} {2:+d}{3:+d}".format(newcanvas.shape[1],newcanvas.shape[0],xmin,ymin))
     return newcanvas, (xmin,ymin)
 
 import sys
@@ -135,15 +134,15 @@ while len(sys.argv) > 2:
     sys.argv.pop(1)
 
 if len(sys.argv) != 2:
-    print "usage: {0} [-p tl,bl,tr,br][-g n][-d][-z][-f xmin,xmax,ymin,ymax][-s r][-q] movie".format(sys.argv[0])
-    print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
-    print "\t-g n\tShow guide for perspective correction at the nth frame."
-    print "\t-s r\tSet slit position to r (0.2)."
-    print "\t-w r\tSet slit width (1=same as the length of the interframe motion vector)."
-    print "\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)"
-    print "\t-z\t\tSuppress drift."
-    print "\t-d\t\tDebug mode."
-    print "\t-q\t\tnDo not show the snapshots."
+    print("usage: {0} [-p tl,bl,tr,br][-g n][-d][-z][-f xmin,xmax,ymin,ymax][-s r][-q] movie".format(sys.argv[0]))
+    print("\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only.")
+    print("\t-g n\tShow guide for perspective correction at the nth frame.")
+    print("\t-s r\tSet slit position to r (0.2).")
+    print("\t-w r\tSet slit width (1=same as the length of the interframe motion vector).")
+    print("\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)")
+    print("\t-z\t\tSuppress drift.")
+    print("\t-d\t\tDebug mode.")
+    print("\t-q\t\tnDo not show the snapshots.")
     sys.exit(1)
 
 movie = sys.argv[1]
@@ -180,7 +179,7 @@ if gpts is not None:
                     ((gpts[2]*gpts[3])**0.5, h/4), ((gpts[2]*gpts[3])**0.5, h*3/4)])
     M = cv2.getPerspectiveTransform(p1,p2)
     frame = cv2.warpPerspective(frame,M,(w,h))
-    print M
+    print(M)
     np.save("{0}.perspective.npy".format(movie), M) #Required to recover the perspective
 
 
@@ -204,7 +203,7 @@ while True:
     if gpts is not None:
         nextframe = cv2.warpPerspective(nextframe,M,(w,h))
     dx,dy = motion(frame, nextframe, focus=focus)
-    print dx,dy
+    print(dx,dy)
     if zero:
         if abs(dx) < abs(dy):
             dx = 0
@@ -240,7 +239,7 @@ for c in canvases:
     cv2.imwrite("{0}.{1:+d}{2:+d}.png".format(movie,c[1][0],c[1][1]), c[0])
 
 if gpts is not None:
-    print M
+    print(M)
 
 #Stitch all the fragments to make a huge canvas.
 merged = (np.zeros_like(nextframe), (0,0))
