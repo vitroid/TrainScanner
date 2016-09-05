@@ -3,6 +3,8 @@ Convert a video to a slitscanned train image.
 
 ##Requirement
 OpenCV2 for Python2 implementation.
+
+Note: Will be updated for OpenCV3 + Python3 in the near future.
 ##Usage
     usage: ./trainscanner.py [-p tl,bl,tr,br][-g n][-d][-z][-f xmin,xmax,ymin,ymax][-s r][-q] movie
 	-p a,b,c,d	Set perspective points. Note that perspective correction works for the vertically scrolling picture only.

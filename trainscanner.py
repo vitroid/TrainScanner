@@ -12,7 +12,7 @@ def draw_focus_area(f, focus):
     cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
 
 
-def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666)):
+def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666), hint=(0,0) ):
     hi,wi = img.shape[0:2]
     wmin = int(wi*focus[0])
     wmax = int(wi*focus[1])
@@ -22,10 +22,18 @@ def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666)):
     h,w = template.shape[0:2]
 
     # Apply template Matching
-    res = cv2.matchTemplate(ref,template,cv2.TM_SQDIFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-    #loc is given by x,y
-    top_left = min_loc
+    if hint == (0,0):
+        res = cv2.matchTemplate(ref,template,cv2.TM_SQDIFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        #loc is given by x,y
+        top_left = min_loc
+    else:
+        pad = 10
+        roi = ref[hmin+hint[1]-pad:hmax+hint[1]+pad, wmin+hint[0]-pad:wmax+hint[0]+pad,:]
+        res = cv2.matchTemplate(roi,template,cv2.TM_SQDIFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        #loc is given by x,y
+        top_left = min_loc[0]+wmin+hint[0]-pad, min_loc[1]+hmin+hint[1]-pad
     return top_left[0] - wmin, top_left[1] - hmin
 
 
@@ -106,6 +114,8 @@ zero  = False
 gpts = None #np.float32([380, 350, 1680, 1715])
 slitpos = 0.1
 slitwidth = 1
+hintx = 0
+hinty = 0
 visual = True
 
 commandline = " ".join(sys.argv)
@@ -132,6 +142,11 @@ while len(sys.argv) > 2:
     if sys.argv[1] in ("-f", "--focus", "--frame"):
         param = sys.argv.pop(2)
         focus = np.float32([float(x) for x in param.split(",")])
+    if sys.argv[1] in ("-H", "--hint"):
+        #Supply the typical delta values
+        #It may result better matching.
+        param = sys.argv.pop(2)
+        hintx,hinty = ([int(x) for x in param.split(",")])
     sys.argv.pop(1)
 
 if len(sys.argv) != 2:
@@ -180,8 +195,13 @@ if gpts is not None:
                     ((gpts[2]*gpts[3])**0.5, h/4), ((gpts[2]*gpts[3])**0.5, h*3/4)])
     M = cv2.getPerspectiveTransform(p1,p2)
     frame = cv2.warpPerspective(frame,M,(w,h))
-    print M
-    np.save("{0}.perspective.npy".format(movie), M) #Required to recover the perspective
+    file = open("{0}.perspective.txt".format(movie), "w")
+    file.write("{0} {1}\n".format(w,h))        #frame size (x,y)
+    for i in range(4):
+        file.write("{0} {1}\n".format(*p1[i])) #Required to recover the perspective
+    for i in range(4):
+        file.write("{0} {1}\n".format(*p2[i])) #Required to recover the perspective
+    file.close()
 
 
 #Prepare a scalable canvas with the origin.
@@ -203,7 +223,7 @@ while True:
         break
     if gpts is not None:
         nextframe = cv2.warpPerspective(nextframe,M,(w,h))
-    dx,dy = motion(frame, nextframe, focus=focus)
+    dx,dy = motion(frame, nextframe, focus=focus, hint=(hintx,hinty) )
     print dx,dy
     if zero:
         if abs(dx) < abs(dy):
@@ -239,12 +259,10 @@ canvases.append(canvas)
 for c in canvases:
     cv2.imwrite("{0}.{1:+d}{2:+d}.png".format(movie,c[1][0],c[1][1]), c[0])
 
-if gpts is not None:
-    print M
-
 #Stitch all the fragments to make a huge canvas.
-merged = (np.zeros_like(nextframe), (0,0))
+merged = (np.zeros((100,100,3),np.uint8), (0,0))
 for c in canvases:
+    print c[1]
     merged = abs_merge(merged, c[0], c[1][0], c[1][1])
 cv2.imwrite("{0}.full.png".format(movie), merged[0])
 #Store the command line for convenience.
