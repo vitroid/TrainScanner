@@ -44,7 +44,8 @@ def make_alpha( d, img_size, slit=0.0, width=1 ):
     centerx = iw/2 - dx * diag * slit
     centery = ih/2 - dy * diag * slit
     alpha = np.fromfunction(lambda y, x, v: (dx*(x-centerx)+dy*(y-centery))/(r*width), (ih, iw, 3))
-    np.clip(alpha,0,1,out=alpha)  # float 0..1 values
+    np.clip(alpha,-1,1,out=alpha)  # float 0..1 values
+    alpha = (alpha+1) / 2
     alphas[(d[0], d[1], img_size[1], img_size[0], slit)] = alpha
     if debug:
         cv2.imshow("alpha",np.array(alpha*255, np.uint8))
