@@ -107,7 +107,8 @@ gpts = None #np.float32([380, 350, 1680, 1715])
 slitpos = 0.1
 slitwidth = 1
 visual = True
-
+antishake = 5
+trailing = 10
 commandline = " ".join(sys.argv)
 
 focus = (0.3333, 0.6666, 0.3333, 0.6666)
@@ -118,6 +119,10 @@ while len(sys.argv) > 2:
         visual = False
     if sys.argv[1] in ("-g", "--guide"):
         guide = int(sys.argv.pop(2))
+    if sys.argv[1] in ("-a", "--antishake"):
+        antishake = int(sys.argv.pop(2))
+    if sys.argv[1] in ("-t", "--trail"):
+        trailing = int(sys.argv.pop(2))
     if sys.argv[1] in ("-s", "--slit"):
         slitpos = float(sys.argv.pop(2))
     if sys.argv[1] in ("-w", "--width"):
@@ -188,15 +193,15 @@ if gpts is not None:
 canvas = (frame.copy(), (0, 0))
 
 f = frame.copy()
-draw_focus_area(f, focus)
 ratio = 700./max(w,h)
 scaled = cv2.resize(f,None,fx=ratio, fy=ratio, interpolation = cv2.INTER_CUBIC)
+draw_focus_area(scaled, focus*ratio)
 cv2.imshow("First frame", scaled)
 cv2.waitKey(1)
 
 onWork = False
 absx,absy = 0,0
-
+lastdx, lastdy = 0, 0
 while True:
     ret, nextframe = cap.read()
     if not ret:
@@ -210,14 +215,21 @@ while True:
             dx = 0
         else:
             dy = 0
+    if not onWork and (abs(dx) > antishake or abs(dy) > antishake):
+        onWork = True
+    elif onWork and abs(dx) <= antishake and abs(dy) <= antishake:
+        if trailing > 0:
+            trailing -= 1
+            dx = lastdx
+            dy = lastdy
+            print ">>",dx,dy
+        else:
+            #end of work
+            break
     absx += dx
     absy += dy
-    if not onWork and (dx != 0 or dy != 0):
-        onWork = True
-    elif onWork and dx == 0 and dy == 0:
-        #end of work
-        break
     if onWork:
+        lastdx, lastdy = dx,dy
         alpha = make_alpha( (dx,dy), (h,w), slitpos, slitwidth )
         canvas = abs_merge(canvas, nextframe, absx, absy, alpha=alpha, split=3)
         if debug:
@@ -227,9 +239,9 @@ while True:
             f = nextframe.copy()
             #Red mask indicates the overlay alpha
             f[:,:,0:2] = np.uint8(f[:,:,0:2] * alpha[:,:,0:2])
-            draw_focus_area(f, focus)
             ratio = 700./max(w,h)
             scaled = cv2.resize(f,None,fx=ratio, fy=ratio, interpolation = cv2.INTER_CUBIC)
+            draw_focus_area(scaled, focus*ratio)
             cv2.imshow("Snapshot", scaled)
             cv2.waitKey(1)
     frame = nextframe
