@@ -6,14 +6,18 @@ OpenCV2 for Python2 implementation.
 
 Note: Will be updated for OpenCV3 + Python3 in the near future.
 ##Usage
-    usage: ./trainscanner.py [-p tl,bl,tr,br][-g n][-d][-z][-f xmin,xmax,ymin,ymax][-s r][-q] movie
-	-p a,b,c,d	Set perspective points. Note that perspective correction works for the vertically scrolling picture only.
-	-g n	Show guide for perspective correction at the nth frame.
-	-s r	Set slit position to r (default=0.2).
-	-f xmin,xmax,ymin,ymax	Motion detection area relative to the image size. (0.333,0.666,0.333,0.666)
-	-z		Suppress drift.
+    usage: ./trainscanner.py [-2][-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] movie
+	-2		Two pass.  Store the intermediate image fragments on the disk and do not merge them.
+	-a x	Antishake.  Ignore motion smaller than x pixels (5).
 	-d		Debug mode.
+	-f xmin,xmax,ymin,ymax	Motion detection area relative to the image size. (0.333,0.666,0.333,0.666)
+	-g n	Show guide for perspective correction at the nth frame instead of stitching the movie.
+	-p a,b,c,d	Set perspective points. Note that perspective correction works for the vertically scrolling picture only.
 	-q		nDo not show the snapshots.
+	-s r	Set slit position to r (0.2).
+	-t x	Add trailing frames after the motion is not detected. (5).
+	-w r	Set slit width (1=same as the length of the interframe motion vector).
+	-z		Suppress drift.
 
 ##Procedure
 
@@ -62,3 +66,18 @@ area (that is, slit).
 Two images are stirtched together using a smooth alpha mask.  You can
 see the position of the slit in the "snapshot" window.  You can also
 change the position and width of the slit with `-s` and `-w` options.
+Wider slit results in smoother image, but that may in turn cause
+ghost on the moving object.
+
+###Small memory footage
+By default, the trainscanner stores all working images on memory.  If
+the movie is huge or the computer's memory is not enough, it may cause
+severe slow down.  In that case, use `-2` (two-pass process) option.
+The intermediate canvas fragments are stored on the disk.  You can
+stitch them together by another tool named `merge.py`.
+
+###Antishake
+In case the movie is taken handheld, the background also moves.
+Antishake feature eliminates the small background motion.  Default
+value is 5 pixels and you can cnage the threshold by `-a` option.
+

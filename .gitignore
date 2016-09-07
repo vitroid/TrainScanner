@@ -8,3 +8,5 @@ work/*
 *.tif
 *.log
 *.npy
+sample*png
+*.pyc
