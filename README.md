@@ -2,7 +2,8 @@
 Convert a video to a slitscanned train image.
 
 ##Requirement
-OpenCV2 for Python2 implementation.
+OpenCV2 for Python2 implementation.  Portable Python will be the best
+choice for Windows users.
 
 Note: Will be updated for OpenCV3 + Python3 in the near future.
 ##Usage

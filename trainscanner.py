@@ -103,6 +103,18 @@ def abs_merge(canvas, image, x, y, alpha=None, split=0, name="" ):
         print "newcanvas:  {0}x{1} {2:+d}{3:+d}".format(newcanvas.shape[1],newcanvas.shape[0],xmin,ymin)
     return newcanvas, (xmin,ymin)
 
+
+
+
+def preview(frame, name, focus=None, size=700.):
+    h,w,d = frame.shape
+    ratio = size/max(w,h)
+    scaled = cv2.resize(frame,None,fx=ratio, fy=ratio, interpolation = cv2.INTER_CUBIC)
+    if focus is not None:
+        draw_focus_area(scaled, focus*ratio)
+    cv2.imshow("First frame", scaled)
+    cv2.waitKey(1)
+
 if __name__ == "__main__":
     import sys
 
@@ -115,6 +127,7 @@ if __name__ == "__main__":
     visual = True
     antishake = 5
     trailing = 10
+    skip_identical = False
     commandline = " ".join(sys.argv)
     onMemory = True
 
@@ -136,6 +149,8 @@ if __name__ == "__main__":
             slitwidth = float(sys.argv.pop(2))
         if sys.argv[1] in ("-z", "--zero"):
             zero  = True
+        if sys.argv[1] in ("--skip_identical"):
+            skip_identical = True #hidden option
         if sys.argv[1] in ("-2", "--twopass"):
             onMemory  = False
         if sys.argv[1] in ("-p", "--pers", "--perspective"):
@@ -204,13 +219,9 @@ if __name__ == "__main__":
     #Prepare a scalable canvas with the origin.
     canvas = (frame.copy(), (0, 0))
 
-    f = frame.copy()
-    ratio = 700./max(w,h)
-    scaled = cv2.resize(f,None,fx=ratio, fy=ratio, interpolation = cv2.INTER_CUBIC)
-    draw_focus_area(scaled, focus*ratio)
-    cv2.imshow("First frame", scaled)
-    cv2.waitKey(1)
-
+    if not debug:
+        preview(frame, "First frame", focus=focus)
+    
     onWork = False
     absx,absy = 0,0
     lastdx, lastdy = 0, 0
@@ -221,25 +232,39 @@ if __name__ == "__main__":
             break
         if gpts is not None:
             nextframe = cv2.warpPerspective(nextframe,M,(w,h))
+        if debug:
+            preview(nextframe, "Debug", focus=focus)
+            
         dx,dy = motion(frame, nextframe, focus=focus)
+        if skip_identical and dx == 0 and dy == 0 and onWork:
+            print "skip"
+            continue
+            #In Youtube videos uploaded from Europe (PAL)
+            #identical frames are inserted for every 6 frames.
+            #(Perhaps they use 25 fps instead of 30 fps)
+            #This causes ghosting when trailing option is active.
+            #skip_identical option just ignore the identical frames
+            #during working on.
         print dx,dy
         if zero:
             if abs(dx) < abs(dy):
                 dx = 0
             else:
                 dy = 0
-        if not onWork and (abs(dx) > antishake or abs(dy) > antishake):
-            onWork = True
+        if (abs(dx) > antishake or abs(dy) > antishake):
+            if not onWork:
+                onWork = True
             tr = trailing
-        elif onWork and abs(dx) <= antishake and abs(dy) <= antishake:
-            if tr > 0:
-                tr -= 1
-                dx = lastdx
-                dy = lastdy
-                print ">>({2}) {0} {1}".format(dx,dy,trailing)
-            else:
-                #end of work
-                break
+        else:
+            if onWork:
+                if tr > 0:
+                    tr -= 1
+                    dx = lastdx
+                    dy = lastdy
+                    print ">>({2}) {0} {1}".format(dx,dy,tr)
+                else:
+                    #end of work
+                    break
         absx += dx
         absy += dy
         if onWork:
@@ -256,11 +281,7 @@ if __name__ == "__main__":
                 f = nextframe.copy()
                 #Red mask indicates the overlay alpha
                 f[:,:,0:2] = np.uint8(f[:,:,0:2] * alpha[:,:,0:2])
-                ratio = 700./max(w,h)
-                scaled = cv2.resize(f,None,fx=ratio, fy=ratio, interpolation = cv2.INTER_CUBIC)
-                draw_focus_area(scaled, focus*ratio)
-                cv2.imshow("Snapshot", scaled)
-                cv2.waitKey(1)
+                preview(f, "Snapshot", focus=focus)
         frame = nextframe
 
     #Store the residue canvas.
