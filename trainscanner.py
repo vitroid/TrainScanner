@@ -214,6 +214,7 @@ if __name__ == "__main__":
     onWork = False
     absx,absy = 0,0
     lastdx, lastdy = 0, 0
+    tr = trailing
     while True:
         ret, nextframe = cap.read()
         if not ret:
@@ -229,9 +230,10 @@ if __name__ == "__main__":
                 dy = 0
         if not onWork and (abs(dx) > antishake or abs(dy) > antishake):
             onWork = True
+            tr = trailing
         elif onWork and abs(dx) <= antishake and abs(dy) <= antishake:
-            if trailing > 0:
-                trailing -= 1
+            if tr > 0:
+                tr -= 1
                 dx = lastdx
                 dy = lastdy
                 print ">>({2}) {0} {1}".format(dx,dy,trailing)
