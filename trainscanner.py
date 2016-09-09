@@ -103,6 +103,20 @@ def abs_merge(canvas, image, x, y, alpha=None, split=0, name="" ):
         print "newcanvas:  {0}x{1} {2:+d}{3:+d}".format(newcanvas.shape[1],newcanvas.shape[0],xmin,ymin)
     return newcanvas, (xmin,ymin)
 
+def Usage(argv):
+    print "usage: {0} [-2][-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] movie".format(argv[0])
+    print "\t-2\tTwo pass.  Store the intermediate image fragments on the disk and do not merge them."
+    print "\t-a x\tAntishake.  Ignore motion smaller than x pixels (5)."
+    print "\t-d\tDebug mode."
+    print "\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)"
+    print "\t-g n\tShow guide for perspective correction at the nth frame instead of stitching the movie."
+    print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
+    print "\t-q\tnDo not show the snapshots."
+    print "\t-s r\tSet slit position to r (0.2)."
+    print "\t-t x\tAdd trailing frames after the motion is not detected. (5)."
+    print "\t-w r\tSet slit width (1=same as the length of the interframe motion vector)."
+    print "\t-z\tSuppress drift."
+    sys.exit(1)
 
 
 
@@ -135,48 +149,39 @@ if __name__ == "__main__":
     while len(sys.argv) > 2:
         if sys.argv[1] in ("-d", "--debug"):
             debug = True
-        if sys.argv[1] in ("-q", "--quiet"):
+        elif sys.argv[1] in ("-q", "--quiet"):
             visual = False
-        if sys.argv[1] in ("-g", "--guide"):
+        elif sys.argv[1] in ("-g", "--guide"):
             guide = int(sys.argv.pop(2))
-        if sys.argv[1] in ("-a", "--antishake"):
+        elif sys.argv[1] in ("-a", "--antishake"):
             antishake = int(sys.argv.pop(2))
-        if sys.argv[1] in ("-t", "--trail"):
+        elif sys.argv[1] in ("-t", "--trail"):
             trailing = int(sys.argv.pop(2))
-        if sys.argv[1] in ("-s", "--slit"):
+        elif sys.argv[1] in ("-s", "--slit"):
             slitpos = float(sys.argv.pop(2))
-        if sys.argv[1] in ("-w", "--width"):
+        elif sys.argv[1] in ("-w", "--width"):
             slitwidth = float(sys.argv.pop(2))
-        if sys.argv[1] in ("-z", "--zero"):
+        elif sys.argv[1] in ("-z", "--zero"):
             zero  = True
-        if sys.argv[1] in ("--skip_identical"):
+        elif sys.argv[1] in ("--skip_identical"):
             skip_identical = True #hidden option
-        if sys.argv[1] in ("-2", "--twopass"):
+        elif sys.argv[1] in ("-2", "--twopass"):
             onMemory  = False
-        if sys.argv[1] in ("-p", "--pers", "--perspective"):
+        elif sys.argv[1] in ("-p", "--pers", "--perspective"):
             #followed by four numbers separated by comma.
             #left top, bottom, right top, bottom
             param = sys.argv.pop(2)
             gpts  = np.float32([float(x) for x in param.split(",")])
-        if sys.argv[1] in ("-f", "--focus", "--frame"):
+        elif sys.argv[1] in ("-f", "--focus", "--frame"):
             param = sys.argv.pop(2)
             focus = np.float32([float(x) for x in param.split(",")])
+        elif sys.argv[1][0] == "-":
+            print "Unknown option: ", sys.argv[1]
+            Usage(sys.argv)
         sys.argv.pop(1)
 
     if len(sys.argv) != 2:
-        print "usage: {0} [-2][-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] movie".format(sys.argv[0])
-        print "\t-2\t\tTwo pass.  Store the intermediate image fragments on the disk and do not merge them."
-        print "\t-a x\tAntishake.  Ignore motion smaller than x pixels (5)."
-        print "\t-d\t\tDebug mode."
-        print "\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)"
-        print "\t-g n\tShow guide for perspective correction at the nth frame instead of stitching the movie."
-        print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
-        print "\t-q\t\tnDo not show the snapshots."
-        print "\t-s r\tSet slit position to r (0.2)."
-        print "\t-t x\tAdd trailing frames after the motion is not detected. (5)."
-        print "\t-w r\tSet slit width (1=same as the length of the interframe motion vector)."
-        print "\t-z\t\tSuppress drift."
-        sys.exit(1)
+        Usage(sys.argv)
 
     movie = sys.argv[1]
     cap = cv2.VideoCapture(movie)
