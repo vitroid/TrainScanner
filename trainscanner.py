@@ -225,7 +225,7 @@ if __name__ == "__main__":
     onWork = False
     absx,absy = 0,0
     lastdx, lastdy = 0, 0
-    tr = trailing
+    tr = 0
     while True:
         ret, nextframe = cap.read()
         if not ret:
@@ -236,7 +236,8 @@ if __name__ == "__main__":
             preview(nextframe, "Debug", focus=focus)
             
         dx,dy = motion(frame, nextframe, focus=focus)
-        if skip_identical and dx == 0 and dy == 0 and onWork:
+        if skip_identical and dx == 0 and dy == 0 and onWork and tr == 0:
+            tr += 1
             print "skip"
             continue
             #In Youtube videos uploaded from Europe (PAL)
@@ -254,11 +255,11 @@ if __name__ == "__main__":
         if (abs(dx) > antishake or abs(dy) > antishake):
             if not onWork:
                 onWork = True
-            tr = trailing
+            tr = 0
         else:
             if onWork:
-                if tr > 0:
-                    tr -= 1
+                if tr <= trailing:
+                    tr += 1
                     dx = lastdx
                     dy = lastdy
                     print ">>({2}) {0} {1}".format(dx,dy,tr)
