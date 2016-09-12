@@ -4,7 +4,7 @@
 
 import cv2
 import numpy as np
-
+import math
 
 def draw_focus_area(f, focus):
     pos = [int(i) for i in w*focus[0],w*focus[1],h*focus[2],h*focus[3]]
@@ -52,11 +52,7 @@ def make_alpha( d, img_size, slit=0.0, width=1 ):
 
 canvases = []
 
-#Absolute merger
-#x,y is the absolute position of the image
-#The canvas may often become huge, then the merging takes very long time.
-#So the canvas will be split automatically and the fragments will be stored in canvases on demand.
-#Later the fragments are stitched together to recover the full canvas.
+#Automatically extensible canvas.
 def abs_merge(canvas, image, x, y, alpha=None, split=0, name="" ):
     absx, absy = canvas[1]   #absolute coordinate of the top left of the canvas
     if debug:
@@ -90,7 +86,7 @@ def abs_merge(canvas, image, x, y, alpha=None, split=0, name="" ):
         if debug:
             print np.product(canvas[0].shape),np.product(image.shape)
         if np.product(canvas[0].shape) > np.product(image.shape) * split:
-            # if name is given, do not store in memory
+            # if name is given, purge the fragment to the disk
             if name == "":
                 canvases.append((newcanvas, (xmin,ymin)))
             else:
@@ -109,10 +105,11 @@ def Usage(argv):
     print "\t-a x\tAntishake.  Ignore motion smaller than x pixels (5)."
     print "\t-d\tDebug mode."
     print "\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)"
-    print "\t-g n\tShow guide for perspective correction at the nth frame instead of stitching the movie."
+    print "\t-g\tShow guide for perspective correction at the nth frame instead of stitching the movie."
     print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
-    print "\t-q\tnDo not show the snapshots."
+    print "\t-q\tDo not show the snapshots."
     print "\t-s r\tSet slit position to r (0.2)."
+    print "\t-S n\tSeek the nth frame (0)."
     print "\t-t x\tAdd trailing frames after the motion is not detected. (5)."
     print "\t-w r\tSet slit width (1=same as the length of the interframe motion vector)."
     print "\t-z\tSuppress drift."
@@ -133,7 +130,8 @@ if __name__ == "__main__":
     import sys
 
     debug = False #True
-    guide = 0
+    guide = False
+    seek  = 0
     zero  = False
     gpts = None #np.float32([380, 350, 1680, 1715])
     slitpos = 0.1
@@ -141,18 +139,25 @@ if __name__ == "__main__":
     visual = True
     antishake = 5
     trailing = 10
-    skip_identical = False
     commandline = " ".join(sys.argv)
     onMemory = True
-
+    dumping = 0
+    angle = 0
+    
     focus = np.array((0.3333, 0.6666, 0.3333, 0.6666))
     while len(sys.argv) > 2:
         if sys.argv[1] in ("-d", "--debug"):
             debug = True
         elif sys.argv[1] in ("-q", "--quiet"):
             visual = False
+        elif sys.argv[1] in ("-S", "--seek"):
+            seek = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-D", "--dumping"):
+            dumping = float(sys.argv.pop(2))
+        elif sys.argv[1] in ("-r", "--rotate"):
+            angle = float(sys.argv.pop(2)) * math.pi / 180
         elif sys.argv[1] in ("-g", "--guide"):
-            guide = int(sys.argv.pop(2))
+            guide = True
         elif sys.argv[1] in ("-a", "--antishake"):
             antishake = int(sys.argv.pop(2))
         elif sys.argv[1] in ("-t", "--trail"):
@@ -163,8 +168,6 @@ if __name__ == "__main__":
             slitwidth = float(sys.argv.pop(2))
         elif sys.argv[1] in ("-z", "--zero"):
             zero  = True
-        elif sys.argv[1] in ("--skip_identical"):
-            skip_identical = True #hidden option
         elif sys.argv[1] in ("-2", "--twopass"):
             onMemory  = False
         elif sys.argv[1] in ("-p", "--pers", "--perspective"):
@@ -185,14 +188,22 @@ if __name__ == "__main__":
 
     movie = sys.argv[1]
     cap = cv2.VideoCapture(movie)
-
+    frames = 0
+    for i in range(seek):  #skip frames
+        cap.grab()
+        #ret, frame = cap.read()
+        frames += 1
     ret, frame = cap.read()
+    frames += 1
     h, w, d = frame.shape
-
+    if angle:
+        a = math.cos(angle)
+        b = math.sin(angle)
+        R = np.matrix(((a,b,(1-a)*w/2 - b*h/2),(-b,a,b*w/2+(1-a)*h/2)))
+        frame = cv2.warpAffine(frame, R, (w,h))
+    
     if guide:
         #Show the perspective guides and quit.
-        for i in range(guide-1):  #skip frames
-            ret, frame = cap.read()
         fontFace = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
         for i in range(0,w,5):
             cv2.line(frame, (i,h/4),(i,h/4+5), (0, 255, 0), 1)
@@ -233,25 +244,34 @@ if __name__ == "__main__":
     tr = 0
     while True:
         ret, nextframe = cap.read()
+        if angle:
+            a = math.cos(angle)
+            b = math.sin(angle)
+            R = np.matrix(((a,b,(1-a)*w/2 - b*h/2),(-b,a,b*w/2+(1-a)*h/2)))
+            nextframe = cv2.warpAffine(nextframe, R, (w,h))
+        frames += 1
         if not ret:
             break
         if gpts is not None:
             nextframe = cv2.warpPerspective(nextframe,M,(w,h))
+        diff = cv2.absdiff(nextframe,frame)
+        if np.amax(diff) < 80:
+            print "skip adjustment frame"
+            #They are identical frames
+            #This happens when the frame rate difference is compensated.
+            continue
         if debug:
             preview(nextframe, "Debug", focus=focus)
             
-        dx,dy = motion(frame, nextframe, focus=focus)
-        if skip_identical and dx == 0 and dy == 0 and onWork and tr == 0:
-            tr += 1
-            print "skip"
-            continue
-            #In Youtube videos uploaded from Europe (PAL)
-            #identical frames are inserted for every 6 frames.
-            #(Perhaps they use 25 fps instead of 30 fps)
-            #This causes ghosting when trailing option is active.
-            #skip_identical option just ignore the identical frames
-            #during working on.
-        print dx,dy
+        dx0,dy0 = motion(frame, nextframe, focus=focus)
+        if dumping and onWork:
+            dx = int((dx0 - lastdx)/dumping + lastdx)
+            dy = int((dy0 - lastdy)/dumping + lastdy)
+            print frames,dx,dy,dx0,dy0
+        else:
+            dx = dx0
+            dy = dy0
+            print frames,dx0,dy0
         if zero:
             if abs(dx) < abs(dy):
                 dx = 0
