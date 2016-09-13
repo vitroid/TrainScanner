@@ -57,10 +57,10 @@ def make_orth_alpha( d, img_size, slit=0.0, width=1 ):
     """
     if (d[0], d[1], img_size[1], img_size[0], slit) in alphas:
         return alphas[(d[0], d[1], img_size[1], img_size[0], slit)]
-    if d[0] > d[1]:
-        d = 0,d[1]
-    else:
+    if abs(d[0]) > abs(d[1]):
         d = d[0],0
+    else:
+        d = 0,d[1]
     r = (d[0]**2 + d[1]**2)**0.5
     if r == 0:
         return None
