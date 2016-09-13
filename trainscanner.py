@@ -50,6 +50,34 @@ def make_alpha( d, img_size, slit=0.0, width=1 ):
         cv2.imshow("alpha",np.array(alpha*255, np.uint8))
     return alpha
 
+
+def make_orth_alpha( d, img_size, slit=0.0, width=1 ):
+    """
+    Make an orthogonal mask
+    """
+    if (d[0], d[1], img_size[1], img_size[0], slit) in alphas:
+        return alphas[(d[0], d[1], img_size[1], img_size[0], slit)]
+    if d[0] > d[1]:
+        d = 0,d[1]
+    else:
+        d = d[0],0
+    r = (d[0]**2 + d[1]**2)**0.5
+    if r == 0:
+        return None
+    dx = d[0] / r
+    dy = d[1] / r
+    ih, iw = img_size
+    diag = (ih**2 + iw**2)**0.5
+    centerx = iw/2 - dx * diag * slit
+    centery = ih/2 - dy * diag * slit
+    alpha = np.fromfunction(lambda y, x, v: (dx*(x-centerx)+dy*(y-centery))/(r*width), (ih, iw, 3))
+    np.clip(alpha,-1,1,out=alpha)  # float 0..1 values
+    alpha = (alpha+1) / 2
+    alphas[(d[0], d[1], img_size[1], img_size[0], slit)] = alpha
+    if debug:
+        cv2.imshow("alpha",np.array(alpha*255, np.uint8))
+    return alpha
+
 canvases = []
 
 #Automatically extensible canvas.
@@ -240,7 +268,10 @@ if __name__ == "__main__":
     
     onWork = False
     absx,absy = 0,0
-    lastdx, lastdy = 0, 0
+    lastdx, lastdy = 0.0, 0.0
+    dx = 0.0
+    dy = 0.0
+    idx = idy = 0
     tr = 0
     while True:
         ret, nextframe = cap.read()
@@ -265,19 +296,24 @@ if __name__ == "__main__":
             
         dx0,dy0 = motion(frame, nextframe, focus=focus)
         if dumping and onWork:
-            dx = int((dx0 - lastdx)/dumping + lastdx)
-            dy = int((dy0 - lastdy)/dumping + lastdy)
+            dx += (dx0 - lastdx)/dumping + lastdx
+            dy += (dy0 - lastdy)/dumping + lastdy
             print frames,dx,dy,dx0,dy0
         else:
-            dx = dx0
-            dy = dy0
+            dx += dx0
+            dy += dy0
             print frames,dx0,dy0
         if zero:
             if abs(dx) < abs(dy):
                 dx = 0
             else:
                 dy = 0
-        if (abs(dx) > antishake or abs(dy) > antishake):
+        idx = int(dx)
+        idy = int(dy)
+        #Error dispersion
+        dx -= int(dx)
+        dy -= int(dy)
+        if (abs(idx) > antishake or abs(idy) > antishake):
             if not onWork:
                 onWork = True
             tr = 0
@@ -285,17 +321,17 @@ if __name__ == "__main__":
             if onWork:
                 if tr <= trailing:
                     tr += 1
-                    dx = lastdx
-                    dy = lastdy
-                    print ">>({2}) {0} {1}".format(dx,dy,tr)
+                    idx = lastdx
+                    idy = lastdy
+                    print ">>({2}) {0} {1}".format(idx,idy,tr)
                 else:
                     #end of work
                     break
-        absx += dx
-        absy += dy
+        absx += idx
+        absy += idy
         if onWork:
-            lastdx, lastdy = dx,dy
-            alpha = make_alpha( (dx,dy), (h,w), slitpos, slitwidth )
+            lastdx, lastdy = idx,idy
+            alpha = make_orth_alpha( (idx,idy), (h,w), slitpos, slitwidth )
             if onMemory:
                 canvas = abs_merge(canvas, nextframe, absx, absy, alpha=alpha, split=2)
             else:
