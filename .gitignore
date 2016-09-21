@@ -11,3 +11,5 @@ work/*
 *.npy
 sample*png
 *.pyc
+
+.DS_Store
