@@ -11,7 +11,7 @@ def draw_focus_area(f, focus):
     cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
 
 
-def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666)):
+def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666), margin=0, delta=(0,0)):
     hi,wi = img.shape[0:2]
     wmin = int(wi*focus[0])
     wmax = int(wi*focus[1])
@@ -21,11 +21,22 @@ def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666)):
     h,w = template.shape[0:2]
 
     # Apply template Matching
-    res = cv2.matchTemplate(ref,template,cv2.TM_SQDIFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-    #loc is given by x,y
-    top_left = min_loc
-    return top_left[0] - wmin, top_left[1] - hmin
+    if margin == 0:
+        res = cv2.matchTemplate(ref,template,cv2.TM_SQDIFF_NORMED)
+        #loc is given by x,y
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        return min_loc[0] - wmin, min_loc[1] - hmin
+    else:
+        #use delta here
+        roix0 = wmin + delta[0] - margin
+        roiy0 = hmin + delta[1] - margin
+        roix1 = wmax + delta[0] + margin
+        roiy1 = hmax + delta[1] + margin
+        crop = ref[roiy0:roiy1, roix0:roix1, :]
+        res = cv2.matchTemplate(crop,template,cv2.TM_SQDIFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        #loc is given by x,y
+        return (min_loc[0] + roix0 - wmin, min_loc[1] + roiy0 - hmin)
 
 
 alphas = dict()
@@ -171,7 +182,10 @@ if __name__ == "__main__":
     onMemory = True
     dumping = 0
     angle = 0
-    
+    every = 1
+    identity = 80
+    margin = 0 # pixels, work in progress.
+    #It may be able to unify with antishake.
     focus = np.array((0.3333, 0.6666, 0.3333, 0.6666))
     while len(sys.argv) > 2:
         if sys.argv[1] in ("-d", "--debug"):
@@ -180,6 +194,12 @@ if __name__ == "__main__":
             visual = False
         elif sys.argv[1] in ("-S", "--seek"):
             seek = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-e", "--every"):
+            every = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-i", "--identity"):
+            identity = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-m", "--margin"):
+            margin = int(sys.argv.pop(2))
         elif sys.argv[1] in ("-D", "--dumping"):
             dumping = float(sys.argv.pop(2))
         elif sys.argv[1] in ("-r", "--rotate"):
@@ -225,6 +245,7 @@ if __name__ == "__main__":
     frames += 1
     h, w, d = frame.shape
     if angle:
+        #Apply rotation
         a = math.cos(angle)
         b = math.sin(angle)
         R = np.matrix(((a,b,(1-a)*w/2 - b*h/2),(-b,a,b*w/2+(1-a)*h/2)))
@@ -244,6 +265,7 @@ if __name__ == "__main__":
         if gpts is not None:
             cv2.line(frame, (gpts[0],h/4), (gpts[1],h*3/4), (255, 0, 0), 1)
             cv2.line(frame, (gpts[2],h/4), (gpts[3],h*3/4), (255, 0, 0), 1)
+        draw_focus_area(frame, focus)
         cv2.imshow("Guide lines", frame)
         cv2.waitKey()
         sys.exit(0)
@@ -263,7 +285,7 @@ if __name__ == "__main__":
     #Prepare a scalable canvas with the origin.
     canvas = (frame.copy(), (0, 0))
 
-    if not debug:
+    if not debug and visual:
         preview(frame, "First frame", focus=focus)
     
     onWork = False
@@ -274,6 +296,9 @@ if __name__ == "__main__":
     idx = idy = 0
     tr = 0
     while True:
+        for i in range(every-1):  #skip frames
+            cap.grab()
+            frames += 1
         ret, nextframe = cap.read()
         if angle:
             a = math.cos(angle)
@@ -286,7 +311,7 @@ if __name__ == "__main__":
         if gpts is not None:
             nextframe = cv2.warpPerspective(nextframe,M,(w,h))
         diff = cv2.absdiff(nextframe,frame)
-        if np.amax(diff) < 80:
+        if np.amax(diff) < identity:
             print "skip adjustment frame"
             #They are identical frames
             #This happens when the frame rate difference is compensated.
@@ -294,7 +319,11 @@ if __name__ == "__main__":
         if debug:
             preview(nextframe, "Debug", focus=focus)
             
-        dx0,dy0 = motion(frame, nextframe, focus=focus)
+        if margin > 0 and onWork:
+            dx0,dy0 = motion(frame, nextframe, focus=focus, margin=margin, delta=(lastdx,lastdy) )
+        else:
+            dx0,dy0 = motion(frame, nextframe, focus=focus)
+            
         if dumping and onWork:
             dx += (dx0 - lastdx)/dumping + lastdx
             dy += (dy0 - lastdy)/dumping + lastdy
