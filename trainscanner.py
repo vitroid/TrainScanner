@@ -312,7 +312,7 @@ if __name__ == "__main__":
             nextframe = cv2.warpPerspective(nextframe,M,(w,h))
         diff = cv2.absdiff(nextframe,frame)
         if np.amax(diff) < identity:
-            print "skip adjustment frame"
+            print "skip adjustment frame #",np.amax(diff)
             #They are identical frames
             #This happens when the frame rate difference is compensated.
             continue
@@ -327,11 +327,12 @@ if __name__ == "__main__":
         if dumping and onWork:
             dx += (dx0 - lastdx)/dumping + lastdx
             dy += (dy0 - lastdy)/dumping + lastdy
-            print frames,dx,dy,dx0,dy0
+            print frames,dx,dy,dx0,dy0,"#",np.amax(diff)
         else:
             dx += dx0
             dy += dy0
-            print frames,dx0,dy0
+            print frames,dx0,dy0,"#",np.amax(diff)
+
         if zero:
             if abs(dx) < abs(dy):
                 dx = 0
@@ -352,7 +353,7 @@ if __name__ == "__main__":
                     tr += 1
                     idx = lastdx
                     idy = lastdy
-                    print ">>({2}) {0} {1}".format(idx,idy,tr)
+                    print ">>({2}) {0} {1} #{3}".format(idx,idy,tr,np.amax(diff))
                 else:
                     #end of work
                     break
