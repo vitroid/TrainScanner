@@ -183,7 +183,7 @@ if __name__ == "__main__":
     dumping = 0
     angle = 0
     every = 1
-    identity = 3
+    identity = 2.0
     margin = 0 # pixels, work in progress.
     #It may be able to unify with antishake.
     focus = np.array((0.3333, 0.6666, 0.3333, 0.6666))

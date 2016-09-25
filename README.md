@@ -28,7 +28,7 @@ Note: Will be updated for OpenCV3 + Python3 in the near future.
 1. The movie must be captured with a tripod.  Otherwise the software cannot distinguish the motion of the train out of moving background.
 2. Just give the movie file name.  It will work.
 
-    `trainscanner.py    sample2.mov`
+        trainscanner.py    sample2.mov
 
 ##Tips
 ###Seek and interval
@@ -58,8 +58,8 @@ change the area position and size with `-f` option.
 
 Compare the following results.
 
-    trainscanner.py    sample.mov
-    trainscanner.py -f 0.2,0.8,0.4,0.6 sample.mov
+    trainscanner.py sample4.mov
+    trainscanner.py -f 0.2,0.5,0.3,0.7 sample4.mov
 
 ###Perspective adjustment
 If the train movie is recorded with some perspective, trainscanner can fix it.  Invoking with `-g` option shows the perspective gauge.
@@ -92,7 +92,7 @@ severe slow down.  In that case, use `-2` (two-pass process) option.
 The intermediate canvas fragments are stored on the disk.  You can
 stitch them together by another tool named `merger.py`.
 
-    trainscanner.py -2  sample.mov
+    trainscanner.py -2 -m 1 sample.mov
     merger.py sample.mov.log
 
 ###Antishake and motion prediction
@@ -111,7 +111,8 @@ Compare the following results.
     trainscanner.py -z -m 2 sample2.mov
 
 ###Skip identical frames
+
 Identical frames will be detected by global image comparison and are
-skipped automatically.  The threshold value is 0.3 by default and can
-be changed with `-i` option.  In case the scene is too dark, you may
+skipped automatically.  The threshold value is `2` by default and can
+be changed with `-i x` option.  In case the scene is too dark, you may
 want to change the threshold.
