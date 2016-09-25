@@ -61,6 +61,10 @@ Compare the following results.
     trainscanner.py sample4.mov
     trainscanner.py -f 0.2,0.5,0.3,0.7 sample4.mov
 
+The first command fails to capture the whole train because of the
+reflection of the glass windows. `-f` option avoid the window area to
+be matched.
+
 ###Perspective adjustment
 If the train movie is recorded with some perspective, trainscanner can fix it.  Invoking with `-g` option shows the perspective gauge.
 Read the gauge.  Reinvoling with `-p` and `-g` shows the perspective guide lines.  If the line is correct, remove `-g` option for the product run.
