@@ -147,7 +147,7 @@ def Usage(argv):
     print "\t-g\tShow guide for perspective correction at the nth frame instead of stitching the movie."
     print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
     print "\t-q\tDo not show the snapshots."
-    print "\t-s r\tSet slit position to r (0.2)."
+    print "\t-s r\tSet slit position to r (1)."
     print "\t-S n\tSeek the nth frame (0)."
     print "\t-t x\tAdd trailing frames after the motion is not detected. (5)."
     print "\t-w r\tSet slit width (1=same as the length of the interframe motion vector)."
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     seek  = 0
     zero  = False
     gpts = None #np.float32([380, 350, 1680, 1715])
-    slitpos = 0.1
+    slitpos = 1
     slitwidth = 1
     visual = True
     antishake = 5
@@ -183,49 +183,49 @@ if __name__ == "__main__":
     dumping = 0
     angle = 0
     every = 1
-    identity = 80
+    identity = 3
     margin = 0 # pixels, work in progress.
     #It may be able to unify with antishake.
     focus = np.array((0.3333, 0.6666, 0.3333, 0.6666))
     while len(sys.argv) > 2:
-        if sys.argv[1] in ("-d", "--debug"):
-            debug = True
-        elif sys.argv[1] in ("-q", "--quiet"):
-            visual = False
-        elif sys.argv[1] in ("-S", "--seek"):
-            seek = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-e", "--every"):
-            every = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-i", "--identity"):
-            identity = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-m", "--margin"):
-            margin = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-D", "--dumping"):
-            dumping = float(sys.argv.pop(2))
-        elif sys.argv[1] in ("-r", "--rotate"):
-            angle = float(sys.argv.pop(2)) * math.pi / 180
-        elif sys.argv[1] in ("-g", "--guide"):
-            guide = True
+        if sys.argv[1] in ("-2", "--twopass"):
+            onMemory  = False
         elif sys.argv[1] in ("-a", "--antishake"):
             antishake = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-t", "--trail"):
-            trailing = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-s", "--slit"):
-            slitpos = float(sys.argv.pop(2))
-        elif sys.argv[1] in ("-w", "--width"):
-            slitwidth = float(sys.argv.pop(2))
-        elif sys.argv[1] in ("-z", "--zero"):
-            zero  = True
-        elif sys.argv[1] in ("-2", "--twopass"):
-            onMemory  = False
+        elif sys.argv[1] in ("-d", "--debug"):
+            debug = True
+        elif sys.argv[1] in ("-D", "--dumping"):
+            dumping = float(sys.argv.pop(2))
+        elif sys.argv[1] in ("-e", "--every"):
+            every = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-f", "--focus", "--frame"):
+            param = sys.argv.pop(2)
+            focus = np.float32([float(x) for x in param.split(",")])
+        elif sys.argv[1] in ("-g", "--guide"):
+            guide = True
+        elif sys.argv[1] in ("-i", "--identity"):
+            identity = float(sys.argv.pop(2))
+        elif sys.argv[1] in ("-m", "--margin"):
+            margin = int(sys.argv.pop(2))
         elif sys.argv[1] in ("-p", "--pers", "--perspective"):
             #followed by four numbers separated by comma.
             #left top, bottom, right top, bottom
             param = sys.argv.pop(2)
             gpts  = np.float32([float(x) for x in param.split(",")])
-        elif sys.argv[1] in ("-f", "--focus", "--frame"):
-            param = sys.argv.pop(2)
-            focus = np.float32([float(x) for x in param.split(",")])
+        elif sys.argv[1] in ("-q", "--quiet"):
+            visual = False
+        elif sys.argv[1] in ("-r", "--rotate"):
+            angle = float(sys.argv.pop(2)) * math.pi / 180
+        elif sys.argv[1] in ("-s", "--slit"):
+            slitpos = float(sys.argv.pop(2))
+        elif sys.argv[1] in ("-S", "--seek"):
+            seek = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-t", "--trail"):
+            trailing = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-w", "--width"):
+            slitwidth = float(sys.argv.pop(2))
+        elif sys.argv[1] in ("-z", "--zero"):
+            zero  = True
         elif sys.argv[1][0] == "-":
             print "Unknown option: ", sys.argv[1]
             Usage(sys.argv)
@@ -237,11 +237,18 @@ if __name__ == "__main__":
     movie = sys.argv[1]
     cap = cv2.VideoCapture(movie)
     frames = 0
+    ret = True
     for i in range(seek):  #skip frames
-        cap.grab()
+        ret = cap.grab()
+        if not ret:
+            break
         #ret, frame = cap.read()
         frames += 1
+    if not ret:
+        sys.exit(0)
     ret, frame = cap.read()
+    if not ret:
+        sys.exit(0)
     frames += 1
     h, w, d = frame.shape
     if angle:
@@ -296,23 +303,29 @@ if __name__ == "__main__":
     idx = idy = 0
     tr = 0
     while True:
+        ret = True
         for i in range(every-1):  #skip frames
-            cap.grab()
+            ret = cap.grab()
+            if not ret:
+                break
             frames += 1
+        if not ret:
+            break
         ret, nextframe = cap.read()
+        if not ret:
+            break
         if angle:
             a = math.cos(angle)
             b = math.sin(angle)
             R = np.matrix(((a,b,(1-a)*w/2 - b*h/2),(-b,a,b*w/2+(1-a)*h/2)))
             nextframe = cv2.warpAffine(nextframe, R, (w,h))
         frames += 1
-        if not ret:
-            break
         if gpts is not None:
             nextframe = cv2.warpPerspective(nextframe,M,(w,h))
         diff = cv2.absdiff(nextframe,frame)
-        if np.amax(diff) < identity:
-            print "skip adjustment frame #",np.amax(diff)
+        diff = np.sum(diff) / (h*w*3)
+        if diff < identity:
+            print "skip identical frame #",diff
             #They are identical frames
             #This happens when the frame rate difference is compensated.
             continue
@@ -361,7 +374,7 @@ if __name__ == "__main__":
         absy += idy
         if onWork:
             lastdx, lastdy = idx,idy
-            alpha = make_orth_alpha( (idx,idy), (h,w), slitpos, slitwidth )
+            alpha = make_orth_alpha( (idx,idy), (h,w), slitpos*0.1, slitwidth )
             if onMemory:
                 canvas = abs_merge(canvas, nextframe, absx, absy, alpha=alpha, split=2)
             else:
