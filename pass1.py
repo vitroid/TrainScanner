@@ -6,11 +6,8 @@ import cv2
 import numpy as np
 import math
 
-def draw_focus_area(f, focus):
-    pos = [int(i) for i in w*focus[0],w*focus[1],h*focus[2],h*focus[3]]
-    cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
 
-
+    
 def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666), margin=0, delta=(0,0)):
     hi,wi = img.shape[0:2]
     wmin = int(wi*focus[0])
@@ -38,37 +35,6 @@ def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666), margin=0, delta=(0,
         #loc is given by x,y
         return (min_loc[0] + roix0 - wmin, min_loc[1] + roiy0 - hmin)
 
-
-alphas = dict()
-
-
-
-def make_orth_alpha( d, img_size, slit=0.0, width=1 ):
-    """
-    Make an orthogonal mask
-    """
-    if (d[0], d[1], img_size[1], img_size[0], slit) in alphas:
-        return alphas[(d[0], d[1], img_size[1], img_size[0], slit)]
-    if abs(d[0]) > abs(d[1]):
-        d = d[0],0
-    else:
-        d = 0,d[1]
-    r = (d[0]**2 + d[1]**2)**0.5
-    if r == 0:
-        return None
-    dx = d[0] / r
-    dy = d[1] / r
-    ih, iw = img_size
-    diag = (ih**2 + iw**2)**0.5
-    centerx = iw/2 - dx * diag * slit
-    centery = ih/2 - dy * diag * slit
-    alpha = np.fromfunction(lambda y, x, v: (dx*(x-centerx)+dy*(y-centery))/(r*width), (ih, iw, 3))
-    np.clip(alpha,-1,1,out=alpha)  # float 0..1 values
-    alpha = (alpha+1) / 2
-    alphas[(d[0], d[1], img_size[1], img_size[0], slit)] = alpha
-    if debug:
-        cv2.imshow("alpha",np.array(alpha*255, np.uint8))
-    return alpha
 
 canvases = []
 
@@ -119,6 +85,28 @@ def abs_merge(canvas, image, x, y, alpha=None, split=0, name="" ):
         print "newcanvas:  {0}x{1} {2:+d}{3:+d}".format(newcanvas.shape[1],newcanvas.shape[0],xmin,ymin)
     return newcanvas, (xmin,ymin)
 
+
+#Automatically extensible canvas.
+def canvas_size(canvas_dimen, image, x, y):
+    absx, absy = canvas_dimen[2:4]   #absolute coordinate of the top left of the canvas
+    cxmin = absx
+    cymin = absy
+    cxmax = canvas_dimen[0]+ absx
+    cymax = canvas_dimen[1]+ absy
+    ixmin = x
+    iymin = y
+    ixmax = image.shape[1] + x
+    iymax = image.shape[0] + y
+
+    xmin = min(cxmin,ixmin)
+    xmax = max(cxmax,ixmax)
+    ymin = min(cymin,iymin)
+    ymax = max(cymax,iymax)
+    if (xmax-xmin, ymax-ymin) != (canvas_dimen[0], canvas_dimen[1]):
+        canvas_dimen = [xmax-xmin,ymax-ymin,xmin,ymin]
+    return canvas_dimen
+
+
 def Usage(argv):
     print "usage: {0} [-2][-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] movie".format(argv[0])
     print "\t-2\tTwo pass.  Store the intermediate image fragments on the disk and do not merge them."
@@ -137,14 +125,6 @@ def Usage(argv):
 
 
 
-def preview(frame, name="Preview", focus=None, size=700.):
-    h,w,d = frame.shape
-    ratio = size/max(w,h)
-    scaled = cv2.resize(frame,None,fx=ratio, fy=ratio, interpolation = cv2.INTER_CUBIC)
-    if focus is not None:
-        draw_focus_area(scaled, focus*ratio)
-    cv2.imshow(name, scaled)
-    cv2.waitKey(1)
 
 if __name__ == "__main__":
     import sys
@@ -156,11 +136,9 @@ if __name__ == "__main__":
     gpts = None #np.float32([380, 350, 1680, 1715])
     slitpos = 1
     slitwidth = 1
-    visual = True
     antishake = 5
     trailing = 10
     commandline = " ".join(sys.argv)
-    onMemory = True
     dumping = 0
     angle = 0
     every = 1
@@ -169,9 +147,7 @@ if __name__ == "__main__":
     #It may be able to unify with antishake.
     focus = np.array((0.3333, 0.6666, 0.3333, 0.6666))
     while len(sys.argv) > 2:
-        if sys.argv[1] in ("-2", "--twopass"):
-            onMemory  = False
-        elif sys.argv[1] in ("-a", "--antishake"):
+        if sys.argv[1] in ("-a", "--antishake"):
             antishake = int(sys.argv.pop(2))
         elif sys.argv[1] in ("-d", "--debug"):
             debug = True
@@ -193,8 +169,6 @@ if __name__ == "__main__":
             #left top, bottom, right top, bottom
             param = sys.argv.pop(2)
             gpts  = np.float32([float(x) for x in param.split(",")])
-        elif sys.argv[1] in ("-q", "--quiet"):
-            visual = False
         elif sys.argv[1] in ("-r", "--rotate"):
             angle = float(sys.argv.pop(2)) * math.pi / 180
         elif sys.argv[1] in ("-s", "--slit"):
@@ -217,7 +191,7 @@ if __name__ == "__main__":
 
     movie = sys.argv[1]
     cap = cv2.VideoCapture(movie)
-    frames = 0
+    frames = 0  #1 is the first frame
     ret = True
     for i in range(seek):  #skip frames
         ret = cap.grab()
@@ -228,9 +202,9 @@ if __name__ == "__main__":
     if not ret:
         sys.exit(0)
     ret, frame = cap.read()
+    frames += 1
     if not ret:
         sys.exit(0)
-    frames += 1
     h, w, d = frame.shape
     if angle:
         #Apply rotation
@@ -271,10 +245,13 @@ if __name__ == "__main__":
 
 
     #Prepare a scalable canvas with the origin.
-    canvas = (frame.copy(), (0, 0))
+    canvas = [100,100,0,0]
 
-    if not debug and visual:
-        preview(frame, "First frame", focus=focus)
+    #prepare the previewer process
+    #import pipes
+    #t = pipes.Template()
+    #t.append("./preview.py -f ", "--")
+    LOG = open("{0}.log".format(movie),"w")
     
     onWork = False
     absx,absy = 0,0
@@ -310,8 +287,6 @@ if __name__ == "__main__":
             #They are identical frames
             #This happens when the frame rate difference is compensated.
             continue
-        if debug:
-            preview(nextframe, "Debug", focus=focus)
             
         if margin > 0 and onWork:
             dx0,dy0 = motion(frame, nextframe, focus=focus, margin=margin, delta=(lastdx,lastdy) )
@@ -355,55 +330,7 @@ if __name__ == "__main__":
         absy += idy
         if onWork:
             lastdx, lastdy = idx,idy
-            alpha = make_orth_alpha( (idx,idy), (h,w), slitpos*0.1, slitwidth )
-            if onMemory:
-                canvas = abs_merge(canvas, nextframe, absx, absy, alpha=alpha, split=2)
-            else:
-                canvas = abs_merge(canvas, nextframe, absx, absy, alpha=alpha, split=2, name=movie)
-            if debug:
-                cv2.imshow("canvas", canvas[0])
-                cv2.waitKey()
-            if visual:
-                f = nextframe.copy()
-                #Red mask indicates the overlay alpha
-                f[:,:,0:2] = np.uint8(f[:,:,0:2] * alpha[:,:,0:2])
-                preview(f, "Snapshot", focus=focus)
+            canvas = canvas_size(canvas, nextframe, absx, absy)
+            LOG.write("{0} {1} {2} {3} {4}\n".format(frames,absx,absy,idx,idy))
         frame = nextframe
 
-    #Store the residue canvas.
-    if onMemory:
-        canvases.append(canvas)
-    else:
-        frame = canvas[0]
-        location = canvas[1]
-        cv2.imwrite("{0}.{1:+d}{2:+d}.png".format(movie,*location), frame)    
-        canvases.append(location)
-
-    #Store the fragments
-    #for c in canvases:
-    #    cv2.imwrite("{0}.{1:+d}{2:+d}.png".format(movie,c[1][0],c[1][1]), c[0])
-
-    if gpts is not None:
-        print M
-
-    #Store the command line for convenience.
-    logfile = open("{0}.log".format(movie), "w")
-    logfile.write("{0}\n\n".format(commandline))
-    if onMemory:
-        #Stitch all the fragments to make a huge canvas.
-        merged = (np.zeros((100,100,3),np.uint8), (0,0))
-        for c in canvases:
-            frame = c[0]
-            location = c[1]
-            merged = abs_merge(merged, frame, *location)
-
-        # save the full frame
-        cv2.imwrite("{0}.full.png".format(movie), merged[0])
-    else:
-        logfile.write("[Canvas fragments]\n")
-        for c in canvases:
-            location = c
-            fragname = "{0}.{1:+d}{2:+d}.png".format(movie,*location)
-            frame = cv2.imread(fragname)
-            logfile.write("@{1:+d} {2:+d} {0}\n".format(fragname, *location))
-    
