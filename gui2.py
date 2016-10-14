@@ -7,6 +7,9 @@ import cv2
 import numpy as np
 import math
 
+#In GUI, only the horizontal scrolling is allowed.
+#For vertical ones, apply 90 degree rotation.
+
 #https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 
 class filedialogdemo(QWidget):
@@ -61,6 +64,9 @@ class filedialogdemo(QWidget):
 
         #Left panel, lower pane: finish
         gbox2 = QGroupBox("Finish")
+        hbox = QHBoxLayout()
+        
+        gbox1.setLayout(hbox)
         left_panel.addWidget(gbox2)
 
 

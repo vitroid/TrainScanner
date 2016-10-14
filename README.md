@@ -11,18 +11,20 @@ Note: Will be updated for OpenCV3 + Python3 in the near future.
 	-2		Two pass.  Store the intermediate image fragments on the disk and do not merge them.
 	-a x	Antishake.  Ignore motion smaller than x pixels (5).
 	-d		Debug mode.
-	-f xmin,xmax,ymin,ymax	Motion detection area relative to the image size. (0.333,0.666,0.333,0.666)
+	-f xmin,xmax,ymin,ymax	Motion detection area relative to the image size. (333,666,333,666)
 	-g n	Show guide for perspective correction at the nth frame
 	instead of stitching the movie.
 	-m x	Interframe motion prediction.  x is the maximal
 	acceleration between the frames.  Deactivated if 0 is given.(0)
 	-p a,b,c,d	Set perspective points. Note that perspective correction works for the vertically scrolling picture only.
 	-q		Do not show the snapshots.
-	-s r	Set slit position to r (1).
+	-s r	Set slit position to r (250).
 	-t x	Add trailing frames after the motion is not detected. (5).
 	-w r	Set slit width (1=same as the length of the interframe motion vector).
 	-z		Suppress drift.
 
+Length scale are relative to the frame size; (0,0) is the top left
+corner and (1000,1000) is the bottom right corner.
 ##Procedure
 
 1. The movie must be captured with a tripod.  Otherwise the software cannot distinguish the motion of the train out of moving background.
@@ -39,13 +41,13 @@ option to read every y frame.
 
 ###Small tilt fix
 
-The train movie must be captured parallel to one of the frame edges.
+The train must run horizontally.  Otherwise, use `-r` option to rotate.
 Finite tilt angle causes the image drift.  If the angle is not zero but is negligible, it can be suppressed by `-z` option.
 
 Compare the following results.
 
-    trainscanner.py    sample2.mov
-    trainscanner.py -z sample2.mov
+    trainscanner.py -r 90    sample2.mov
+    trainscanner.py -r 90 -z sample2.mov
 
 For more slanted images, use "-r" (rotation) option.
 
@@ -54,27 +56,31 @@ For more slanted images, use "-r" (rotation) option.
 When the trainscanner starts stitching the train, it shows the first frame with a rectangle, that is the motion detection area.
 The trainscanner start stitching then any motion is detected inside the area, and the motion vectors are shown in the console.
 It ends stitching when the motion is not detected again.  Therefore, if the trainscanner fails to detect the train motion properly,
-change the area position and size with `-f` option.
+change the area position and size with `-f xmin,xmax,ymin,ymax`
+option.  (The values are integers between 0 and 1000. (x,y) = (0,0) is
+the top left edge of the frame)
 
 Compare the following results.
 
-    trainscanner.py sample4.mov
-    trainscanner.py -f 0.2,0.5,0.3,0.7 sample4.mov
+    trainscanner.py -r 270 sample4.mov
+    trainscanner.py -r 270 -f 300,700,500,700 sample4.mov
 
 The first command fails to capture the whole train because of the
 reflection of the glass windows. `-f` option avoid the window area to
 be matched.
 
 ###Perspective adjustment
-If the train movie is recorded with some perspective, trainscanner can fix it.  Invoking with `-g` option shows the perspective gauge.
-Read the gauge.  Reinvoling with `-p` and `-g` shows the perspective guide lines.  If the line is correct, remove `-g` option for the product run.
+If the train movie is captured with skew perspective, trainscanner can
+fix it.  Invoking with `-g` option shows the green perspective gauge.
+Read the green gauge.  Reinvoling with `-p` and `-g` shows the perspective
+guide lines (blue).  If the line is correct, remove `-g` option for the product run.
 
 Follow the procedure to learn how to fix the perspective distortion.
 
-    trainscanner.py       sample3.mov
-    trainscanner.py -g 20 sample3.mov
-    trainscanner.py -g 20 -p 181,185,411,403 sample3.mov
-    trainscanner.py       -p 181,185,411,403 sample3.mov
+    trainscanner.py -r 90      sample3.mov
+    trainscanner.py -r 90 -g -S 20 sample3.mov
+    trainscanner.py -r 90 -g -S 20 -p 320,300,760,780 sample3.mov
+    trainscanner.py -r 90       -p 320,300,760,780 sample3.mov
     
 ###Overlap between the frames
 Two images are stirtched together using a gradated alpha mask.  You can
@@ -82,12 +88,14 @@ see the position and the diffuseness (width) of the gradation as a red
 mask in the "snapshot" window.  The position and width of the
 gradation area can be changed with `-s` and `-w` options.
 Larger `-s` value moves the slit forward.  `-s 0` places the slit at
-the center of the frame.  Smaller width results in the sharper image.
+the center of the frame and '-s 500' is on the edge of the frame of
+the forward direction. (negative is backward.)  Smaller width results
+in the sharper image but the background also becomes sharp.
 
 Compare the following results.
 
-    trainscanner.py -z -s 1 -w 1 sample2.mov
-    trainscanner.py -z -s 2 -w 0.1 sample2.mov
+    trainscanner.py -z -r 90 -s 250 -w 1 sample2.mov
+    trainscanner.py -z -r 90 -s 400 -w 0.1 sample2.mov
 
 ###Small memory footage
 By default, the trainscanner stores all working images on memory.  If
@@ -111,8 +119,8 @@ precision.  It will also improve processing speed.
 
 Compare the following results.
 
-    trainscanner.py -z sample2.mov
-    trainscanner.py -z -m 2 sample2.mov
+    trainscanner.py -r 90 -z sample2.mov
+    trainscanner.py -r 90 -z -m 2 sample2.mov
 
 ###Skip identical frames
 

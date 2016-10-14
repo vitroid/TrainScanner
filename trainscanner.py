@@ -1,22 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
+#Now only the horizontal scroll is allowed
 import cv2
 import numpy as np
 import math
 
 def draw_focus_area(f, focus):
-    pos = [int(i) for i in w*focus[0],w*focus[1],h*focus[2],h*focus[3]]
+    pos = [w*focus[0]/1000,w*focus[1]/1000,h*focus[2]/1000,h*focus[3]/1000]
     cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
 
 
-def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666), margin=0, delta=(0,0)):
+def motion(ref, img, focus=(333, 666, 333, 666), margin=0, delta=(0,0)):
     hi,wi = img.shape[0:2]
-    wmin = int(wi*focus[0])
-    wmax = int(wi*focus[1])
-    hmin = int(hi*focus[2])
-    hmax = int(hi*focus[3])
+    wmin = wi*focus[0]/1000
+    wmax = wi*focus[1]/1000
+    hmin = hi*focus[2]/1000
+    hmax = hi*focus[3]/1000
     template = img[hmin:hmax,wmin:wmax,:]
     h,w = template.shape[0:2]
 
@@ -38,38 +38,32 @@ def motion(ref, img, focus=(0.3333, 0.6666, 0.3333, 0.6666), margin=0, delta=(0,
         #loc is given by x,y
         return (min_loc[0] + roix0 - wmin, min_loc[1] + roiy0 - hmin)
 
-
+#global
 alphas = dict()
 
 
 
-def make_orth_alpha( d, img_size, slit=0.0, width=1 ):
+def make_vert_alpha( displace, img_width, img_height, slit=0, width=1.0 ):
     """
     Make an orthogonal mask
+    slit position is -500 to 500
+    slit width=1 is standard, width<1 is narrow (sharp) and width>1 is diffuse alpha
     """
-    if (d[0], d[1], img_size[1], img_size[0], slit) in alphas:
-        return alphas[(d[0], d[1], img_size[1], img_size[0], slit)]
-    if abs(d[0]) > abs(d[1]):
-        d = d[0],0
+    if (displace, img_width, slit) in alphas:
+        return alphas[(displace, img_width, slit)]
+    if displace == 0:
+        return np.zeros((img_height,img_width,3))+1
+    if displace > 0:
+        centerx = img_width/2 - slit*img_width/1000
     else:
-        d = 0,d[1]
-    r = (d[0]**2 + d[1]**2)**0.5
-    if r == 0:
-        return None
-    dx = d[0] / r
-    dy = d[1] / r
-    ih, iw = img_size
-    diag = (ih**2 + iw**2)**0.5
-    centerx = iw/2 - dx * diag * slit
-    centery = ih/2 - dy * diag * slit
-    alpha = np.fromfunction(lambda y, x, v: (dx*(x-centerx)+dy*(y-centery))/(r*width), (ih, iw, 3))
+        centerx = img_width/2 + slit*img_width/1000
+    alpha = np.fromfunction(lambda y, x, v: (x-centerx)/(displace*width), (img_height, img_width, 3))
     np.clip(alpha,-1,1,out=alpha)  # float 0..1 values
     alpha = (alpha+1) / 2
-    alphas[(d[0], d[1], img_size[1], img_size[0], slit)] = alpha
-    if debug:
-        cv2.imshow("alpha",np.array(alpha*255, np.uint8))
+    alphas[(displace, img_width, slit)] = alpha
     return alpha
 
+#global
 canvases = []
 
 #Automatically extensible canvas.
@@ -124,7 +118,7 @@ def Usage(argv):
     print "\t-2\tTwo pass.  Store the intermediate image fragments on the disk and do not merge them."
     print "\t-a x\tAntishake.  Ignore motion smaller than x pixels (5)."
     print "\t-d\tDebug mode."
-    print "\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)"
+    print "\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (333,666,333,666)"
     print "\t-g\tShow guide for perspective correction at the nth frame instead of stitching the movie."
     print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
     print "\t-q\tDo not show the snapshots."
@@ -142,9 +136,31 @@ def preview(frame, name="Preview", focus=None, size=700.):
     ratio = size/max(w,h)
     scaled = cv2.resize(frame,None,fx=ratio, fy=ratio, interpolation = cv2.INTER_CUBIC)
     if focus is not None:
-        draw_focus_area(scaled, focus*ratio)
+        draw_focus_area(scaled, [int(x*ratio) for x in focus])
     cv2.imshow(name, scaled)
     cv2.waitKey(1)
+
+
+def warp_matrix(gpts, w,h):
+    """
+    Warp.  Save the perspective matrix to the file for future use.
+     """
+    p1 = np.float32([(0,gpts[0]*h/1000), (w,gpts[1]*h/1000), (0,gpts[2]*h/1000), (w,gpts[3]*h/1000)])
+    #Unskew
+    p2 = np.float32([(0, (gpts[0]*gpts[1])**0.5*h/1000), (w,(gpts[0]*gpts[1])**0.5*h/1000),
+                        (0,(gpts[2]*gpts[3])**0.5*h/1000), (w,(gpts[2]*gpts[3])**0.5*h/1000)])
+    return cv2.getPerspectiveTransform(p1,p2)
+
+
+
+def rotate_matrix(angle,w,h):
+    a = math.cos(angle)
+    b = math.sin(angle)
+    rh = max(abs(h*a), abs(w*b))
+    rw = max(abs(h*b), abs(w*a))
+    rh, rw = int(rh), int(rw)
+    R = np.matrix(((a,b,(1-a)*w/2 - b*h/2 +(rw-w)/2),(-b,a,b*w/2+(1-a)*h/2+(rh-h)/2)))
+    return R,rw,rh
 
 if __name__ == "__main__":
     import sys
@@ -154,7 +170,7 @@ if __name__ == "__main__":
     seek  = 0
     zero  = False
     gpts = None #np.float32([380, 350, 1680, 1715])
-    slitpos = 1
+    slitpos = 250 # forward; 250/500 of the image width
     slitwidth = 1
     visual = True
     antishake = 5
@@ -168,7 +184,7 @@ if __name__ == "__main__":
     assume = None
     margin = 0 # pixels, work in progress.
     #It may be able to unify with antishake.
-    focus = np.array((0.3333, 0.6666, 0.3333, 0.6666))
+    focus = np.array((333, 666, 333, 666))
     while len(sys.argv) > 2:
         if sys.argv[1] in ("-2", "--twopass"):
             onMemory  = False
@@ -185,7 +201,7 @@ if __name__ == "__main__":
             every = int(sys.argv.pop(2))
         elif sys.argv[1] in ("-f", "--focus", "--frame"):
             param = sys.argv.pop(2)
-            focus = np.float32([float(x) for x in param.split(",")])
+            focus = [int(x) for x in param.split(",")]
         elif sys.argv[1] in ("-g", "--guide"):
             guide = True
         elif sys.argv[1] in ("-i", "--identity"):
@@ -196,13 +212,13 @@ if __name__ == "__main__":
             #followed by four numbers separated by comma.
             #left top, bottom, right top, bottom
             param = sys.argv.pop(2)
-            gpts  = np.float32([float(x) for x in param.split(",")])
+            gpts  = [int(x) for x in param.split(",")]
         elif sys.argv[1] in ("-q", "--quiet"):
             visual = False
         elif sys.argv[1] in ("-r", "--rotate"):
-            angle = float(sys.argv.pop(2)) * math.pi / 180
+            angle = -float(sys.argv.pop(2)) * math.pi / 180
         elif sys.argv[1] in ("-s", "--slit"):
-            slitpos = float(sys.argv.pop(2))
+            slitpos = int(sys.argv.pop(2))
         elif sys.argv[1] in ("-S", "--seek"):
             seek = int(sys.argv.pop(2))
         elif sys.argv[1] in ("-t", "--trail"):
@@ -235,44 +251,48 @@ if __name__ == "__main__":
     if not ret:
         sys.exit(0)
     frames += 1
-    h, w, d = frame.shape
     if angle:
         #Apply rotation
-        a = math.cos(angle)
-        b = math.sin(angle)
-        R = np.matrix(((a,b,(1-a)*w/2 - b*h/2),(-b,a,b*w/2+(1-a)*h/2)))
-        frame = cv2.warpAffine(frame, R, (w,h))
+        h, w, d = frame.shape
+        R, rw,rh = rotate_matrix(angle, w, h)
+        frame = cv2.warpAffine(frame, R, (rw,rh))
+    h, w, d = frame.shape
     
     if guide:
         #Show the perspective guides and quit.
         fontFace = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
-        for i in range(0,w,5):
-            cv2.line(frame, (i,h/4),(i,h/4+5), (0, 255, 0), 1)
-            cv2.line(frame, (i,h*3/4),(i,h*3/4-5), (0, 255, 0), 1)
-        for i in range(0,w,50):
-            cv2.line(frame, (i,h/4),(i,h/4+10), (0, 0, 255), 1)
-            cv2.line(frame, (i,h*3/4),(i,h*3/4-10), (0, 0, 255), 1)
-            cv2.putText(frame, "{0}".format(i), (i,h/4), fontFace, 0.3, (0,0,255))
-            cv2.putText(frame, "{0}".format(i), (i,h*3/4+10), fontFace, 0.3, (0,0,255))
-        for i in range(0,w,w/10):
-            cv2.line(frame, (i,0),(i,h), (255, 255, 0), 1)
-        for i in range(0,h,h/10):
-            cv2.line(frame, (0,i),(w,i), (255, 255, 0), 1)
+        for i in range(0,10):
+            cv2.line(frame, (i*w/10,0),(i*w/10,h), (255, 255, 0), 1)
+        for i in range(0,10):
+            cv2.line(frame, (0,i*h/10),(w,i*h/10), (255, 255, 0), 1)
+        ticks = 1000
+        while h < ticks*2:
+            ticks /= 2
+            lticks = ticks / 5
+            if h < ticks*2:
+                ticks /= 5
+                lticks = ticks / 10
+        tickw = h / ticks
+        for i in range(0,ticks):
+            y = h*i/ticks
+            cv2.line(frame, (0,y),(tickw,y), (0, 255, 0), 1)
+            cv2.line(frame, (w-tickw,y),(w,y), (0, 255, 0), 1)
+        for i in range(0,lticks):
+            y = h*i/lticks
+            cv2.line(frame, (0,y),(2*tickw,y), (0, 0, 255), 1)
+            cv2.line(frame, (w-tickw*2,y),(w,y), (0, 0, 255), 1)
+            cv2.putText(frame, "{0}".format(1000*i/lticks), (tickw*3,y), fontFace, 0.3, (0,0,255))
+            cv2.putText(frame, "{0}".format(1000*i/lticks), (w-tickw*3-30,y), fontFace, 0.3, (0,0,255))
         if gpts is not None:
-            cv2.line(frame, (gpts[0],h/4), (gpts[1],h*3/4), (255, 0, 0), 1)
-            cv2.line(frame, (gpts[2],h/4), (gpts[3],h*3/4), (255, 0, 0), 1)
+            cv2.line(frame, (0,gpts[0]*h/1000), (w,gpts[1]*h/1000), (255, 0, 0), 1)
+            cv2.line(frame, (0,gpts[2]*h/1000), (w,gpts[3]*h/1000), (255, 0, 0), 1)
         draw_focus_area(frame, focus)
         cv2.imshow("Guide lines", frame)
         cv2.waitKey()
         sys.exit(0)
 
     if gpts is not None:
-        #Warp.  Save the perspective matrix to the file for future use.
-        p1 = np.float32([(gpts[0],h/4), (gpts[1],h*3/4), (gpts[2],h/4), (gpts[3],h*3/4)])
-        #Unskew
-        p2 = np.float32([((gpts[0]*gpts[1])**0.5, h/4), ((gpts[0]*gpts[1])**0.5, h*3/4),
-                        ((gpts[2]*gpts[3])**0.5, h/4), ((gpts[2]*gpts[3])**0.5, h*3/4)])
-        M = cv2.getPerspectiveTransform(p1,p2)
+        M = warp_matrix(gpts,w,h)
         frame = cv2.warpPerspective(frame,M,(w,h))
         print M
         np.save("{0}.perspective.npy".format(movie), M) #Required to recover the perspective
@@ -304,10 +324,8 @@ if __name__ == "__main__":
         if not ret:
             break
         if angle:
-            a = math.cos(angle)
-            b = math.sin(angle)
-            R = np.matrix(((a,b,(1-a)*w/2 - b*h/2),(-b,a,b*w/2+(1-a)*h/2)))
             nextframe = cv2.warpAffine(nextframe, R, (w,h))
+            #w and h are sizes after rotation
         frames += 1
         if gpts is not None:
             nextframe = cv2.warpPerspective(nextframe,M,(w,h))
@@ -368,7 +386,7 @@ if __name__ == "__main__":
         absy += idy
         if onWork:
             lastdx, lastdy = idx,idy
-            alpha = make_orth_alpha( (idx,idy), (h,w), slitpos*0.1, slitwidth )
+            alpha = make_vert_alpha( idx, w, h, slitpos, slitwidth )
             if onMemory:
                 canvas = abs_merge(canvas, nextframe, absx, absy, alpha=alpha, split=2)
             else:
