@@ -165,6 +165,7 @@ if __name__ == "__main__":
     angle = 0
     every = 1
     identity = 2.0
+    assume = None
     margin = 0 # pixels, work in progress.
     #It may be able to unify with antishake.
     focus = np.array((0.3333, 0.6666, 0.3333, 0.6666))
@@ -173,6 +174,9 @@ if __name__ == "__main__":
             onMemory  = False
         elif sys.argv[1] in ("-a", "--antishake"):
             antishake = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-A", "--assume"):
+            param = sys.argv.pop(2)
+            assume = np.float32([float(x) for x in param.split(",")])
         elif sys.argv[1] in ("-d", "--debug"):
             debug = True
         elif sys.argv[1] in ("-D", "--dumping"):
@@ -250,6 +254,10 @@ if __name__ == "__main__":
             cv2.line(frame, (i,h*3/4),(i,h*3/4-10), (0, 0, 255), 1)
             cv2.putText(frame, "{0}".format(i), (i,h/4), fontFace, 0.3, (0,0,255))
             cv2.putText(frame, "{0}".format(i), (i,h*3/4+10), fontFace, 0.3, (0,0,255))
+        for i in range(0,w,w/10):
+            cv2.line(frame, (i,0),(i,h), (255, 255, 0), 1)
+        for i in range(0,h,h/10):
+            cv2.line(frame, (0,i),(w,i), (255, 255, 0), 1)
         if gpts is not None:
             cv2.line(frame, (gpts[0],h/4), (gpts[1],h*3/4), (255, 0, 0), 1)
             cv2.line(frame, (gpts[2],h/4), (gpts[3],h*3/4), (255, 0, 0), 1)
@@ -340,6 +348,11 @@ if __name__ == "__main__":
         if (abs(idx) > antishake or abs(idy) > antishake):
             if not onWork:
                 onWork = True
+                if assume is not None:
+                    dx, dy = assume #initial velocity assumption
+                    idx,idy = int(dx),int(dy)
+                    dx -= idx
+                    dy -= idy
             tr = 0
         else:
             if onWork:
@@ -407,3 +420,5 @@ if __name__ == "__main__":
             frame = cv2.imread(fragname)
             logfile.write("@{1:+d} {2:+d} {0}\n".format(fragname, *location))
     
+
+        

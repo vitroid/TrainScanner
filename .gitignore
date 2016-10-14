@@ -1,7 +1,8 @@
 */.DS_Store
 .DS_Store
 append
-
+*/.DS_Store
+.DS_Store
 trainscanner
 work/*
 *.o
