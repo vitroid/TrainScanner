@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 
 import cv2
 import numpy as np
 import math
 import trainscanner
-
     
 
 
@@ -32,18 +32,18 @@ def canvas_size(canvas_dimen, image, x, y):
 
 
 def Usage(argv):
-    print "usage: {0} [-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] movie".format(argv[0])
-    print "\t-a x\tAntishake.  Ignore motion smaller than x pixels (5)."
-    print "\t-d\tDebug mode."
-    print "\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)"
-    print "\t-g\tShow guide for perspective correction at the nth frame instead of stitching the movie."
-    print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
-    print "\t-q\tDo not show the snapshots."
-    print "\t-s r\tSet slit position to r (1)."
-    print "\t-S n\tSeek the nth frame (0)."
-    print "\t-t x\tAdd trailing frames after the motion is not detected. (5)."
-    print "\t-w r\tSet slit width (1=same as the length of the interframe motion vector)."
-    print "\t-z\tSuppress drift."
+    print("usage: {0} [-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] movie".format(argv[0]))
+    print("\t-a x\tAntishake.  Ignore motion smaller than x pixels (5).")
+    print("\t-d\tDebug mode.")
+    print("\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)")
+    print("\t-g\tShow guide for perspective correction at the nth frame instead of stitching the movie.")
+    print("\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only.")
+    print("\t-q\tDo not show the snapshots.")
+    print("\t-s r\tSet slit position to r (1).")
+    print("\t-S n\tSeek the nth frame (0).")
+    print("\t-t x\tAdd trailing frames after the motion is not detected. (5).")
+    print("\t-w r\tSet slit width (1=same as the length of the interframe motion vector).")
+    print("\t-z\tSuppress drift.")
     sys.exit(1)
 
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         elif sys.argv[1] in ("-z", "--zero"):
             zero  = True
         elif sys.argv[1][0] == "-":
-            print "Unknown option: ", sys.argv[1]
+            print("Unknown option: ", sys.argv[1])
             Usage(sys.argv)
         sys.argv.pop(1)
 
@@ -146,11 +146,15 @@ if __name__ == "__main__":
     #import pipes
     #t = pipes.Template()
     #t.append("./preview.py -f ", "--")
-    LOG = open("{0}.pass1.log".format(movie),"w")
+    #LOG = open("{0}.pass1.log".format(movie),"w")
+    LOG = sys.stdout
+    LOG.write("{0}\n".format(movie))
     if angle != 0:
         LOG.write("#-r {0}\n".format(degree))
     if gpts is not None:
         LOG.write("#-p {0},{1},{2},{3}\n".format(*gpts))
+    #end of the header
+    LOG.write("\n")
     onWork = False
     absx,absy = 0,0
     lastdx, lastdy = 0.0, 0.0
@@ -179,7 +183,7 @@ if __name__ == "__main__":
         diff = cv2.absdiff(nextframe,frame)
         diff = np.sum(diff) / (h*w*3)
         if diff < identity:
-            print "skip identical frame #",diff
+            sys.stderr.write("skip identical frame #{0}\n".format(diff))
             #They are identical frames
             #This happens when the frame rate difference is compensated.
             continue
@@ -192,11 +196,11 @@ if __name__ == "__main__":
         if dumping and onWork:
             dx += (dx0 - lastdx)/dumping + lastdx
             dy += (dy0 - lastdy)/dumping + lastdy
-            print frames,dx,dy,dx0,dy0,"#",np.amax(diff)
+            sys.stderr.write("{0} {1} {2} {3} {4} #{5}\n".format(frames,dx,dy,dx0,dy0,np.amax(diff)))
         else:
             dx += dx0
             dy += dy0
-            print frames,dx0,dy0,"#",np.amax(diff)
+            sys.stderr.write("{0} {1} {2} #{3}\n".format(frames,dx0,dy0,np.amax(diff)))
 
         if zero:
             if abs(dx) < abs(dy):
@@ -218,7 +222,7 @@ if __name__ == "__main__":
                     tr += 1
                     idx = lastdx
                     idy = lastdy
-                    print ">>({2}) {0} {1} #{3}".format(idx,idy,tr,np.amax(diff))
+                    sys.stderr.write(">>({2}) {0} {1} #{3}\n".format(idx,idy,tr,np.amax(diff)))
                 else:
                     #end of work
                     break
@@ -228,5 +232,7 @@ if __name__ == "__main__":
             lastdx, lastdy = idx,idy
             canvas = canvas_size(canvas, nextframe, absx, absy)
             LOG.write("{0} {1} {2} {3} {4}\n".format(frames,absx,absy,idx,idy))
+            LOG.flush()
+            #This flushes the buffer, that causes immediate processing in the next command connected by a pipe "|"
         frame = nextframe
 
