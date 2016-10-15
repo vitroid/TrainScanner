@@ -54,7 +54,7 @@ class Stitcher(Canvas):
     """
     exclude video handling
     """
-    def __init__(self, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True):
+    def __init__(self, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True, scale=0.4):
         self.angle = angle
         self.pers  = pers
         self.slitpos = slitpos
@@ -62,33 +62,37 @@ class Stitcher(Canvas):
         self.visual = visual
         self.R = None
         self.M = None
-        self.ratio = 0.4
+        self.ratio = scale
         Canvas.__init__(self,np.zeros((100,100,3),np.uint8)) #python2 style
     def add_image(self, frame, absx,absy,idx,idy):
         imgh, imgw = frame.shape[0:2]
-        self.h, self.w = imgh,imgw  #transformed size
+        #self.h, self.w = imgh,imgw  #transformed size
         if self.R is None:
             #Apply rotation
             self.R, self.w, self.h = trainscanner.rotate_matrix(angle, imgw,imgh)
+            print self.w,self.h,"*"
             self.R *= self.ratio
             self.w *= self.ratio
             self.h *= self.ratio
+            self.w = int(self.w)
+            self.h = int(self.h)
         if self.M is None and self.pers is not None:
             self.M = trainscanner.warp_matrix(self.pers, self.w, self.h)
 
         #rotate andd scale
-        frame = cv2.warpAffine(frame, self.R, (imgw,imgh))
+        frame = cv2.warpAffine(frame, self.R, (self.w,self.h))
         if self.M is not None:
             frame = cv2.warpPerspective(frame,self.M,(self.w,self.h))
         alpha = trainscanner.make_vert_alpha( int(idx*self.ratio), self.w, self.h, self.slitpos, self.slitwidth )
+        cv2.imshow("", alpha)
         self.abs_merge(frame, int(absx*self.ratio), int(absy*self.ratio), alpha=alpha)
         if self.visual:
-            cv2.imshow("canvas", canvas[0])
+            cv2.imshow("canvas", self.canvas[0])
             cv2.waitKey(1)
 
 
-def stitch(movie, istream, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True):
-    st = Stitcher(angle, pers, slitpos, slitwidth, visual)
+def stitch(movie, istream, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True, scale=1.0):
+    st = Stitcher(angle, pers, slitpos, slitwidth, visual, scale=0.4)
 
     line = istream.readline()
     frame0, absx,absy,idx,idy = [int(x) for x in line.split()]
@@ -156,7 +160,7 @@ if __name__ == "__main__":
             gpts  = [int(x) for x in line.split()[1].split(",")]
         else:
             break
-    canvas = stitch(movie, LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth)
+    canvas = stitch(movie, LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=0.4)
     cv2.imwrite("{0}.png".format(movie), canvas)
     if film:
         import film
