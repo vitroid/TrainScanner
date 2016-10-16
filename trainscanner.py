@@ -7,9 +7,40 @@ import numpy as np
 import math
 
 def draw_focus_area(f, focus):
+    h, w = f.shape[0:2]
     pos = [w*focus[0]/1000,w*focus[1]/1000,h*focus[2]/1000,h*focus[3]/1000]
     cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
 
+
+def draw_guide(frame, pers, gauge=True):
+    h,w = frame.shape[0:2]
+    fontFace = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
+    if gauge:
+        for i in range(0,10):
+            cv2.line(frame, (i*w/10,0),(i*w/10,h), (255, 255, 0), 1)
+        for i in range(0,10):
+            cv2.line(frame, (0,i*h/10),(w,i*h/10), (255, 255, 0), 1)
+        ticks = 1000
+        while h < ticks*2:
+            ticks /= 2
+            lticks = ticks / 5
+            if h < ticks*2:
+                ticks /= 5
+                lticks = ticks / 10
+        tickw = h / ticks
+        for i in range(0,ticks):
+            y = h*i/ticks
+            cv2.line(frame, (0,y),(tickw,y), (0, 255, 0), 1)
+            cv2.line(frame, (w-tickw,y),(w,y), (0, 255, 0), 1)
+        for i in range(0,lticks):
+            y = h*i/lticks
+            cv2.line(frame, (0,y),(2*tickw,y), (0, 0, 255), 1)
+            cv2.line(frame, (w-tickw*2,y),(w,y), (0, 0, 255), 1)
+            cv2.putText(frame, "{0}".format(1000*i/lticks), (tickw*3,y), fontFace, 0.3, (0,0,255))
+            cv2.putText(frame, "{0}".format(1000*i/lticks), (w-tickw*3-30,y), fontFace, 0.3, (0,0,255))
+    if pers is not None:
+        cv2.line(frame, (0,pers[0]*h/1000), (w,pers[1]*h/1000), (255, 0, 0), 1)
+        cv2.line(frame, (0,pers[2]*h/1000), (w,pers[3]*h/1000), (255, 0, 0), 1)
 
 def motion(ref, img, focus=(333, 666, 333, 666), margin=0, delta=(0,0)):
     hi,wi = img.shape[0:2]
@@ -141,14 +172,14 @@ def preview(frame, name="Preview", focus=None, size=700.):
     cv2.waitKey(1)
 
 
-def warp_matrix(gpts, w,h):
+def warp_matrix(pers, w,h):
     """
     Warp.  Save the perspective matrix to the file for future use.
      """
-    p1 = np.float32([(0,gpts[0]*h/1000), (w,gpts[1]*h/1000), (0,gpts[2]*h/1000), (w,gpts[3]*h/1000)])
+    p1 = np.float32([(0,pers[0]*h/1000), (w,pers[1]*h/1000), (0,pers[2]*h/1000), (w,pers[3]*h/1000)])
     #Unskew
-    p2 = np.float32([(0, (gpts[0]*gpts[1])**0.5*h/1000), (w,(gpts[0]*gpts[1])**0.5*h/1000),
-                        (0,(gpts[2]*gpts[3])**0.5*h/1000), (w,(gpts[2]*gpts[3])**0.5*h/1000)])
+    p2 = np.float32([(0, (pers[0]*pers[1])**0.5*h/1000), (w,(pers[0]*pers[1])**0.5*h/1000),
+                        (0,(pers[2]*pers[3])**0.5*h/1000), (w,(pers[2]*pers[3])**0.5*h/1000)])
     return cv2.getPerspectiveTransform(p1,p2)
 
 
@@ -169,7 +200,7 @@ if __name__ == "__main__":
     guide = False
     seek  = 0
     zero  = False
-    gpts = None #np.float32([380, 350, 1680, 1715])
+    pers = None #np.float32([380, 350, 1680, 1715])
     slitpos = 250 # forward; 250/500 of the image width
     slitwidth = 1
     visual = True
@@ -212,7 +243,7 @@ if __name__ == "__main__":
             #followed by four numbers separated by comma.
             #left top, bottom, right top, bottom
             param = sys.argv.pop(2)
-            gpts  = [int(x) for x in param.split(",")]
+            pers  = [int(x) for x in param.split(",")]
         elif sys.argv[1] in ("-q", "--quiet"):
             visual = False
         elif sys.argv[1] in ("-r", "--rotate"):
@@ -259,40 +290,14 @@ if __name__ == "__main__":
     h, w, d = frame.shape
     
     if guide:
-        #Show the perspective guides and quit.
-        fontFace = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
-        for i in range(0,10):
-            cv2.line(frame, (i*w/10,0),(i*w/10,h), (255, 255, 0), 1)
-        for i in range(0,10):
-            cv2.line(frame, (0,i*h/10),(w,i*h/10), (255, 255, 0), 1)
-        ticks = 1000
-        while h < ticks*2:
-            ticks /= 2
-            lticks = ticks / 5
-            if h < ticks*2:
-                ticks /= 5
-                lticks = ticks / 10
-        tickw = h / ticks
-        for i in range(0,ticks):
-            y = h*i/ticks
-            cv2.line(frame, (0,y),(tickw,y), (0, 255, 0), 1)
-            cv2.line(frame, (w-tickw,y),(w,y), (0, 255, 0), 1)
-        for i in range(0,lticks):
-            y = h*i/lticks
-            cv2.line(frame, (0,y),(2*tickw,y), (0, 0, 255), 1)
-            cv2.line(frame, (w-tickw*2,y),(w,y), (0, 0, 255), 1)
-            cv2.putText(frame, "{0}".format(1000*i/lticks), (tickw*3,y), fontFace, 0.3, (0,0,255))
-            cv2.putText(frame, "{0}".format(1000*i/lticks), (w-tickw*3-30,y), fontFace, 0.3, (0,0,255))
-        if gpts is not None:
-            cv2.line(frame, (0,gpts[0]*h/1000), (w,gpts[1]*h/1000), (255, 0, 0), 1)
-            cv2.line(frame, (0,gpts[2]*h/1000), (w,gpts[3]*h/1000), (255, 0, 0), 1)
+        draw_guide(frame, pers)
         draw_focus_area(frame, focus)
         cv2.imshow("Guide lines", frame)
         cv2.waitKey()
         sys.exit(0)
 
-    if gpts is not None:
-        M = warp_matrix(gpts,w,h)
+    if pers is not None:
+        M = warp_matrix(pers,w,h)
         frame = cv2.warpPerspective(frame,M,(w,h))
         print M
         np.save("{0}.perspective.npy".format(movie), M) #Required to recover the perspective
@@ -327,7 +332,7 @@ if __name__ == "__main__":
             nextframe = cv2.warpAffine(nextframe, R, (w,h))
             #w and h are sizes after rotation
         frames += 1
-        if gpts is not None:
+        if pers is not None:
             nextframe = cv2.warpPerspective(nextframe,M,(w,h))
         diff = cv2.absdiff(nextframe,frame)
         diff = np.sum(diff) / (h*w*3)
@@ -414,7 +419,7 @@ if __name__ == "__main__":
     #for c in canvases:
     #    cv2.imwrite("{0}.{1:+d}{2:+d}.png".format(movie,c[1][0],c[1][1]), c[0])
 
-    if gpts is not None:
+    if pers is not None:
         print M
 
     #Store the command line for convenience.

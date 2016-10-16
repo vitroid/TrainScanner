@@ -42,7 +42,7 @@ class Canvas():
         
 
 def Usage(argv):
-    print "usage: {0} [-d][-s r][-w x] < output_of_pass1_py.log".format(argv[0])
+    print "usage: {0} [-d][-s r][-w x][-F][-H][-l label] < output_of_pass1_py.log".format(argv[0])
     print "\t-d\tDebug mode."
     print "\t-s r\tSet slit position to r (1)."
     print "\t-w r\tSet slit width (1=same as the length of the interframe motion vector)."
@@ -63,7 +63,7 @@ class Stitcher(Canvas):
         self.R = None
         self.M = None
         self.ratio = scale
-        Canvas.__init__(self,np.zeros((100,100,3),np.uint8)) #python2 style
+        Canvas.__init__(self,np.zeros((10,10,3),np.uint8)) #python2 style
     def add_image(self, frame, absx,absy,idx,idy):
         imgh, imgw = frame.shape[0:2]
         #self.h, self.w = imgh,imgw  #transformed size
@@ -92,10 +92,10 @@ class Stitcher(Canvas):
 
 
 def stitch(movie, istream, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True, scale=1.0):
-    st = Stitcher(angle, pers, slitpos, slitwidth, visual, scale=0.4)
+    st = Stitcher(angle, pers, slitpos, slitwidth, visual, scale)
 
     line = istream.readline()
-    frame0, absx,absy,idx,idy = [int(x) for x in line.split()]
+    frame0, absx,absy,idx,idy = 1,0,0,0,0
     cap = cv2.VideoCapture(movie)
     frames = 0  #1 is the first frame
     while True:
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     label= ""
     # -r and -p option must be identical to pass1.py
     #(or they may be given in the input file)
-    while len(sys.argv) > 2:
+    while len(sys.argv) > 1:
         if sys.argv[1] in ("-d", "--debug"):
             debug = True
         elif sys.argv[1] in ("-s", "--slit"):
@@ -160,7 +160,7 @@ if __name__ == "__main__":
             gpts  = [int(x) for x in line.split()[1].split(",")]
         else:
             break
-    canvas = stitch(movie, LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=0.4)
+    canvas = stitch(movie, LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=0.5)
     cv2.imwrite("{0}.png".format(movie), canvas)
     if film:
         import film

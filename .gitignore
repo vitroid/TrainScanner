@@ -14,3 +14,7 @@ sample*png
 *.pyc
 
 .DS_Store
+
+*.jpg
+
+*.pdf
