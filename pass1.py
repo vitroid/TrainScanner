@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
@@ -65,12 +66,16 @@ if __name__ == "__main__":
     degree = 0
     every = 1
     identity = 2.0
+    crop = 0,1000
     margin = 0 # pixels, work in progress.
     #It may be able to unify with antishake.
     focus = [333, 666, 333, 666]
     while len(sys.argv) > 2:
         if sys.argv[1] in ("-a", "--antishake"):
             antishake = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-c", "--crop"):
+            param = sys.argv.pop(2)
+            crop = [int(x) for x in param.split(",")]
         elif sys.argv[1] in ("-d", "--debug"):
             debug = True
         elif sys.argv[1] in ("-D", "--dumping"):
@@ -124,21 +129,24 @@ if __name__ == "__main__":
     frames += 1
     if not ret:
         sys.exit(0)
-    h, w, d = frame.shape
+    original_h, original_w, d = frame.shape
+    rotated_h, rotated_w = original_h,original_w
     if angle:
         #Apply rotation
-        h, w, d = frame.shape
-        R, rw,rh = trainscanner.rotate_matrix(angle, w, h)
-        frame = cv2.warpAffine(frame, R, (rw,rh))
-    h, w, d = frame.shape
+        R, rotated_w,rotated_h = trainscanner.rotate_matrix(angle, original_w, original_h)
+        frame = cv2.warpAffine(frame, R, (rotated_w,rotated_h))
 
     if gpts is not None:
-        M = trainscanner.warp_matrix(gpts,w,h)
-        frame = cv2.warpPerspective(frame,M,(w,h))
+        M = trainscanner.warp_matrix(gpts,rotated_w,rotated_h)
+        frame = cv2.warpPerspective(frame,M,(rotated_w,rotated_h))
         #print M
         #np.save("{0}.perspective.npy".format(movie), M) #Required to recover the perspective
         #These settings should be stored in the gui.
 
+    #cropping
+    frame = frame[crop[0]*rotated_h/1000:crop[1]*rotated_h/1000, :, :]
+    cropped_h,cropped_w = frame.shape[0:2]
+    
     #Prepare a scalable canvas with the origin.
     canvas = [100,100,0,0]
 
@@ -153,6 +161,7 @@ if __name__ == "__main__":
         LOG.write("#-r {0}\n".format(degree))
     if gpts is not None:
         LOG.write("#-p {0},{1},{2},{3}\n".format(*gpts))
+    LOG.write("#-c {0},{1}\n".format(*crop))
     #end of the header
     LOG.write("\n")
     onWork = False
@@ -175,19 +184,25 @@ if __name__ == "__main__":
         if not ret:
             break
         if angle:
-            nextframe = cv2.warpAffine(nextframe, R, (w,h))
+            nextframe = cv2.warpAffine(nextframe, R, (rotated_w,rotated_h))
             #w and h are sizes after rotation
         frames += 1
         if gpts is not None:
-            nextframe = cv2.warpPerspective(nextframe,M,(w,h))
+            #this does not change the aspect ratio
+            nextframe = cv2.warpPerspective(nextframe,M,(rotated_w,rotated_h))
+        #cropping
+        nextframe = nextframe[crop[0]*rotated_h/1000:crop[1]*rotated_h/1000, :, :]
+        #h,w = nextframe.shape[0:2]
         diff = cv2.absdiff(nextframe,frame)
-        diff = np.sum(diff) / (h*w*3)
+        diff = np.sum(diff) / (cropped_h*cropped_w*3)
         if diff < identity:
             sys.stderr.write("skip identical frame #{0}\n".format(diff))
             #They are identical frames
             #This happens when the frame rate difference is compensated.
             continue
-            
+        #focusing after applying cropping.
+        #This means focus area moves when croppings are changed.
+        #It should be OK, because motion detection area must be always inside the image.
         if margin > 0 and onWork:
             dx0,dy0 = trainscanner.motion(frame, nextframe, focus=focus, margin=margin, delta=(lastdx,lastdy) )
         else:

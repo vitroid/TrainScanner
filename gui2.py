@@ -69,25 +69,25 @@ class SettingsGUI(QWidget):
         left_layout.addWidget(gbox1)
 
         #Left panel, lower pane: finish
-        gbox2 = QGroupBox("Finish")
-        box = QVBoxLayout()
+        finish_layout_gbox = QGroupBox("Finish")
+        finish_layout = QVBoxLayout()
         #https://www.tutorialspoint.com/pyqt/pyqt_qcheckbox_widget.htm
         self.btn_finish_stitch = QCheckBox("Stitch to a long image strip")
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        box.addWidget(self.btn_finish_stitch)
+        finish_layout.addWidget(self.btn_finish_stitch)
         self.btn_finish_perf = QCheckBox("Add the film perforations")
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        box.addWidget(self.btn_finish_perf)
+        finish_layout.addWidget(self.btn_finish_perf)
         self.btn_finish_helix = QCheckBox("Make a helical image")
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        box.addWidget(self.btn_finish_helix)
+        finish_layout.addWidget(self.btn_finish_helix)
         self.start_button = QPushButton('Start',self)
         self.connect(self.start_button,SIGNAL('clicked()'),self.start_process)
-        box.addWidget(self.start_button)
+        finish_layout.addWidget(self.start_button)
 
        
-        gbox2.setLayout(box)
-        left_layout.addWidget(gbox2)
+        finish_layout_gbox.setLayout(finish_layout)
+        left_layout.addWidget(finish_layout_gbox)
 
 
         

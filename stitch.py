@@ -54,7 +54,7 @@ class Stitcher(Canvas):
     """
     exclude video handling
     """
-    def __init__(self, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True, scale=0.4):
+    def __init__(self, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True, scale=0.4, crop=(0,1000)):
         self.angle = angle
         self.pers  = pers
         self.slitpos = slitpos
@@ -63,27 +63,31 @@ class Stitcher(Canvas):
         self.R = None
         self.M = None
         self.ratio = scale
+        self.crop  = crop
         Canvas.__init__(self,np.zeros((10,10,3),np.uint8)) #python2 style
     def add_image(self, frame, absx,absy,idx,idy):
         imgh, imgw = frame.shape[0:2]
         #self.h, self.w = imgh,imgw  #transformed size
         if self.R is None:
             #Apply rotation
-            self.R, self.w, self.h = trainscanner.rotate_matrix(angle, imgw,imgh)
-            print self.w,self.h,"*"
+            self.R, self.rotated_w, self.rotated_h = trainscanner.rotate_matrix(angle, imgw,imgh)
+            #print self.w,self.h,"*"
             self.R *= self.ratio
-            self.w *= self.ratio
-            self.h *= self.ratio
-            self.w = int(self.w)
-            self.h = int(self.h)
+            self.rotated_w *= self.ratio
+            self.rotated_h *= self.ratio
+            self.rotated_w = int(self.rotated_w)
+            self.rotated_h = int(self.rotated_h)
         if self.M is None and self.pers is not None:
-            self.M = trainscanner.warp_matrix(self.pers, self.w, self.h)
+            self.M = trainscanner.warp_matrix(self.pers, self.rotated_w, self.rotated_h)
 
         #rotate andd scale
-        frame = cv2.warpAffine(frame, self.R, (self.w,self.h))
+        frame = cv2.warpAffine(frame, self.R, (self.rotated_w,self.rotated_h))
         if self.M is not None:
-            frame = cv2.warpPerspective(frame,self.M,(self.w,self.h))
-        alpha = trainscanner.make_vert_alpha( int(idx*self.ratio), self.w, self.h, self.slitpos, self.slitwidth )
+            frame = cv2.warpPerspective(frame,self.M,(self.rotated_w,self.rotated_h))
+        frame = frame[crop[0]*self.rotated_h/1000:crop[1]*self.rotated_h/1000, :, :]
+        cropped_h,cropped_w = frame.shape[0:2]
+        
+        alpha = trainscanner.make_vert_alpha( int(idx*self.ratio), cropped_w, cropped_h, self.slitpos, self.slitwidth )
         cv2.imshow("", alpha)
         self.abs_merge(frame, int(absx*self.ratio), int(absy*self.ratio), alpha=alpha)
         if self.visual:
@@ -91,8 +95,8 @@ class Stitcher(Canvas):
             cv2.waitKey(1)
 
 
-def stitch(movie, istream, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True, scale=1.0):
-    st = Stitcher(angle, pers, slitpos, slitwidth, visual, scale)
+def stitch(movie, istream, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True, scale=1.0, crop=(0,1000)):
+    st = Stitcher(angle, pers, slitpos, slitwidth, visual, scale, crop=crop)
 
     line = istream.readline()
     frame0, absx,absy,idx,idy = 1,0,0,0,0
@@ -152,15 +156,18 @@ if __name__ == "__main__":
     movie = line.splitlines()[0] #chomp
     angle = 0
     gpts = None #np.float32([380, 350, 1680, 1715])
+    crop = 0,1000
     while True:
         line = LOG.readline()
         if line[0:3] == "#-r":
             angle = -float(line.split()[1]) * math.pi / 180
         elif line[0:3] == "#-p":
             gpts  = [int(x) for x in line.split()[1].split(",")]
+        elif line[0:3] == "#-c":
+            crop  = [int(x) for x in line.split()[1].split(",")]
         else:
             break
-    canvas = stitch(movie, LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=0.5)
+    canvas = stitch(movie, LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=0.5, crop=crop)
     cv2.imwrite("{0}.png".format(movie), canvas)
     if film:
         import film
