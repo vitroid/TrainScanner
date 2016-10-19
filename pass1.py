@@ -157,8 +157,7 @@ if __name__ == "__main__":
     #LOG = open("{0}.pass1.log".format(movie),"w")
     LOG = sys.stdout
     LOG.write("{0}\n".format(movie))
-    if angle != 0:
-        LOG.write("#-r {0}\n".format(degree))
+    LOG.write("#-r {0}\n".format(degree))
     if gpts is not None:
         LOG.write("#-p {0},{1},{2},{3}\n".format(*gpts))
     LOG.write("#-c {0},{1}\n".format(*crop))

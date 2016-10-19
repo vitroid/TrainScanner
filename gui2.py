@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import math
 import trainscanner
+
 #ToDos:
 #[] and thumbs
 #edit focus area.
@@ -29,17 +30,20 @@ class SettingsGUI(QWidget):
         # options
         self.trailing = 10
         self.editor = None
+        self.antishake = 5
+        self.slitwidth = 1.0
+        self.identity = 2.0
         #private
         # layout
         layout = QHBoxLayout()
         
         #leftmost panel for specifying options
         left_layout = QVBoxLayout()
-        self.btn = QPushButton("Open a movie")
+        self.btn = QPushButton(self.tr('Open a movie'))
         self.btn.clicked.connect(self.getfile)
         left_layout.addWidget(self.btn)
     
-        self.le = QLabel("(File name appears here)")
+        self.le = QLabel(self.tr('(File name appears here)'))
         left_layout.addWidget(self.le)
         
         #self.pbar = QProgressBar()
@@ -47,50 +51,133 @@ class SettingsGUI(QWidget):
         #left_layout.addWidget(self.pbar)
 
         #Left panel, upper pane: settings
-        gbox_settings = QGroupBox("Settings")
+        gbox_settings = QGroupBox(self.tr('Settings'))
         settings_layout = QVBoxLayout()
         #http://myenigma.hatenablog.com/entry/2016/01/24/113413
 
-        slider1_label1 = QLabel('Trailing frames:')
-        self.slider1_label2 = QLabel('10')
-        self.slider1 = QSlider(Qt.Horizontal)  # スライダの向き
-        self.slider1.setRange(1, 30)  # スライダの範囲
-        self.slider1.setValue(10)  # 初期値
-        #スライダの目盛りを両方に出す
-        self.slider1.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.slider1, SIGNAL('valueChanged(int)'), self.slider1_on_draw)
+        #Example of a slider with a label ###################################
         #the slider is in a Hbox
         slider_layout = QHBoxLayout()
-        slider_layout.addWidget(slider1_label1)
-        slider_layout.setAlignment(slider1_label1, Qt.AlignTop)
-        slider_layout.addWidget(self.slider1_label2)
-        slider_layout.setAlignment(self.slider1_label2, Qt.AlignTop)
-        slider_layout.addWidget(self.slider1)
-        slider_layout.setAlignment(self.slider1, Qt.AlignTop)
-        settings_layout.addLayout(slider_layout)
 
-        self.btn_zerodrift = QCheckBox("Ignore vertical displacements")
+        trailing_slider_label1 = QLabel(self.tr('Trailing frames:'))
+        slider_layout.addWidget(trailing_slider_label1)
+        
+        self.trailing_slider_valuelabel = QLabel(str(self.trailing))
+        slider_layout.addWidget(self.trailing_slider_valuelabel)
+        slider_layout.addWidget(QLabel(self.tr('Short')))
+        
+        self.trailing_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.trailing_slider.setRange(1, 30)  # スライダの範囲
+        self.trailing_slider.setValue(10)  # 初期値
+        #スライダの目盛りを両方に出す
+        self.trailing_slider.setTickPosition(QSlider.TicksBelow)
+        self.connect(self.trailing_slider, SIGNAL('valueChanged(int)'), self.trailing_slider_on_draw)
+        slider_layout.addWidget(self.trailing_slider)
+        slider_layout.addWidget(QLabel(self.tr('Long')))
+
+        settings_layout.addLayout(slider_layout)
+        #####################################################################
+
+        
+        #Example of a slider with a label ###################################
+        #the slider is in a Hbox
+        slider_layout = QHBoxLayout()
+        
+        slider_layout.addWidget(QLabel(self.tr('Slit mixing:')))
+        
+        self.slitwidth_slider_valuelabel = QLabel(str(self.slitwidth))
+        slider_layout.addWidget(self.slitwidth_slider_valuelabel)
+        
+        slider_layout.addWidget(QLabel(self.tr('Sharp')))
+        self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.slitwidth_slider.setRange(1, 30)  # スライダの範囲
+        self.slitwidth_slider.setValue(10)  # 初期値
+        #スライダの目盛りを両方に出す
+        self.slitwidth_slider.setTickPosition(QSlider.TicksBelow)
+        self.connect(self.slitwidth_slider, SIGNAL('valueChanged(int)'), self.slitwidth_slider_on_draw)
+        slider_layout.addWidget(self.slitwidth_slider)
+        slider_layout.addWidget(QLabel(self.tr('Diffuse')))
+
+        settings_layout.addLayout(slider_layout)
+        #####################################################################
+
+
+        #Example of a slider with a label ###################################
+        #the slider is in a Hbox
+        antishake_slider_layout = QHBoxLayout()
+        
+        antishake_slider_layout.addWidget(QLabel(self.tr('Permit camera waggle:')))
+        
+        self.antishake_slider_valuelabel = QLabel(str(self.antishake))
+        antishake_slider_layout.addWidget(self.antishake_slider_valuelabel)
+        
+        antishake_slider_layout.addWidget(QLabel(self.tr('Small')))
+        self.antishake_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.antishake_slider.setRange(1, 15)  # スライダの範囲
+        self.antishake_slider.setValue(5)  # 初期値
+        #スライダの目盛りを両方に出す
+        self.antishake_slider.setTickPosition(QSlider.TicksBelow)
+        self.connect(self.antishake_slider, SIGNAL('valueChanged(int)'), self.antishake_slider_on_draw)
+        antishake_slider_layout.addWidget(self.antishake_slider)
+        antishake_slider_layout.addWidget(QLabel(self.tr('Large')))
+
+        settings_layout.addLayout(antishake_slider_layout)
+        #####################################################################
+
+
+        #####################################################################
+        #Example of a checkbox
+        self.btn_zerodrift = QCheckBox(self.tr('Ignore vertical displacements'))
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         settings_layout.addWidget(self.btn_zerodrift)
+
+
+        #Example of a checkbox and slider with a label
+        #-i (identity)
+        skipident_layout = QHBoxLayout()
+
+        self.btn_skipident = QCheckBox(self.tr('Skip identical frames'))
+        #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
+        skipident_layout.addWidget(self.btn_skipident)
+        
+        
+        self.skipident_valuelabel = QLabel(str(self.identity))
+        skipident_layout.addWidget(self.skipident_valuelabel)
+    
+        skipident_layout.addWidget(QLabel(self.tr('Strict')))
+        self.identthres_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.identthres_slider.setRange(1, 5)  # スライダの範囲
+        self.identthres_slider.setValue(2)  # 初期値
+        #スライダの目盛りを両方に出す
+        self.identthres_slider.setTickPosition(QSlider.TicksBelow)
+        self.connect(self.identthres_slider, SIGNAL('valueChanged(int)'), self.identthres_slider_on_draw)
+        #the slider is in a Hbox
+        skipident_layout.addWidget(self.identthres_slider)
+        skipident_layout.setAlignment(self.identthres_slider, Qt.AlignTop)
+        skipident_layout.addWidget(QLabel(self.tr('Loose')))
+        settings_layout.addLayout(skipident_layout)
+        #####################################################################
+
+
 
         gbox_settings.setLayout(settings_layout)
 
         left_layout.addWidget(gbox_settings)
 
         #Left panel, lower pane: finish
-        finish_layout_gbox = QGroupBox("Finish")
+        finish_layout_gbox = QGroupBox(self.tr('Finish'))
         finish_layout = QVBoxLayout()
         #https://www.tutorialspoint.com/pyqt/pyqt_qcheckbox_widget.htm
-        self.btn_finish_stitch = QCheckBox("Stitch to a long image strip")
+        self.btn_finish_stitch = QCheckBox(self.tr('Stitch to a long image strip'))
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         finish_layout.addWidget(self.btn_finish_stitch)
-        self.btn_finish_perf = QCheckBox("Add the film perforations")
+        self.btn_finish_perf = QCheckBox(self.tr('Add the film perforations'))
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         finish_layout.addWidget(self.btn_finish_perf)
-        self.btn_finish_helix = QCheckBox("Make a helical image")
+        self.btn_finish_helix = QCheckBox(self.tr('Make a helical image'))
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         finish_layout.addWidget(self.btn_finish_helix)
-        self.start_button = QPushButton('Start',self)
+        self.start_button = QPushButton(self.tr('Start'),self)
         self.connect(self.start_button,SIGNAL('clicked()'),self.start_process)
         finish_layout.addWidget(self.start_button)
 
@@ -106,7 +193,7 @@ class SettingsGUI(QWidget):
         self.setWindowTitle("Settings")
 		
     def getfile(self):
-        self.fname = QFileDialog.getOpenFileName(self, 'Open file', 
+        self.fname = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Movie files (*.mov *.mp4)")
         #self.le.setPixmap(QPixmap(fname))
         #Load every 30 frames here for preview.
@@ -139,28 +226,49 @@ class SettingsGUI(QWidget):
         
 
 
-    def slider1_on_draw(self):
-        self.trailing = self.slider1.value()
-        self.slider1_label2.setText(str(self.trailing))
+    def trailing_slider_on_draw(self):
+        self.trailing = self.trailing_slider.value()
+        self.trailing_slider_valuelabel.setText(str(self.trailing))
+
+
+    def slitwidth_slider_on_draw(self):
+        self.slitwidth = self.slitwidth_slider.value() / 10.0
+        self.slitwidth_slider_valuelabel.setText(str(self.slitwidth))
+
+
+    def antishake_slider_on_draw(self):
+        self.antishake = self.antishake_slider.value() / 10.0
+        self.antishake_slider_valuelabel.setText(str(self.antishake))
+
+
+    def identthres_slider_on_draw(self):
+        self.identity = self.identthres_slider.value()
+        self.skipident_valuelabel.setText(str(self.identity))
 
 
     def start_process(self):
         pass1_options = " -r {0}".format(self.editor.angle_degree)
+        pass1_options += " -t {0}".format(self.trailing)
+        pass1_options += " -a {0}".format(self.antishake)
         pass1_options += " -p {0}".format(",".join([str(x) for x in self.editor.pers]))
         pass1_options += " -c {0},{1}".format(self.editor.croptop,self.editor.cropbottom)
         if self.btn_zerodrift.isChecked():
             pass1_options += " -z"
+        if self.btn_skipident.isChecked():
+            pass1_options += " -i {0}".format(self.identity)
         stitch_options = " -s {0}".format(self.editor.slitpos)
+        stitch_options += " -w {0}".format(self.slitwidth)
             
         self.two_pass = True
         file_name = self.fname
         if self.btn_finish_stitch.isChecked():
             if self.two_pass:
+                #print("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
                 os.system("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
                 log = open("{0}.pass1.log".format(file_name))
                 while True:
                     line = log.readline()
-                    print(line)
+                    #print(line)
                     if line[0] == "@":
                         break
                 canvas_dimen = [int(x) for x in line.split()[1:]]
@@ -204,7 +312,7 @@ class EditorGUI(QWidget):
         self.btn = QPushButton("-1")
         self.btn.clicked.connect(self.angle_dec)
         rotation_layout.addWidget(self.btn)
-        rotation_layout.addWidget(QLabel("rotation"))
+        rotation_layout.addWidget(QLabel(self.tr('rotation')))
         self.angle_label = QLabel("0")
         rotation_layout.addWidget(self.angle_label)
         self.btn = QPushButton("+1")
@@ -282,7 +390,7 @@ class EditorGUI(QWidget):
         row_image_layout.addWidget(self.row_image_pane)
         
         processed_edit_gbox_layout = QVBoxLayout()
-        processed_edit_gbox = QGroupBox("2. Motion Detection and Slit")
+        processed_edit_gbox = QGroupBox(self.tr('2. Motion Detection and Slit'))
         box = QVBoxLayout()
         processed_image_layout = QVBoxLayout()
         self.processed_pane = QLabel()
@@ -317,7 +425,7 @@ class EditorGUI(QWidget):
         left_layout.addLayout(topleft_layout)
         left_layout.addLayout(nextprev_layout)
         left_layout.addLayout(rotation_layout)
-        row_edit_gbox = QGroupBox("1.Repair deformation")
+        row_edit_gbox = QGroupBox(self.tr('1. Repair deformation'))
         row_edit_gbox.setLayout(left_layout)
         row_edit_gbox_layout = QVBoxLayout()
         row_edit_gbox_layout.addWidget(row_edit_gbox)
@@ -438,6 +546,9 @@ class EditorGUI(QWidget):
         
 def main():
     app = QApplication(sys.argv)
+    translator = QTranslator(app)
+    print translator.load("gui2_ja")
+    app.installTranslator(translator)
     se = SettingsGUI()
     se.show()
     sys.exit(app.exec_())
