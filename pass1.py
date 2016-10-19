@@ -148,7 +148,7 @@ if __name__ == "__main__":
     cropped_h,cropped_w = frame.shape[0:2]
     
     #Prepare a scalable canvas with the origin.
-    canvas = [100,100,0,0]
+    canvas = [cropped_w,cropped_h,100,0,0]
 
     #prepare the previewer process
     #import pipes
@@ -250,4 +250,5 @@ if __name__ == "__main__":
             LOG.flush()
             #This flushes the buffer, that causes immediate processing in the next command connected by a pipe "|"
         frame = nextframe
+    LOG.write("@ {0} {1} {2} {3}\n".format(*canvas))
 

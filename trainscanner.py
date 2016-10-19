@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #Now only the horizontal scroll is allowed
+from __future__ import print_function
 import cv2
 import numpy as np
 import math
@@ -101,10 +102,10 @@ canvases = []
 def abs_merge(canvas, image, x, y, alpha=None, split=0, name="" ):
     absx, absy = canvas[1]   #absolute coordinate of the top left of the canvas
     if debug:
-        print canvas
-        print image
-        print "canvas:  {0}x{1} {2:+d}{3:+d}".format(canvas[0].shape[1],canvas[0].shape[0],absx,absy)
-        print "overlay: {0}x{1} {2:+d}{3:+d}".format(image.shape[1], image.shape[0],x,y)
+        print(canvas)
+        print(image)
+        print("canvas:  {0}x{1} {2:+d}{3:+d}".format(canvas[0].shape[1],canvas[0].shape[0],absx,absy))
+        print("overlay: {0}x{1} {2:+d}{3:+d}".format(image.shape[1], image.shape[0],x,y))
     cxmin = absx
     cymin = absy
     cxmax = canvas[0].shape[1] + absx
@@ -129,7 +130,7 @@ def abs_merge(canvas, image, x, y, alpha=None, split=0, name="" ):
         newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = image[:,:,:]*alpha[:,:,:] + newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:]*(1-alpha[:,:,:])
     if split:
         if debug:
-            print np.product(canvas[0].shape),np.product(image.shape)
+            print(np.product(canvas[0].shape),np.product(image.shape))
         if np.product(canvas[0].shape) > np.product(image.shape) * split:
             # if name is given, purge the fragment to the disk
             if name == "":
@@ -141,23 +142,23 @@ def abs_merge(canvas, image, x, y, alpha=None, split=0, name="" ):
             xmin = ixmin
             ymin = iymin
     if debug:
-        print "newcanvas:  {0}x{1} {2:+d}{3:+d}".format(newcanvas.shape[1],newcanvas.shape[0],xmin,ymin)
+        print("newcanvas:  {0}x{1} {2:+d}{3:+d}".format(newcanvas.shape[1],newcanvas.shape[0],xmin,ymin))
     return newcanvas, (xmin,ymin)
 
 def Usage(argv):
-    print "usage: {0} [-2][-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] movie".format(argv[0])
-    print "\t-2\tTwo pass.  Store the intermediate image fragments on the disk and do not merge them."
-    print "\t-a x\tAntishake.  Ignore motion smaller than x pixels (5)."
-    print "\t-d\tDebug mode."
-    print "\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (333,666,333,666)"
-    print "\t-g\tShow guide for perspective correction at the nth frame instead of stitching the movie."
-    print "\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only."
-    print "\t-q\tDo not show the snapshots."
-    print "\t-s r\tSet slit position to r (1)."
-    print "\t-S n\tSeek the nth frame (0)."
-    print "\t-t x\tAdd trailing frames after the motion is not detected. (5)."
-    print "\t-w r\tSet slit width (1=same as the length of the interframe motion vector)."
-    print "\t-z\tSuppress drift."
+    print("usage: {0} [-2][-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] movie".format(argv[0]))
+    print("\t-2\tTwo pass.  Store the intermediate image fragments on the disk and do not merge them.")
+    print("\t-a x\tAntishake.  Ignore motion smaller than x pixels (5).")
+    print("\t-d\tDebug mode.")
+    print("\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (333,666,333,666)")
+    print("\t-g\tShow guide for perspective correction at the nth frame instead of stitching the movie.")
+    print("\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only.")
+    print("\t-q\tDo not show the snapshots.")
+    print("\t-s r\tSet slit position to r (1).")
+    print("\t-S n\tSeek the nth frame (0).")
+    print("\t-t x\tAdd trailing frames after the motion is not detected. (5).")
+    print("\t-w r\tSet slit width (1=same as the length of the interframe motion vector).")
+    print("\t-z\tSuppress drift.")
     sys.exit(1)
 
 
@@ -259,7 +260,7 @@ if __name__ == "__main__":
         elif sys.argv[1] in ("-z", "--zero"):
             zero  = True
         elif sys.argv[1][0] == "-":
-            print "Unknown option: ", sys.argv[1]
+            print("Unknown option: ", sys.argv[1])
             Usage(sys.argv)
         sys.argv.pop(1)
 
@@ -299,7 +300,7 @@ if __name__ == "__main__":
     if pers is not None:
         M = warp_matrix(pers,w,h)
         frame = cv2.warpPerspective(frame,M,(w,h))
-        print M
+        print(M)
         np.save("{0}.perspective.npy".format(movie), M) #Required to recover the perspective
 
 
@@ -337,7 +338,7 @@ if __name__ == "__main__":
         diff = cv2.absdiff(nextframe,frame)
         diff = np.sum(diff) / (h*w*3)
         if diff < identity:
-            print "skip identical frame #",diff
+            print("skip identical frame #",diff)
             #They are identical frames
             #This happens when the frame rate difference is compensated.
             continue
@@ -352,11 +353,11 @@ if __name__ == "__main__":
         if dumping and onWork:
             dx += (dx0 - lastdx)/dumping + lastdx
             dy += (dy0 - lastdy)/dumping + lastdy
-            print frames,dx,dy,dx0,dy0,"#",np.amax(diff)
+            print(frames,dx,dy,dx0,dy0,"#",np.amax(diff))
         else:
             dx += dx0
             dy += dy0
-            print frames,dx0,dy0,"#",np.amax(diff)
+            print(frames,dx0,dy0,"#",np.amax(diff))
 
         if zero:
             if abs(dx) < abs(dy):
@@ -383,7 +384,7 @@ if __name__ == "__main__":
                     tr += 1
                     idx = lastdx
                     idy = lastdy
-                    print ">>({2}) {0} {1} #{3}".format(idx,idy,tr,np.amax(diff))
+                    print(">>({2}) {0} {1} #{3}".format(idx,idy,tr,np.amax(diff)))
                 else:
                     #end of work
                     break
@@ -420,7 +421,7 @@ if __name__ == "__main__":
     #    cv2.imwrite("{0}.{1:+d}{2:+d}.png".format(movie,c[1][0],c[1][1]), c[0])
 
     if pers is not None:
-        print M
+        print(M)
 
     #Store the command line for convenience.
     logfile = open("{0}.log".format(movie), "w")

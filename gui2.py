@@ -47,8 +47,10 @@ class SettingsGUI(QWidget):
         #left_layout.addWidget(self.pbar)
 
         #Left panel, upper pane: settings
-        gbox1 = QGroupBox("Settings")
+        gbox_settings = QGroupBox("Settings")
+        settings_layout = QVBoxLayout()
         #http://myenigma.hatenablog.com/entry/2016/01/24/113413
+
         slider1_label1 = QLabel('Trailing frames:')
         self.slider1_label2 = QLabel('10')
         self.slider1 = QSlider(Qt.Horizontal)  # スライダの向き
@@ -58,15 +60,22 @@ class SettingsGUI(QWidget):
         self.slider1.setTickPosition(QSlider.TicksBelow)
         self.connect(self.slider1, SIGNAL('valueChanged(int)'), self.slider1_on_draw)
         #the slider is in a Hbox
-        hbox = QHBoxLayout()
-        hbox.addWidget(slider1_label1)
-        hbox.setAlignment(slider1_label1, Qt.AlignTop)
-        hbox.addWidget(self.slider1_label2)
-        hbox.setAlignment(self.slider1_label2, Qt.AlignTop)
-        hbox.addWidget(self.slider1)
-        hbox.setAlignment(self.slider1, Qt.AlignTop)
-        gbox1.setLayout(hbox)
-        left_layout.addWidget(gbox1)
+        slider_layout = QHBoxLayout()
+        slider_layout.addWidget(slider1_label1)
+        slider_layout.setAlignment(slider1_label1, Qt.AlignTop)
+        slider_layout.addWidget(self.slider1_label2)
+        slider_layout.setAlignment(self.slider1_label2, Qt.AlignTop)
+        slider_layout.addWidget(self.slider1)
+        slider_layout.setAlignment(self.slider1, Qt.AlignTop)
+        settings_layout.addLayout(slider_layout)
+
+        self.btn_zerodrift = QCheckBox("Ignore vertical displacements")
+        #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
+        settings_layout.addWidget(self.btn_zerodrift)
+
+        gbox_settings.setLayout(settings_layout)
+
+        left_layout.addWidget(gbox_settings)
 
         #Left panel, lower pane: finish
         finish_layout_gbox = QGroupBox("Finish")
@@ -138,17 +147,34 @@ class SettingsGUI(QWidget):
     def start_process(self):
         pass1_options = " -r {0}".format(self.editor.angle_degree)
         pass1_options += " -p {0}".format(",".join([str(x) for x in self.editor.pers]))
+        pass1_options += " -c {0},{1}".format(self.editor.croptop,self.editor.cropbottom)
+        if self.btn_zerodrift.isChecked():
+            pass1_options += " -z"
         stitch_options = " -s {0}".format(self.editor.slitpos)
-        if self.btn_finish_helix.isChecked():
-            stitch_options += " -H"
-        if self.btn_finish_perf.isChecked():
-            stitch_options += " -F"
+            
+        self.two_pass = True
+        file_name = self.fname
         if self.btn_finish_stitch.isChecked():
-            os.system("./pass1.py {0} {1} | tee {1}.pass1.log | ./stitch.py {2}".format(pass1_options, self.fname, stitch_options))
-        else:
-            os.system("./stitch.py {0} < {1}.pass1.log".format(stitch_options, self.fname))
-                      
-
+            if self.two_pass:
+                os.system("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
+                log = open("{0}.pass1.log".format(file_name))
+                while True:
+                    line = log.readline()
+                    print(line)
+                    if line[0] == "@":
+                        break
+                canvas_dimen = [int(x) for x in line.split()[1:]]
+                stitch_options += " -C {0},{1},{2},{3}".format(*canvas_dimen)
+                os.system("./stitch.py {0} < {1}.pass1.log".format(stitch_options, file_name))
+            else:
+                os.system("./pass1.py {0} {1} | tee {1}.pass1.log | ./stitch.py {2}".format(pass1_options, file_name, stitch_options))
+        file_name += ".png"
+        if self.btn_finish_perf.isChecked():
+            os.system("./film.py {0}".format(file_name))
+            file_name += ".film.png"
+        if self.btn_finish_helix.isChecked():
+            os.system("./helix.py {0}".format(file_name))
+            file_name += ".helix.jpg"
 
 #https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class EditorGUI(QWidget):
@@ -165,6 +191,8 @@ class EditorGUI(QWidget):
         self.pers = [0,0,1000,1000]
         self.focus = [333,666,333,666]
         self.slitpos = 250
+        self.croptop = 0
+        self.cropbottom = 1000
         # layout
         layout = QHBoxLayout()
         
@@ -194,6 +222,21 @@ class EditorGUI(QWidget):
         self.btn = QPushButton(">>")
         self.btn.clicked.connect(self.nextframe)
         nextprev_layout.addWidget(self.btn)
+
+        crop_layout = QVBoxLayout()
+        self.croptop_slider = QSlider(Qt.Vertical)  # スライダの向き
+        self.croptop_slider.setRange(0, 1000)  # スライダの範囲
+        self.croptop_slider.setValue(1000)  # 初期値
+        self.connect(self.croptop_slider, SIGNAL('valueChanged(int)'), self.croptop_slider_on_draw)
+        crop_layout.addWidget(self.croptop_slider)
+        crop_layout.setAlignment(self.croptop_slider, Qt.AlignTop)
+
+        self.cropbottom_slider = QSlider(Qt.Vertical)  # スライダの向き
+        self.cropbottom_slider.setRange(0, 1000)  # スライダの範囲
+        self.cropbottom_slider.setValue(0)  # 初期値 499 is top
+        self.connect(self.cropbottom_slider, SIGNAL('valueChanged(int)'), self.cropbottom_slider_on_draw)
+        crop_layout.addWidget(self.cropbottom_slider)
+        crop_layout.setAlignment(self.cropbottom_slider, Qt.AlignBottom)
 
         
         pers_left_layout = QVBoxLayout()
@@ -241,8 +284,14 @@ class EditorGUI(QWidget):
         processed_edit_gbox_layout = QVBoxLayout()
         processed_edit_gbox = QGroupBox("2. Motion Detection and Slit")
         box = QVBoxLayout()
+        processed_image_layout = QVBoxLayout()
         self.processed_pane = QLabel()
-        box.addWidget(self.processed_pane)
+        processed_image_layout.addWidget(self.processed_pane)
+
+        hbox = QHBoxLayout()
+        hbox.addLayout(processed_image_layout)
+        hbox.addLayout(crop_layout)
+        box.addLayout(hbox)
         processed_edit_gbox.setLayout(box)
         processed_edit_gbox_layout.addWidget(processed_edit_gbox)
 
@@ -352,6 +401,7 @@ class EditorGUI(QWidget):
         #Right image: warped
         M = trainscanner.warp_matrix(self.pers,width,height)
         processed = cv2.warpPerspective(processed,M,(width,height))
+        processed = processed[self.croptop*height/1000:self.cropbottom*height/1000, :, :]
         trainscanner.draw_focus_area(processed, self.focus)
         draw_slitpos(processed, self.slitpos)
         self.put_cv2_image(processed, self.processed_pane)
@@ -374,6 +424,14 @@ class EditorGUI(QWidget):
 
     def slit_slider_on_draw(self):
         self.slitpos = self.slit_slider.value()
+        self.show_snapshots()
+
+    def croptop_slider_on_draw(self):
+        self.croptop = 1000 - self.croptop_slider.value()
+        self.show_snapshots()
+
+    def cropbottom_slider_on_draw(self):
+        self.cropbottom = 1000 - self.cropbottom_slider.value()
         self.show_snapshots()
 
             
