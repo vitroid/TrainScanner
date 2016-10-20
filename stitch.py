@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import math
 import trainscanner
-
+import sys
 
 
 #Automatically extensible canvas.
@@ -43,7 +43,7 @@ class Canvas():
         
 
 def Usage(argv):
-    print("usage: {0} [-d][-s r][-w x][-F][-H][-l label] < output_of_pass1_py.log".format(argv[0]))
+    print("usage: {0} [-d][-s r][-w x][-F][-H][-l label][-C w,h,x,y] < output_of_pass1_py.log".format(argv[0]))
     print("\t-d\tDebug mode.")
     print("\t-s r\tSet slit position to r (1).")
     print("\t-w r\tSet slit width (1=same as the length of the interframe motion vector).")
@@ -73,7 +73,7 @@ class Stitcher(Canvas):
         #self.h, self.w = imgh,imgw  #transformed size
         if self.R is None:
             #Apply rotation
-            self.R, self.rotated_w, self.rotated_h = trainscanner.rotate_matrix(angle, imgw,imgh)
+            self.R, self.rotated_w, self.rotated_h = trainscanner.rotate_matrix(self.angle, imgw,imgh)
             #print(self.w,self.h,"*"
             self.R *= self.ratio
             self.rotated_w *= self.ratio
@@ -87,7 +87,7 @@ class Stitcher(Canvas):
         frame = cv2.warpAffine(frame, self.R, (self.rotated_w,self.rotated_h))
         if self.M is not None:
             frame = cv2.warpPerspective(frame,self.M,(self.rotated_w,self.rotated_h))
-        frame = frame[crop[0]*self.rotated_h/1000:crop[1]*self.rotated_h/1000, :, :]
+        frame = frame[self.crop[0]*self.rotated_h/1000:self.crop[1]*self.rotated_h/1000, :, :]
         cropped_h,cropped_w = frame.shape[0:2]
         
         alpha = trainscanner.make_vert_alpha( int(idx*self.ratio), cropped_w, cropped_h, self.slitpos, self.slitwidth )
@@ -98,29 +98,35 @@ class Stitcher(Canvas):
             cv2.waitKey(1)
 
 
-def stitch(movie, istream, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True, scale=1.0, crop=(0,1000),dimen=None):
-    st = Stitcher(angle, pers, slitpos, slitwidth, visual, scale, crop=crop, dimen=dimen)
+    def stitch(self, movie, istream):
+        self.stitch_begin(movie, istream)
+        while True:
+            result = self.stitch_one()
+            if result is not None:
+                return result
 
-    line = istream.readline()
-    frame0, absx,absy,idx,idy = 1,0,0,0,0
-    cap = cv2.VideoCapture(movie)
-    frames = 0  #1 is the first frame
-    while True:
-        ret, frame = cap.read()
+
+    def stitch_begin(self, movie, istream):
+        self.movie = movie
+        self.istream = istream
+        line = self.istream.readline()
+        self.frame0, self.absx, self.absy, self.idx, self.idy = 1,0,0,0,0
+        self.cap = cv2.VideoCapture(movie)
+        self.frames = 0  #1 is the first frame
+
+    def stitch_one(self):
+        ret, frame = self.cap.read()
         if not ret:
-            break
-        frames += 1
-        if frames == frame0:
-            st.add_image(frame, absx,absy, idx, idy)
-            line = istream.readline()
+            return self.canvas[0]
+        self.frames += 1
+        if self.frames == self.frame0:
+            self.add_image(frame, self.absx, self.absy, self.idx, self.idy) #ugly
+            line = self.istream.readline()
             if len(line) == 0 or line[0] == "@":
                 #print(*line.split()[1:])
-                break
-            frame0, absx,absy,idx,idy = [int(x) for x in line.split()]
-    canvas_h, canvas_w = st.canvas[0].shape[0:2]
-    origin_x, origin_y = st.canvas[1]
-    #print(canvas_w,canvas_h,origin_x,origin_y)
-    return st.canvas[0]
+                return self.canvas[0]
+            self.frame0, self.absx,self.absy,self.idx,self.idy = [int(x) for x in line.split()]
+        return None  #not end
 
 
 
@@ -177,7 +183,8 @@ if __name__ == "__main__":
             crop  = [int(x) for x in line.split()[1].split(",")]
         else:
             break
-    canvas = stitch(movie, LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=1, crop=crop, dimen=dimen)
+    st = Stitcher(angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=1, crop=crop, dimen=dimen)
+    canvas = st.stitch(movie, LOG)
     cv2.imwrite("{0}.png".format(movie), canvas)
     if film:
         import film

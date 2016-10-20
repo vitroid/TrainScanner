@@ -136,9 +136,11 @@ class SettingsGUI(QWidget):
         #-i (identity)
         skipident_layout = QHBoxLayout()
 
-        self.btn_skipident = QCheckBox(self.tr('Skip identical frames'))
+        skipident_layout.addWidget(QLabel(self.tr('Skip identical frames')))
+
+        #self.btn_skipident = QCheckBox(self.tr('Skip identical frames'))
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        skipident_layout.addWidget(self.btn_skipident)
+        #skipident_layout.addWidget(self.btn_skipident)
         
         
         self.skipident_valuelabel = QLabel(str(self.identity))
@@ -254,28 +256,24 @@ class SettingsGUI(QWidget):
         pass1_options += " -c {0},{1}".format(self.editor.croptop,self.editor.cropbottom)
         if self.btn_zerodrift.isChecked():
             pass1_options += " -z"
-        if self.btn_skipident.isChecked():
-            pass1_options += " -i {0}".format(self.identity)
+        #if self.btn_skipident.isChecked():
+        pass1_options += " -i {0}".format(self.identity)
         stitch_options = " -s {0}".format(self.editor.slitpos)
         stitch_options += " -w {0}".format(self.slitwidth)
             
-        self.two_pass = True
         file_name = self.fname
         if self.btn_finish_stitch.isChecked():
-            if self.two_pass:
-                #print("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
-                os.system("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
-                log = open("{0}.pass1.log".format(file_name))
-                while True:
-                    line = log.readline()
-                    #print(line)
-                    if line[0] == "@":
-                        break
-                canvas_dimen = [int(x) for x in line.split()[1:]]
-                stitch_options += " -C {0},{1},{2},{3}".format(*canvas_dimen)
-                os.system("./stitch.py {0} < {1}.pass1.log".format(stitch_options, file_name))
-            else:
-                os.system("./pass1.py {0} {1} | tee {1}.pass1.log | ./stitch.py {2}".format(pass1_options, file_name, stitch_options))
+            #print("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
+            os.system("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
+            log = open("{0}.pass1.log".format(file_name))
+            while True:
+                line = log.readline()
+                #print(line)
+                if line[0] == "@":
+                    break
+            canvas_dimen = [int(x) for x in line.split()[1:]]
+            stitch_options += " -C {0},{1},{2},{3}".format(*canvas_dimen)
+            os.system("./stitch_gui.py {0} < {1}.pass1.log".format(stitch_options, file_name))
         file_name += ".png"
         if self.btn_finish_perf.isChecked():
             os.system("./film.py {0}".format(file_name))
