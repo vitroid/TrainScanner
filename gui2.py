@@ -21,6 +21,35 @@ def draw_slitpos(f, slitpos):
     cv2.line(f, (slitpos1,0),(slitpos1,h), (0, 0, 255), 1)
     cv2.line(f, (slitpos2,0),(slitpos2,h), (0, 0, 255), 1)
 
+class MyLabel(QLabel):
+
+    def __init__(self, parent = None, func=None):
+
+        self.func = func
+        QLabel.__init__(self, parent)
+        self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
+        self.origin = QPoint()
+    
+    def mousePressEvent(self, event):
+    
+        if event.button() == Qt.LeftButton:
+        
+            self.origin = QPoint(event.pos())
+            self.rubberBand.setGeometry(QRect(self.origin, QSize()))
+            self.rubberBand.show()
+    
+    def mouseMoveEvent(self, event):
+    
+        if not self.origin.isNull():
+            self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
+    
+    def mouseReleaseEvent(self, event):
+    
+        if event.button() == Qt.LeftButton:
+            self.rubberBand.hide()
+            self.region = QRect(self.origin, event.pos()).normalized()
+            if self.func is not None:
+                self.func(self.region)
 
 #https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class SettingsGUI(QWidget):
@@ -52,91 +81,88 @@ class SettingsGUI(QWidget):
 
         #Left panel, upper pane: settings
         gbox_settings = QGroupBox(self.tr('Settings'))
-        settings_layout = QVBoxLayout()
+        settings2_layout = QGridLayout()
+        rows = 0
         #http://myenigma.hatenablog.com/entry/2016/01/24/113413
 
         #Example of a slider with a label ###################################
         #the slider is in a Hbox
-        slider_layout = QHBoxLayout()
 
-        trailing_slider_label1 = QLabel(self.tr('Trailing frames:'))
-        slider_layout.addWidget(trailing_slider_label1)
+        settings2_layout.addWidget(QLabel(self.tr('Trailing frames')), rows,0, Qt.AlignRight)
         
         self.trailing_slider_valuelabel = QLabel(str(self.trailing))
-        slider_layout.addWidget(self.trailing_slider_valuelabel)
-        slider_layout.addWidget(QLabel(self.tr('Short')))
-        
+        settings2_layout.addWidget(self.trailing_slider_valuelabel, rows,1)
+
+        settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2)
         self.trailing_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.trailing_slider.setRange(1, 30)  # スライダの範囲
         self.trailing_slider.setValue(10)  # 初期値
         #スライダの目盛りを両方に出す
         self.trailing_slider.setTickPosition(QSlider.TicksBelow)
         self.connect(self.trailing_slider, SIGNAL('valueChanged(int)'), self.trailing_slider_on_draw)
-        slider_layout.addWidget(self.trailing_slider)
-        slider_layout.addWidget(QLabel(self.tr('Long')))
+        settings2_layout.addWidget(self.trailing_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(self.tr('Long')), rows, 4)
 
-        settings_layout.addLayout(slider_layout)
+        rows += 1
         #####################################################################
 
         
         #Example of a slider with a label ###################################
         #the slider is in a Hbox
-        slider_layout = QHBoxLayout()
         
-        slider_layout.addWidget(QLabel(self.tr('Slit mixing:')))
+        settings2_layout.addWidget(QLabel(self.tr('Slit mixing')), rows, 0, Qt.AlignRight)
         
         self.slitwidth_slider_valuelabel = QLabel(str(self.slitwidth))
-        slider_layout.addWidget(self.slitwidth_slider_valuelabel)
+        settings2_layout.addWidget(self.slitwidth_slider_valuelabel, rows, 1)
         
-        slider_layout.addWidget(QLabel(self.tr('Sharp')))
+        settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2)
         self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.slitwidth_slider.setRange(1, 30)  # スライダの範囲
         self.slitwidth_slider.setValue(10)  # 初期値
         #スライダの目盛りを両方に出す
         self.slitwidth_slider.setTickPosition(QSlider.TicksBelow)
         self.connect(self.slitwidth_slider, SIGNAL('valueChanged(int)'), self.slitwidth_slider_on_draw)
-        slider_layout.addWidget(self.slitwidth_slider)
-        slider_layout.addWidget(QLabel(self.tr('Diffuse')))
+        settings2_layout.addWidget(self.slitwidth_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(self.tr('Diffuse')), rows, 4)
 
-        settings_layout.addLayout(slider_layout)
+        rows += 1
         #####################################################################
 
 
         #Example of a slider with a label ###################################
         #the slider is in a Hbox
-        antishake_slider_layout = QHBoxLayout()
-        
-        antishake_slider_layout.addWidget(QLabel(self.tr('Permit camera waggle:')))
+
+        settings2_layout.addWidget(QLabel(self.tr('Permit camera waggle')), rows, 0, Qt.AlignRight)
         
         self.antishake_slider_valuelabel = QLabel(str(self.antishake))
-        antishake_slider_layout.addWidget(self.antishake_slider_valuelabel)
+        settings2_layout.addWidget(self.antishake_slider_valuelabel, rows, 1)
         
-        antishake_slider_layout.addWidget(QLabel(self.tr('Small')))
+        settings2_layout.addWidget(QLabel(self.tr('Small')), rows, 2)
         self.antishake_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.antishake_slider.setRange(1, 15)  # スライダの範囲
         self.antishake_slider.setValue(5)  # 初期値
         #スライダの目盛りを両方に出す
         self.antishake_slider.setTickPosition(QSlider.TicksBelow)
         self.connect(self.antishake_slider, SIGNAL('valueChanged(int)'), self.antishake_slider_on_draw)
-        antishake_slider_layout.addWidget(self.antishake_slider)
-        antishake_slider_layout.addWidget(QLabel(self.tr('Large')))
+        settings2_layout.addWidget(self.antishake_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(self.tr('Large')), rows, 4)
 
-        settings_layout.addLayout(antishake_slider_layout)
+        rows += 1
         #####################################################################
 
 
         #####################################################################
         #Example of a checkbox
-        self.btn_zerodrift = QCheckBox(self.tr('Ignore vertical displacements'))
+        settings2_layout.addWidget(QLabel(self.tr('Ignore vertical displacements')), rows, 0, Qt.AlignRight)
+        self.btn_zerodrift = QCheckBox()
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        settings_layout.addWidget(self.btn_zerodrift)
-
+        settings2_layout.addWidget(self.btn_zerodrift,rows, 1)
+        rows += 1
 
         #Example of a checkbox and slider with a label
         #-i (identity)
-        skipident_layout = QHBoxLayout()
 
-        skipident_layout.addWidget(QLabel(self.tr('Skip identical frames')))
+        settings2_layout.addWidget(QLabel(self.tr('Skip identical frames')), rows, 0, Qt.AlignRight)
 
         #self.btn_skipident = QCheckBox(self.tr('Skip identical frames'))
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
@@ -144,9 +170,9 @@ class SettingsGUI(QWidget):
         
         
         self.skipident_valuelabel = QLabel(str(self.identity))
-        skipident_layout.addWidget(self.skipident_valuelabel)
+        settings2_layout.addWidget(self.skipident_valuelabel, rows, 1)
     
-        skipident_layout.addWidget(QLabel(self.tr('Strict')))
+        settings2_layout.addWidget(QLabel(self.tr('Strict')), rows, 2)
         self.identthres_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.identthres_slider.setRange(1, 5)  # スライダの範囲
         self.identthres_slider.setValue(2)  # 初期値
@@ -154,15 +180,14 @@ class SettingsGUI(QWidget):
         self.identthres_slider.setTickPosition(QSlider.TicksBelow)
         self.connect(self.identthres_slider, SIGNAL('valueChanged(int)'), self.identthres_slider_on_draw)
         #the slider is in a Hbox
-        skipident_layout.addWidget(self.identthres_slider)
-        skipident_layout.setAlignment(self.identthres_slider, Qt.AlignTop)
-        skipident_layout.addWidget(QLabel(self.tr('Loose')))
-        settings_layout.addLayout(skipident_layout)
+        settings2_layout.addWidget(self.identthres_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(self.tr('Loose')), rows, 4)
+        rows += 1
         #####################################################################
 
 
 
-        gbox_settings.setLayout(settings_layout)
+        gbox_settings.setLayout(settings2_layout)
 
         left_layout.addWidget(gbox_settings)
 
@@ -171,6 +196,7 @@ class SettingsGUI(QWidget):
         finish_layout = QVBoxLayout()
         #https://www.tutorialspoint.com/pyqt/pyqt_qcheckbox_widget.htm
         self.btn_finish_stitch = QCheckBox(self.tr('Stitch to a long image strip'))
+        self.btn_finish_stitch.setCheckState(Qt.Checked)
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         finish_layout.addWidget(self.btn_finish_stitch)
         self.btn_finish_perf = QCheckBox(self.tr('Add the film perforations'))
@@ -253,6 +279,7 @@ class SettingsGUI(QWidget):
         pass1_options += " -t {0}".format(self.trailing)
         pass1_options += " -a {0}".format(self.antishake)
         pass1_options += " -p {0}".format(",".join([str(x) for x in self.editor.pers]))
+        pass1_options += " -f {0}".format(",".join([str(x) for x in self.editor.focus]))
         pass1_options += " -c {0},{1}".format(self.editor.croptop,self.editor.cropbottom)
         if self.btn_zerodrift.isChecked():
             pass1_options += " -z"
@@ -349,6 +376,9 @@ class EditorGUI(QWidget):
         self.sliderTL = QSlider(Qt.Vertical)  # スライダの向き
         self.sliderTL.setRange(0, 499)  # スライダの範囲
         self.sliderTL.setValue(499)  # 初期値
+        #sizepolicy = QSizePolicy()
+        #sizepolicy.setVerticalPolicy(QSizePolicy.Maximum)
+        #self.sliderTL.setSizePolicy(sizepolicy)
         self.connect(self.sliderTL, SIGNAL('valueChanged(int)'), self.sliderTL_on_draw)
         pers_left_layout.addWidget(self.sliderTL)
         pers_left_layout.setAlignment(self.sliderTL, Qt.AlignTop)
@@ -377,22 +407,26 @@ class EditorGUI(QWidget):
         
         
         
-        row_image_layout = QVBoxLayout()
-        #gbox3 = QGroupBox("")
-        #box = QVBoxLayout()
-        self.row_image_pane = QLabel()
-        #self.row_image_pane.setFixedWidth(self.preview_size)
-        #self.row_image_pane.setFixedHeight(self.preview_size)
-        #box.addWidget(self.row_image_pane)
-        #gbox3.setLayout(box)
-        row_image_layout.addWidget(self.row_image_pane)
+        raw_image_layout = QVBoxLayout()
+        self.raw_image_pane = QLabel()
+        self.raw_image_pane.setAlignment(Qt.AlignCenter)
+        self.raw_image_pane.setFixedWidth(self.preview_size)
+        self.raw_image_pane.setFixedHeight(self.preview_size)
+        #raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignCenter)
+        raw_image_layout.addWidget(self.raw_image_pane)
+        raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignHCenter)
+        raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignTop)
         
         processed_edit_gbox_layout = QVBoxLayout()
         processed_edit_gbox = QGroupBox(self.tr('2. Motion Detection and Slit'))
         box = QVBoxLayout()
         processed_image_layout = QVBoxLayout()
-        self.processed_pane = QLabel()
+        self.processed_pane = MyLabel(func=self.show_snapshots)
+        self.processed_pane.setAlignment(Qt.AlignCenter)
+        self.processed_pane.setFixedWidth(self.preview_size)
+        self.processed_pane.setFixedHeight(self.preview_size)
         processed_image_layout.addWidget(self.processed_pane)
+        processed_image_layout.setAlignment(self.processed_pane, Qt.AlignTop)
 
         hbox = QHBoxLayout()
         hbox.addLayout(processed_image_layout)
@@ -401,7 +435,7 @@ class EditorGUI(QWidget):
         processed_edit_gbox.setLayout(box)
         processed_edit_gbox_layout.addWidget(processed_edit_gbox)
 
-        slit_slider_label = QLabel('Slit position:')
+        slit_slider_label = QLabel(self.tr('Slit position'))
         self.slit_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.slit_slider.setRange(0, 500)  # スライダの範囲
         self.slit_slider.setValue(self.slitpos)  # 初期値
@@ -412,22 +446,25 @@ class EditorGUI(QWidget):
         slit_slider_layout.addWidget(slit_slider_label)
         slit_slider_layout.addWidget(self.slit_slider)
         box.addLayout(slit_slider_layout)
+        box.setAlignment(slit_slider_layout, Qt.AlignTop)
 
         
         #combine panels
         topleft_layout = QHBoxLayout()
         topleft_layout.addLayout(pers_left_layout)
-        topleft_layout.addLayout(row_image_layout)
+        topleft_layout.addLayout(raw_image_layout)
         topleft_layout.addLayout(pers_right_layout)
         left_layout = QVBoxLayout()
         left_layout.addLayout(topleft_layout)
         left_layout.addLayout(nextprev_layout)
+        left_layout.setAlignment(nextprev_layout, Qt.AlignTop)
         left_layout.addLayout(rotation_layout)
-        row_edit_gbox = QGroupBox(self.tr('1. Repair deformation'))
-        row_edit_gbox.setLayout(left_layout)
-        row_edit_gbox_layout = QVBoxLayout()
-        row_edit_gbox_layout.addWidget(row_edit_gbox)
-        layout.addLayout(row_edit_gbox_layout)
+        left_layout.setAlignment(rotation_layout, Qt.AlignTop)
+        raw_edit_gbox = QGroupBox(self.tr('1. Repair deformation'))
+        raw_edit_gbox.setLayout(left_layout)
+        raw_edit_gbox_layout = QVBoxLayout()
+        raw_edit_gbox_layout.addWidget(raw_edit_gbox)
+        layout.addLayout(raw_edit_gbox_layout)
         layout.addLayout(processed_edit_gbox_layout)
         self.setLayout(layout)
         self.setWindowTitle("Editor")
@@ -489,7 +526,7 @@ class EditorGUI(QWidget):
         image[:,:,0] = image[:,:,2]
         image[:,:,2] = tmp
         
-    def show_snapshots(self):
+    def show_snapshots(self, region=None):
         """
         put the snapshots in the preview panes
         """
@@ -503,14 +540,68 @@ class EditorGUI(QWidget):
         processed = image.copy()
         trainscanner.draw_guide(image, self.pers, gauge=False)  #second is pers
         #color order is different between cv2 and pyqt
-        self.put_cv2_image(image, self.row_image_pane)
+        self.put_cv2_image(image, self.raw_image_pane)
         #Right image: warped
         M = trainscanner.warp_matrix(self.pers,width,height)
         processed = cv2.warpPerspective(processed,M,(width,height))
         processed = processed[self.croptop*height/1000:self.cropbottom*height/1000, :, :]
+        if region is not None:
+            print(region)
+            #assume the QLabel size is square preview_size x preview_size
+            top, left, bottom, right = region.top(), region.left(), region.bottom(), region.right()
+            if top < 0:
+                top = 0
+            if left < 0:
+                left = 0
+            if right > self.preview_size:
+                right = self.preview_size
+            if bottom > self.preview_size:
+                bottom = self.preview_size
+            #and also assume that the cropped image is centered and sometimes shrinked.
+            top    -= self.preview_size/2
+            bottom -= self.preview_size/2
+            left   -= self.preview_size/2
+            right  -= self.preview_size/2
+            #expected image size in the window
+            height, width = processed.shape[0:2]
+            if height > width:
+                if height > self.preview_size:
+                    width = width * self.preview_size / height
+                    height = self.preview_size
+            else:
+                if width > self.preview_size:
+                    height = height * self.preview_size / width
+                    width  = self.preview_size
+            #indicate the region size relative to the image size
+            print(left,right,top,bottom)
+            top    = top    * 1000 / height + 500
+            bottom = bottom * 1000 / height + 500
+            left   = left   * 1000 / width + 500
+            right  = right  * 1000 / width + 500
+            print(left,right,top,bottom)
+            if top < 0:
+                top = 0
+            if top > 1000:
+                top = 1000
+            if bottom < 0:
+                bottom = 0
+            if bottom > 1000:
+                bottom = 1000
+            if left < 0:
+                left = 0
+            if left > 1000:
+                left = 1000
+            if right < 0:
+                right = 0
+            if right > 1000:
+                right = 1000
+            self.focus = left,right,top,bottom
+            print(self.focus)
+            
         trainscanner.draw_focus_area(processed, self.focus)
         draw_slitpos(processed, self.slitpos)
         self.put_cv2_image(processed, self.processed_pane)
+        #self.resize(self.sizeHint())
         
 
     def put_cv2_image(self, image, widget):
