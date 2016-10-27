@@ -18,3 +18,5 @@ sample*png
 *.jpg
 
 *.pdf
+
+.DS_Store

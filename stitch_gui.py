@@ -66,7 +66,6 @@ class RenderThread(QtCore.QThread):
                 height, width = canvas.shape[0:2]
                 self.cv2toQImage(canvas)
                 image = QtGui.QImage(canvas.data, width, height, width*3, QtGui.QImage.Format_RGB888)
-                #print("image updated")
                 if not self.restart:
                     #emit signal is not always processed. Why?
                     self.renderedImage.emit(image)
@@ -119,14 +118,12 @@ class ExtensibleCanvasWidget(QtGui.QWidget):
         #is it ok here?
         #self.resize(self.pixmap.size())
         self.update()
-        #print("updated")
 
 
 
     #This will be the trigger for the first rendering
     def resizeEvent(self, event):
         self.thread.render(self.size())
-        #print("resized")
 
 
 class Example(QtGui.QMainWindow):

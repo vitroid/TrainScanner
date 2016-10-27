@@ -55,7 +55,7 @@ class Stitcher(Canvas):
     """
     exclude video handling
     """
-    def __init__(self, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=True, scale=0.4, crop=(0,1000), dimen=None):
+    def __init__(self, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=None):
         self.angle = angle
         self.pers  = pers
         self.slitpos = slitpos
@@ -95,7 +95,7 @@ class Stitcher(Canvas):
         self.abs_merge(frame, int(absx*self.ratio), int(absy*self.ratio), alpha=alpha)
         if self.visual:
             cv2.imshow("canvas", self.canvas[0])
-            cv2.waitKey(1)
+            cv2.waitKey(1)  #This causes ERROR
 
 
     def stitch(self, movie, istream):
@@ -123,7 +123,6 @@ class Stitcher(Canvas):
             self.add_image(frame, self.absx, self.absy, self.idx, self.idy) #ugly
             line = self.istream.readline()
             if len(line) == 0 or line[0] == "@":
-                #print(*line.split()[1:])
                 return self.canvas[0]
             self.frame0, self.absx,self.absy,self.idx,self.idy = [int(x) for x in line.split()]
         return None  #not end

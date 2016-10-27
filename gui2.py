@@ -223,6 +223,10 @@ class SettingsGUI(QWidget):
     def getfile(self):
         self.fname = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Movie files (*.mov *.mp4)")
+        if self.fname == "": # or if the file cannot be opened,
+            return
+        if self.editor is not None:
+            self.editor.close()
         #self.le.setPixmap(QPixmap(fname))
         #Load every 30 frames here for preview.
         self.le.setText(self.fname)
@@ -640,6 +644,7 @@ def main():
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()
+    se.raise_()
     sys.exit(app.exec_())
 	
 if __name__ == '__main__':
