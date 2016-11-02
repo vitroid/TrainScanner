@@ -93,6 +93,7 @@ class SettingsGUI(QWidget):
         self.antishake = 5
         self.slitwidth = 1.0
         self.identity = 2.0
+        self.accel    = 1
         #private
         # layout
         layout = QHBoxLayout()
@@ -189,7 +190,46 @@ class SettingsGUI(QWidget):
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         settings2_layout.addWidget(self.btn_zerodrift,rows, 1)
         rows += 1
+        #####################################################################
 
+
+        #####################################################################
+        #Example of a checkbox
+        settings2_layout.addWidget(QLabel(self.tr('Limit maximum acceleration')), rows, 0, Qt.AlignRight)
+        self.btn_accel = QCheckBox()
+        self.btn_accel.setCheckState(Qt.Checked)
+        settings2_layout.addWidget(self.btn_accel,rows, 1)
+        rows += 1
+        #####################################################################
+        #Example of a slider with a label ###################################
+        #the slider is in a Hbox
+
+        #settings2_layout.addWidget(QLabel(self.tr('Permit camera waggle')), rows, 0, Qt.AlignRight)
+        
+        self.accel_slider_valuelabel = QLabel(str(self.accel))
+        settings2_layout.addWidget(self.accel_slider_valuelabel, rows, 1)
+        
+        settings2_layout.addWidget(QLabel(self.tr('Smooth')), rows, 2)
+        self.accel_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.accel_slider.setRange(1, 5)  # スライダの範囲
+        self.accel_slider.setValue(1)  # 初期値
+        #スライダの目盛りを両方に出す
+        self.accel_slider.setTickPosition(QSlider.TicksBelow)
+        self.connect(self.accel_slider, SIGNAL('valueChanged(int)'), self.accel_slider_on_draw)
+        settings2_layout.addWidget(self.accel_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(self.tr('Jerky')), rows, 4)
+        self.btn_accel.toggled.connect(self.btn_accel_toggle)
+
+        rows += 1
+        #####################################################################
+
+
+
+
+
+
+
+        
         #Example of a checkbox and slider with a label
         #-i (identity)
 
@@ -251,13 +291,18 @@ class SettingsGUI(QWidget):
         self.setLayout(layout)
         self.setWindowTitle("Settings")
 		
+    def reset_input(self):
+        self.fname = ""
+        self.editor = None
+        self.le.setText(self.tr('(File name appears here)'))
+        
     def getfile(self):
-        self.fname = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
-            "","Movie files (*.mov *.mp4)")
-        if self.fname == "": # or if the file cannot be opened,
-            return
         if self.editor is not None:
             self.editor.close()
+        self.fname = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+            "","Movie files (*.mov *.mp4 *.mts)")
+        if self.fname == "": # or if the file cannot be opened,
+            return
         #self.le.setPixmap(QPixmap(fname))
         #Load every 30 frames here for preview.
         self.le.setText(self.fname)
@@ -289,6 +334,10 @@ class SettingsGUI(QWidget):
         
 
 
+    def btn_accel_toggle(self, state):
+        self.accel_slider.setEnabled(state)
+
+        
     def trailing_slider_on_draw(self):
         self.trailing = self.trailing_slider.value()
         self.trailing_slider_valuelabel.setText(str(self.trailing))
@@ -300,8 +349,13 @@ class SettingsGUI(QWidget):
 
 
     def antishake_slider_on_draw(self):
-        self.antishake = self.antishake_slider.value() / 10.0
+        self.antishake = self.antishake_slider.value()
         self.antishake_slider_valuelabel.setText(str(self.antishake))
+
+
+    def accel_slider_on_draw(self):
+        self.accel = self.accel_slider.value()
+        self.accel_slider_valuelabel.setText(str(self.accel))
 
 
     def identthres_slider_on_draw(self):
@@ -310,6 +364,8 @@ class SettingsGUI(QWidget):
 
 
     def start_process(self):
+        if self.editor is None:
+            return
         pass1_options = " -r {0}".format(self.editor.angle_degree)
         pass1_options += " -t {0}".format(self.trailing)
         pass1_options += " -a {0}".format(self.antishake)
@@ -318,6 +374,8 @@ class SettingsGUI(QWidget):
         pass1_options += " -c {0},{1}".format(self.editor.croptop,self.editor.cropbottom)
         if self.btn_zerodrift.isChecked():
             pass1_options += " -z"
+        if self.btn_accel.isChecked():
+            pass1_options += " -m {0}".format(self.accel)
         #if self.btn_skipident.isChecked():
         pass1_options += " -i {0}".format(self.identity)
         stitch_options = " -s {0}".format(self.editor.slitpos)
@@ -326,7 +384,7 @@ class SettingsGUI(QWidget):
         file_name = self.fname
         cmd = []
         if self.btn_finish_stitch.isChecked():
-            #print("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
+            print("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
             os.system("./pass1.py {0} '{1}' >  '{1}'.pass1.log".format(pass1_options, file_name))
             log = open("{0}.pass1.log".format(file_name))
             while True:
@@ -421,8 +479,8 @@ class EditorGUI(QWidget):
         
         pers_left_layout = QVBoxLayout()
         self.sliderTL = QSlider(Qt.Vertical)  # スライダの向き
-        self.sliderTL.setRange(0, 499)  # スライダの範囲
-        self.sliderTL.setValue(499)  # 初期値
+        self.sliderTL.setRange(0, 1000)  # スライダの範囲
+        self.sliderTL.setValue(1000)  # 初期値
         #sizepolicy = QSizePolicy()
         #sizepolicy.setVerticalPolicy(QSizePolicy.Maximum)
         #self.sliderTL.setSizePolicy(sizepolicy)
@@ -431,7 +489,7 @@ class EditorGUI(QWidget):
         pers_left_layout.setAlignment(self.sliderTL, Qt.AlignTop)
 
         self.sliderBL = QSlider(Qt.Vertical)  # スライダの向き
-        self.sliderBL.setRange(0, 499)  # スライダの範囲
+        self.sliderBL.setRange(0, 1000)  # スライダの範囲
         self.sliderBL.setValue(0)  # 初期値 499 is top
         self.connect(self.sliderBL, SIGNAL('valueChanged(int)'), self.sliderBL_on_draw)
         pers_left_layout.addWidget(self.sliderBL)
@@ -439,14 +497,14 @@ class EditorGUI(QWidget):
         
         pers_right_layout = QVBoxLayout()
         self.sliderTR = QSlider(Qt.Vertical)  # スライダの向き
-        self.sliderTR.setRange(0, 499)  # スライダの範囲
-        self.sliderTR.setValue(499)  # 初期値
+        self.sliderTR.setRange(0, 1000)  # スライダの範囲
+        self.sliderTR.setValue(1000)  # 初期値
         self.connect(self.sliderTR, SIGNAL('valueChanged(int)'), self.sliderTR_on_draw)
         pers_right_layout.addWidget(self.sliderTR)
         pers_right_layout.setAlignment(self.sliderTR, Qt.AlignTop)
 
         self.sliderBR = QSlider(Qt.Vertical)  # スライダの向き
-        self.sliderBR.setRange(0, 499)  # スライダの範囲
+        self.sliderBR.setRange(0, 1000)  # スライダの範囲
         self.sliderBR.setValue(0)  # 初期値 499 is top
         self.connect(self.sliderBR, SIGNAL('valueChanged(int)'), self.sliderBR_on_draw)
         pers_right_layout.addWidget(self.sliderBR)
@@ -552,19 +610,19 @@ class EditorGUI(QWidget):
         self.show_snapshots()
 
     def sliderTL_on_draw(self):
-        self.pers[0] = 499 - self.sliderTL.value()
+        self.pers[0] = 1000 - self.sliderTL.value()
         self.show_snapshots()
 
     def sliderBL_on_draw(self):
-        self.pers[2] = 999 - self.sliderBL.value()
+        self.pers[2] = 1000 - self.sliderBL.value()
         self.show_snapshots()
 
     def sliderTR_on_draw(self):
-        self.pers[1] = 499 - self.sliderTR.value()
+        self.pers[1] = 1000 - self.sliderTR.value()
         self.show_snapshots()
 
     def sliderBR_on_draw(self):
-        self.pers[3] = 999 - self.sliderBR.value()
+        self.pers[3] = 1000 - self.sliderBR.value()
         self.show_snapshots()
 
     def cv2toQImage(self,image):
@@ -687,12 +745,14 @@ class EditorGUI(QWidget):
         self.cropbottom = 1000 - self.cropbottom_slider.value()
         self.show_snapshots()
 
+    def closeEvent(self,event):
+        self.settings.reset_input()
             
         
 def main():
     app = QApplication(sys.argv)
     translator = QTranslator(app)
-    print translator.load("gui2_ja")
+    translator.load("gui2_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()

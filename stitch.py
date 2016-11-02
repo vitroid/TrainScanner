@@ -99,14 +99,14 @@ class Stitcher(Canvas):
 
 
     def stitch(self, movie, istream):
-        self.stitch_begin(movie, istream)
+        self.before(movie, istream)
         while True:
-            result = self.stitch_one()
+            result = self.onestep()
             if result is not None:
                 return result
 
 
-    def stitch_begin(self, movie, istream):
+    def before(self, movie, istream):
         self.movie = movie
         self.istream = istream
         line = self.istream.readline()
@@ -114,7 +114,7 @@ class Stitcher(Canvas):
         self.cap = cv2.VideoCapture(movie)
         self.frames = 0  #1 is the first frame
 
-    def stitch_one(self):
+    def onestep(self):
         ret, frame = self.cap.read()
         if not ret:
             return self.canvas[0]

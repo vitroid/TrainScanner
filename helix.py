@@ -54,7 +54,13 @@ def helicify(img):
     canvas = np.zeros((canh+pady*2, canw+padx,3), np.uint8)
     canvas[:,:,:] =255
     for i in range(1,N-1):
-        canvas[i*hg+pady:i*hg+h+pady, padx:canw+padx, :] = img[0:h, i*(row - row0): i*(row-row0) + canw, :]
+        x0 = i*(row-row0)
+        #print(padx,canw,x0+canw,img.shape)
+        if img.shape[1] <= x0 + canw:
+            ww = img.shape[1] - x0
+        else:
+            ww = canw
+        canvas[i*hg+pady:i*hg+h+pady, padx:padx+ww, :] = img[0:h, x0:x0+ww, :]
     canvas[pady:h+pady, padx:canw+padx, :] = img[0:h, 0:canw, :]
     residue = w - (row-row0)*(N-1)
     canvas[(N-1)*hg+pady:(N-1)*hg+h+pady, padx:residue+padx, :] = img[0:h, w-residue:w, :]

@@ -60,9 +60,9 @@ class RenderThread(QtCore.QThread):
             resultSize = self.resultSize
             self.mutex.unlock()
 
-            self.st.stitch_begin(self.movie, self.istream)
+            self.st.before(self.movie, self.istream)
             while True:
-                result = self.st.stitch_one()
+                result = self.st.onestep()
                 canvas = self.st.canvas[0].copy()
                 height, width = canvas.shape[0:2]
                 self.cv2toQImage(canvas)
@@ -75,8 +75,7 @@ class RenderThread(QtCore.QThread):
                         
 
             self.mutex.lock()
-            self.cv2toQImage(canvas)  # conversion twice = original
-            cv2.imwrite("{0}.png".format(self.movie), canvas)
+            image.save("{0}.png".format(self.movie))
             if not self.restart:
                 self.condition.wait(self.mutex)
             self.restart = False
@@ -84,11 +83,12 @@ class RenderThread(QtCore.QThread):
 
 
 class ExtensibleCanvasWidget(QtGui.QWidget):
-    def __init__(self, parent=None, st=None, movie=None, istream=None):
+    def __init__(self, parent=None, st=None, movie=None, istream=None, preview_ratio=1.0):
         super(ExtensibleCanvasWidget, self).__init__(parent)
 
         self.thread = RenderThread(st=st, movie=movie, istream=istream)
         self.pixmap = QtGui.QPixmap()
+        self.preview_ratio = preview_ratio
 
         self.thread.renderedImage.connect(self.updatePixmap)
 
@@ -96,6 +96,8 @@ class ExtensibleCanvasWidget(QtGui.QWidget):
         self.setCursor(QtCore.Qt.CrossCursor)
         #This is the initial paint size
         height,width = st.canvas[0].shape[0:2]
+        height = int(height*preview_ratio)
+        width  = int(width*preview_ratio)
         self.resize(width, height)
 
     def paintEvent(self, event):
@@ -117,7 +119,10 @@ class ExtensibleCanvasWidget(QtGui.QWidget):
 
     def updatePixmap(self, image):
         #it is called only when the pixmap is really updated by the thread.
-        self.pixmap = QtGui.QPixmap.fromImage(image)
+        #resize image in advance.
+        w,h = image.width(), image.height()
+        scaled_image = image.scaled(int(w*self.preview_ratio), int(h*self.preview_ratio))
+        self.pixmap = QtGui.QPixmap.fromImage(scaled_image)
         #is it ok here?
         #self.resize(self.pixmap.size())
         self.update()
@@ -130,17 +135,18 @@ class ExtensibleCanvasWidget(QtGui.QWidget):
 
 
 class Example(QtGui.QMainWindow):
-    def __init__(self, parent=None, st=None, movie=None, istream=None):
+    def __init__(self, parent=None, st=None, movie=None, istream=None, preview_ratio=1.0):
         super(Example, self).__init__(parent)
 
         self.setWindowTitle("Main Window")
         height,width = st.canvas[0].shape[0:2]
+        height = int(height*preview_ratio)
         self.resize(400,height)
         #self.setMinimumHeight(height)
         self.scrollArea = QtGui.QScrollArea()
         self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
-        widget = ExtensibleCanvasWidget(st=st, movie=movie, istream=istream)
+        widget = ExtensibleCanvasWidget(st=st, movie=movie, istream=istream, preview_ratio=preview_ratio)
         self.scrollArea.setWidget(widget)
         self.setCentralWidget(self.scrollArea)
         
@@ -187,6 +193,9 @@ if __name__ == '__main__':
         stitch.Usage(sys.argv)
     #movie = sys.argv[1]
     #LOG = open("{0}.pass1.log".format(movie))
+    preview_ratio = 1.0
+    if dimen[0] > 16000:
+        preview_ratio = 16000.0 / dimen[0]
     LOG = sys.stdin
     line = LOG.readline()
     movie = line.splitlines()[0] #chomp
@@ -218,6 +227,6 @@ if __name__ == '__main__':
     #    cv2.imwrite("{0}.jpg".format(movie), canvas)
 
     app = QtGui.QApplication(sys.argv)
-    win = Example(st=st, movie=movie, istream=LOG)
+    win = Example(st=st, movie=movie, istream=LOG, preview_ratio=preview_ratio)
     win.show()
     sys.exit(app.exec_())

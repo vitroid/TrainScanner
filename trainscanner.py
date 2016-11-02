@@ -7,10 +7,26 @@ import cv2
 import numpy as np
 import math
 
-def draw_focus_area(f, focus):
+def draw_focus_area(f, focus, delta=0):
     h, w = f.shape[0:2]
     pos = [w*focus[0]/1000,w*focus[1]/1000,h*focus[2]/1000,h*focus[3]/1000]
     cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
+    if delta != 0:
+        pos = [w*focus[0]/1000+delta,w*focus[1]/1000+delta,h*focus[2]/1000,h*focus[3]/1000]
+        cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (255, 255, 0), 1)
+        
+
+
+def draw_slit_position(f, slitpos, dx):
+    h, w = f.shape[0:2]
+    if dx > 0:
+        x1 = w/2 + slitpos*w/1000
+        x2 = x1 - dx
+    else:
+        x1 = w/2 - slitpos*w/1000
+        x2 = x1 - dx
+    cv2.line(f, (x1,0),(x1,h), (0,255,0), 1)
+    cv2.line(f, (x2,0),(x2,h), (0,255,0), 1)
 
 
 def draw_guide(frame, pers, gauge=True):
