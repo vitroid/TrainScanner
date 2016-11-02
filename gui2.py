@@ -4,6 +4,7 @@ import sys
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import os
+import subprocess
 import cv2
 import numpy as np
 import math
@@ -13,6 +14,23 @@ import trainscanner
 #[] and thumbs
 #edit focus area.
 #Top and bottom crop
+
+class DrawableLabel(QLabel):
+    def __init__(self, parent=None):
+        super(QLabel, self).__init__(parent)
+        self.pers = (0,0,1000,1000)
+        self.geometry = (0,0,1000,1000)
+
+    def paintEvent(self, event):
+        QLabel.paintEvent(self, event)
+        painter = QPainter(self)
+        painter.setPen(Qt.red)
+        #painter.setBrush(Qt.yellow)
+        #painter.drawRect(10, 10, 100, 100)
+        x,y,w,h = self.geometry
+        painter.drawLine(x,y+self.pers[0]*h/1000,x+w,y+self.pers[1]*h/1000)
+        painter.drawLine(x,y+self.pers[2]*h/1000,x+w,y+self.pers[3]*h/1000)
+
 
 def draw_slitpos(f, slitpos):
     h, w = f.shape[0:2]
@@ -29,7 +47,20 @@ class MyLabel(QLabel):
         QLabel.__init__(self, parent)
         self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
         self.origin = QPoint()
-    
+        self.slitpos = 250
+        self.focus = (333,666,333,666)  #xs,xe,ys,ye
+        self.geometry = (0,0,1000,1000) #x,y,w,h
+
+    def paintEvent(self, event):
+        QLabel.paintEvent(self, event)
+        painter = QPainter(self)
+        painter.setPen(Qt.red)
+        x,y,w,h = self.geometry
+        painter.drawLine(x+w/2-self.slitpos*w/1000,y,x+w/2-self.slitpos*w/1000,y+h)
+        painter.drawLine(x+w/2+self.slitpos*w/1000,y,x+w/2+self.slitpos*w/1000,y+h)
+        painter.setPen(Qt.green)
+        painter.drawRect(x+w*self.focus[0]/1000,y+h*self.focus[2]/1000,w*(self.focus[1]-self.focus[0])/1000,h*(self.focus[3]-self.focus[2])/1000)
+        
     def mousePressEvent(self, event):
     
         if event.button() == Qt.LeftButton:
@@ -293,9 +324,10 @@ class SettingsGUI(QWidget):
         stitch_options += " -w {0}".format(self.slitwidth)
             
         file_name = self.fname
+        cmd = []
         if self.btn_finish_stitch.isChecked():
             #print("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
-            os.system("./pass1.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
+            os.system("./pass1.py {0} '{1}' >  '{1}'.pass1.log".format(pass1_options, file_name))
             log = open("{0}.pass1.log".format(file_name))
             while True:
                 line = log.readline()
@@ -304,14 +336,21 @@ class SettingsGUI(QWidget):
                     break
             canvas_dimen = [int(x) for x in line.split()[1:]]
             stitch_options += " -C {0},{1},{2},{3}".format(*canvas_dimen)
-            os.system("./stitch_gui.py {0} < {1}.pass1.log".format(stitch_options, file_name))
+            cmd.append("./stitch_gui.py {0} < '{1}'.pass1.log".format(stitch_options, file_name))
         file_name += ".png"
         if self.btn_finish_perf.isChecked():
-            os.system("./film.py {0}".format(file_name))
+            cmd.append("./film.py '{0}'".format(file_name))
             file_name += ".film.png"
         if self.btn_finish_helix.isChecked():
-            os.system("./helix.py {0}".format(file_name))
+            cmd.append("./helix.py '{0}'".format(file_name))
             file_name += ".helix.jpg"
+        print(" && ".join(cmd))
+        subprocess.Popen(" && ".join(cmd), shell=True)
+        
+
+    def closeEvent(self,event):
+        if self.editor is not None:
+            self.editor.close()
 
 #https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class EditorGUI(QWidget):
@@ -330,6 +369,10 @@ class EditorGUI(QWidget):
         self.slitpos = 250
         self.croptop = 0
         self.cropbottom = 1000
+        #close on quit
+        #http://stackoverflow.com/questions/27420338/how-to-clear-child-window-reference-stored-in-parent-application-when-child-wind
+        #self.setAttribute(Qt.WA_DeleteOnClose)
+        
         # layout
         layout = QHBoxLayout()
         
@@ -412,7 +455,7 @@ class EditorGUI(QWidget):
         
         
         raw_image_layout = QVBoxLayout()
-        self.raw_image_pane = QLabel()
+        self.raw_image_pane = DrawableLabel()
         self.raw_image_pane.setAlignment(Qt.AlignCenter)
         self.raw_image_pane.setFixedWidth(self.preview_size)
         self.raw_image_pane.setFixedHeight(self.preview_size)
@@ -530,6 +573,7 @@ class EditorGUI(QWidget):
         image[:,:,0] = image[:,:,2]
         image[:,:,2] = tmp
         
+
     def show_snapshots(self, region=None):
         """
         put the snapshots in the preview panes
@@ -542,7 +586,7 @@ class EditorGUI(QWidget):
         R, width,height = trainscanner.rotate_matrix(-self.angle_degree*math.pi/180,w,h)
         image = cv2.warpAffine(image, R, (width,height))
         processed = image.copy()
-        trainscanner.draw_guide(image, self.pers, gauge=False)  #second is pers
+        #trainscanner.draw_guide(image, self.pers, gauge=False)  #second is pers
         #color order is different between cv2 and pyqt
         self.put_cv2_image(image, self.raw_image_pane)
         #Right image: warped
@@ -602,27 +646,35 @@ class EditorGUI(QWidget):
             self.focus = left,right,top,bottom
             print(self.focus)
             
-        trainscanner.draw_focus_area(processed, self.focus)
-        draw_slitpos(processed, self.slitpos)
+        #trainscanner.draw_focus_area(processed, self.focus)
+        #draw_slitpos(processed, self.slitpos)
         self.put_cv2_image(processed, self.processed_pane)
-        #self.resize(self.sizeHint())
+        print(self.sizeHint()," hint")
         
 
     def put_cv2_image(self, image, widget):
         height, width = image.shape[0:2]
-        self.cv2toQImage(image) #This breaks the image
+        self.cv2toQImage(image)
         qImg = QImage(image.data, width, height, width*3, QImage.Format_RGB888)
         pixmap = QPixmap(qImg)
         if height > width:
             if height > self.preview_size:
-                widget.setPixmap(pixmap.scaledToHeight(self.preview_size))
-                return
+                pixmap = pixmap.scaledToHeight(self.preview_size)
         else:
             if width > self.preview_size:
-                widget.setPixmap(pixmap.scaledToWidth(self.preview_size))
-                return
+                pixmap = pixmap.scaledToWidth(self.preview_size)
         widget.setPixmap(pixmap)
+        #give hints to DrawableLabel() and MyLabel()
+        widget.pers = self.pers
+        widget.focus = self.focus
+        widget.slitpos = self.slitpos
+        w = pixmap.width()
+        h = pixmap.height()
+        x = ( self.preview_size - w ) / 2
+        y = ( self.preview_size - h ) / 2
+        widget.geometry = x,y,w,h
 
+        
     def slit_slider_on_draw(self):
         self.slitpos = self.slit_slider.value()
         self.show_snapshots()

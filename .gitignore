@@ -18,5 +18,7 @@ sample*png
 *.jpg
 
 *.pdf
-
+build/
+dist/
+@
 .DS_Store

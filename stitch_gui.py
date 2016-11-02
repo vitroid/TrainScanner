@@ -10,6 +10,7 @@ from PyQt4 import QtCore, QtGui
 import stitch
 import math
 import numpy as np
+import cv2
 
 class RenderThread(QtCore.QThread):
     renderedImage = QtCore.pyqtSignal(QtGui.QImage)  # it is target of emit()
@@ -74,6 +75,8 @@ class RenderThread(QtCore.QThread):
                         
 
             self.mutex.lock()
+            self.cv2toQImage(canvas)  # conversion twice = original
+            cv2.imwrite("{0}.png".format(self.movie), canvas)
             if not self.restart:
                 self.condition.wait(self.mutex)
             self.restart = False
