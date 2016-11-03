@@ -7,6 +7,28 @@ import cv2
 import numpy as np
 import math
 
+
+
+#fit image in a square
+def fit_to_square(image, size):
+    h,w = image.shape[0:2]
+    modified = False
+    if h > w:
+        if h > size:
+            w = w*size/h
+            h = size
+            modified = True
+    else:
+        if w > size:
+            h = h*size/w
+            w = size
+            modified = True
+    if not modified:
+        return image
+    return cv2.resize(image,(w,h),interpolation = cv2.INTER_CUBIC)
+
+
+
 def draw_focus_area(f, focus, delta=0):
     h, w = f.shape[0:2]
     pos = [w*focus[0]/1000,w*focus[1]/1000,h*focus[2]/1000,h*focus[3]/1000]
@@ -59,7 +81,7 @@ def draw_guide(frame, pers, gauge=True):
         cv2.line(frame, (0,pers[0]*h/1000), (w,pers[1]*h/1000), (255, 0, 0), 1)
         cv2.line(frame, (0,pers[2]*h/1000), (w,pers[3]*h/1000), (255, 0, 0), 1)
 
-def motion(ref, img, focus=(333, 666, 333, 666), margin=0, delta=(0,0)):
+def motion(ref, img, focus=(333, 666, 333, 666), margin=0, delta=(0,0), antishake=2):
     hi,wi = img.shape[0:2]
     wmin = wi*focus[0]/1000
     wmax = wi*focus[1]/1000
@@ -84,7 +106,21 @@ def motion(ref, img, focus=(333, 666, 333, 666), margin=0, delta=(0,0)):
         res = cv2.matchTemplate(crop,template,cv2.TM_SQDIFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         #loc is given by x,y
-        return (min_loc[0] + roix0 - wmin, min_loc[1] + roiy0 - hmin)
+
+        #Test: isn't it just a background?
+        roix02 = wmin - antishake
+        roiy02 = hmin - antishake
+        roix12 = wmax + antishake
+        roiy12 = hmax + antishake
+        crop = ref[roiy02:roiy12, roix02:roix12, :]
+        res = cv2.matchTemplate(crop,template,cv2.TM_SQDIFF_NORMED)
+        min_val2, max_val2, min_loc2, max_loc2 = cv2.minMaxLoc(res)
+        #loc is given by x,y
+        if min_val <= min_val2:
+            return (min_loc[0] + roix0 - wmin, min_loc[1] + roiy0 - hmin)
+        else:
+            return (min_loc2[0] + roix02 - wmin, min_loc2[1] + roiy02 - hmin)
+        
 
 #global
 alphas = dict()
@@ -362,7 +398,7 @@ if __name__ == "__main__":
             preview(nextframe, "Debug", focus=focus)
             
         if margin > 0 and onWork:
-            dx0,dy0 = motion(frame, nextframe, focus=focus, margin=margin, delta=(lastdx,lastdy) )
+            dx0,dy0 = motion(frame, nextframe, focus=focus, margin=margin, delta=(lastdx,lastdy), antishake=antishake )
         else:
             dx0,dy0 = motion(frame, nextframe, focus=focus)
             

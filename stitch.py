@@ -55,7 +55,64 @@ class Stitcher(Canvas):
     """
     exclude video handling
     """
-    def __init__(self, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=None):
+    def __init__(self, argv=None, filename="", istream=None, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=None):
+        if argv is None:
+            self.initWithParams(filename=filename, istream=istream, angle=angle, pers=pers, slitpos=slitpos, slitwidth=slitwidth, visual=visual, scale=scale, crop=crop, dimen=dimen)
+        else:
+            self.initWithArgv(argv)
+
+    def initWithArgv(self,argv):
+        import sys
+
+        debug = False #True
+        slitpos = 250
+        slitwidth = 1
+        film = False
+        helix = False
+        label= ""
+        dimen = None
+        # -r and -p option must be identical to pass1.py
+        #(or they may be given in the input file)
+        while len(argv) > 1:
+            if argv[1] in ("-d", "--debug"):
+                debug = True
+            elif argv[1] in ("-C", "--canvas"):
+                dimen = [int(x) for x in argv.pop(2).split(",")]
+            elif argv[1] in ("-s", "--slit"):
+                slitpos = int(argv.pop(2))
+            elif argv[1] in ("-w", "--width"):
+                slitwidth = float(argv.pop(2))
+            elif argv[1] in ("-l", "--label"):
+                label = argv.pop(2)
+            elif argv[1][0] == "-":
+                print("Unknown option: ", argv[1])
+                Usage(argv)
+            argv.pop(1)
+
+        #if len(sys.argv) != 2:
+        if len(argv) != 1:
+            Usage(argv)
+        LOG = sys.stdin
+        line = LOG.readline()
+        filename = line.splitlines()[0] #chomp
+        angle = 0
+        gpts = None #np.float32([380, 350, 1680, 1715])
+        crop = 0,1000
+        while True:
+            line = LOG.readline()
+            if line[0:3] == "#-r":
+                angle = -float(line.split()[1]) * math.pi / 180
+            elif line[0:3] == "#-p":
+                gpts  = [int(x) for x in line.split()[1].split(",")]
+            elif line[0:3] == "#-c":
+                crop  = [int(x) for x in line.split()[1].split(",")]
+            else:
+                break
+        self.initWithParams(filename=filename, istream=LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=1, crop=crop, dimen=dimen)
+
+    def initWithParams(self, filename="", istream=None, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=None):
+        self.filename = filename
+
         self.angle = angle
         self.pers  = pers
         self.slitpos = slitpos
@@ -67,7 +124,23 @@ class Stitcher(Canvas):
         self.crop  = crop
         if dimen is None:
             dimen = (10,10,0,0)
+        self.dimen = dimen
         Canvas.__init__(self,np.zeros((dimen[1],dimen[0],3),np.uint8), dimen[2:4]) #python2 style
+        locations = [(1,0,0,0,0)] #frame,absx, absy,dx,dy
+        for line in istream.readlines():
+            if len(line) > 0 and line[0] != '@':
+                cols = [int(x) for x in line.split()]
+                if len(cols) > 0:
+                    locations.append(cols)
+        self.locations = locations
+        self.total_frames = len(locations)
+            
+
+    def progress(self):
+        den = self.total_frames
+        num = den - len(self.locations)
+        return (num, den)
+    
     def add_image(self, frame, absx,absy,idx,idy):
         imgh, imgw = frame.shape[0:2]
         #self.h, self.w = imgh,imgw  #transformed size
@@ -98,20 +171,17 @@ class Stitcher(Canvas):
             cv2.waitKey(1)  #This causes ERROR
 
 
-    def stitch(self, movie, istream):
-        self.before(movie, istream)
-        while True:
+    def stitch(self):
+        self.before()
+        result = None
+        while result is None:
             result = self.onestep()
-            if result is not None:
-                return result
+        self.after()
+                
 
 
-    def before(self, movie, istream):
-        self.movie = movie
-        self.istream = istream
-        line = self.istream.readline()
-        self.frame0, self.absx, self.absy, self.idx, self.idy = 1,0,0,0,0
-        self.cap = cv2.VideoCapture(movie)
+    def before(self):
+        self.cap = cv2.VideoCapture(self.filename)
         self.frames = 0  #1 is the first frame
 
     def onestep(self):
@@ -119,79 +189,17 @@ class Stitcher(Canvas):
         if not ret:
             return self.canvas[0]
         self.frames += 1
-        if self.frames == self.frame0:
-            self.add_image(frame, self.absx, self.absy, self.idx, self.idy) #ugly
-            line = self.istream.readline()
-            if len(line) == 0 or line[0] == "@":
+        if self.frames == self.locations[0][0]:
+            self.add_image(frame, *self.locations[0][1:])
+            self.locations.pop(0)
+            if len(self.locations) == 0:
                 return self.canvas[0]
-            self.frame0, self.absx,self.absy,self.idx,self.idy = [int(x) for x in line.split()]
         return None  #not end
 
-
+    def after(self):
+        cv2.imwrite("{0}.png".format(self.filename), self.canvas[0])
+        
 
 if __name__ == "__main__":
-    import sys
-
-    debug = False #True
-    slitpos = 250
-    slitwidth = 1
-    film = False
-    helix = False
-    label= ""
-    dimen = None
-    # -r and -p option must be identical to pass1.py
-    #(or they may be given in the input file)
-    while len(sys.argv) > 1:
-        if sys.argv[1] in ("-d", "--debug"):
-            debug = True
-        elif sys.argv[1] in ("-C", "--canvas"):
-            dimen = [int(x) for x in sys.argv.pop(2).split(",")]
-        elif sys.argv[1] in ("-s", "--slit"):
-            slitpos = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-w", "--width"):
-            slitwidth = float(sys.argv.pop(2))
-        elif sys.argv[1] in ("-l", "--label"):
-            label = sys.argv.pop(2)
-        elif sys.argv[1] in ("-F", "--film"):
-            film = True
-        elif sys.argv[1] in ("-H", "--helix"):
-            helix = True
-        elif sys.argv[1][0] == "-":
-            print("Unknown option: ", sys.argv[1])
-            Usage(sys.argv)
-        sys.argv.pop(1)
-
-    #if len(sys.argv) != 2:
-    if len(sys.argv) != 1:
-        Usage(sys.argv)
-    #movie = sys.argv[1]
-    #LOG = open("{0}.pass1.log".format(movie))
-    LOG = sys.stdin
-    line = LOG.readline()
-    movie = line.splitlines()[0] #chomp
-    angle = 0
-    gpts = None #np.float32([380, 350, 1680, 1715])
-    crop = 0,1000
-    while True:
-        line = LOG.readline()
-        if line[0:3] == "#-r":
-            angle = -float(line.split()[1]) * math.pi / 180
-        elif line[0:3] == "#-p":
-            gpts  = [int(x) for x in line.split()[1].split(",")]
-        elif line[0:3] == "#-c":
-            crop  = [int(x) for x in line.split()[1].split(",")]
-        else:
-            break
-    st = Stitcher(angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=1, crop=crop, dimen=dimen)
-    canvas = st.stitch(movie, LOG)
-    cv2.imwrite("{0}.png".format(movie), canvas)
-    if film:
-        import film
-        canvas = film.filmify(canvas, label=label)
-        movie += ".film"
-        cv2.imwrite("{0}.jpg".format(movie), canvas)
-    if helix:
-        import helix
-        canvas = helix.helicify(canvas)
-        movie += ".helix"
-        cv2.imwrite("{0}.jpg".format(movie), canvas)
+    st = Stitcher(argv=sys.argv)
+    st.stitch()

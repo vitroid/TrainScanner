@@ -7,9 +7,11 @@ import cv2
 import numpy as np
 import math
 import trainscanner
+import sys
+
     
 
-def diffview(frame1,frame2,dx,dy,focus=None,slitpos=None):
+def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
     affine = np.matrix(((1.0,0.0,dx),(0.0,1.0,dy)))
     h,w = frame1.shape[0:2]
     frame1 = cv2.warpAffine(frame1, affine, (w,h))
@@ -18,8 +20,7 @@ def diffview(frame1,frame2,dx,dy,focus=None,slitpos=None):
         trainscanner.draw_focus_area(diff, focus, delta=dx)
     if slitpos is not None:
         trainscanner.draw_slit_position(diff, slitpos, dx)
-    cv2.imshow("pass1", diff)
-    cv2.waitKey(1)
+    return diff
 
 
 #Automatically extensible canvas.
@@ -44,7 +45,7 @@ def canvas_size(canvas_dimen, image, x, y):
 
 
 def Usage(argv):
-    print("usage: {0} [-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] movie".format(argv[0]))
+    print("usage: {0} [-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] filename".format(argv[0]))
     print("\t-a x\tAntishake.  Ignore motion smaller than x pixels (5).")
     print("\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)")
     print("\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only.")
@@ -58,9 +59,68 @@ def Usage(argv):
 
 
 class Pass1():
-    def __init__(self,movie,seek=0,angle=0,pers=None,crop=[0,1000],every=1, identity=2.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, ):
-        self.movie    = movie
-        self.cap      = cv2.VideoCapture(movie)
+    def __init__(self,argv=None,filename="",seek=0,angle=0,pers=None,crop=[0,1000],every=1, identity=2.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, ):
+        if argv is not None:
+            self.initWithArgv(argv)
+        else:
+            self.initWithParams(filename=filename, seek=seek, angle=angle, pers=pers, crop=crop, every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake)
+            
+    def initWithArgv(self, argv):
+        seek  = 0
+        zero  = False
+        pers = None 
+        antishake = 5
+        trailing = 10
+        angle = 0   #angle in degree
+        every = 1
+        identity = 2.0
+        crop = 0,1000
+        margin = 0 # pixels, work in progress.
+        #It may be able to unify with antishake.
+        focus = [333, 666, 333, 666]
+        while len(argv) > 2:
+            if argv[1] in ("-a", "--antishake"):
+                antishake = int(argv.pop(2))
+            elif argv[1] in ("-c", "--crop"):
+                param = argv.pop(2)
+                crop = [int(x) for x in param.split(",")]
+            elif argv[1] in ("-e", "--every"):
+                every = int(argv.pop(2))
+            elif argv[1] in ("-f", "--focus", "--frame"):
+                param = argv.pop(2)
+                focus = [int(x) for x in param.split(",")]
+            elif argv[1] in ("-i", "--identity"):
+                identity = float(argv.pop(2))
+            elif argv[1] in ("-m", "--margin"):
+                margin = int(argv.pop(2))
+            elif argv[1] in ("-p", "--pers", "--perspective"):
+                #followed by four numbers separated by comma.
+                #left top, bottom, right top, bottom
+                param = argv.pop(2)
+                pers  = [int(x) for x in param.split(",")]
+            elif argv[1] in ("-r", "--rotate"):
+                angle = float(argv.pop(2))
+            elif argv[1] in ("-S", "--seek"):
+                seek = int(argv.pop(2))
+            elif argv[1] in ("-t", "--trail"):
+                trailing = int(argv.pop(2))
+            elif argv[1] in ("-z", "--zero"):
+                zero  = True
+            elif argv[1][0] == "-":
+                print("Unknown option: ", argv[1])
+                Usage(argv)
+            argv.pop(1)
+
+        if len(argv) != 2:
+            Usage(argv)
+
+        filename = argv[1]
+        #call it as a normal method instead of a constructor.
+        self.initWithParams(filename=filename, seek=seek,angle=angle,pers=pers,crop=crop,every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake, )
+        
+    def initWithParams(self,filename="",seek=0,angle=0,pers=None,crop=[0,1000],every=1, identity=2.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, ):
+        self.filename    = filename
+        self.cap      = cv2.VideoCapture(filename)
         self.every    = every
         self.identity = identity
         self.margin   = margin
@@ -70,6 +130,7 @@ class Pass1():
         self.focus    = focus
         self.antishake= antishake
         self.nframes  = 0  #1 is the first frame
+        self.crop     = crop
         ret = True
         for i in range(seek):  #skip frames
             ret = self.cap.grab()
@@ -87,22 +148,25 @@ class Pass1():
         self.rotated_h, self.rotated_w = original_h,original_w
         if angle:
             #Apply rotation
-            self.R, self.rotated_w,self.rotated_h = trainscanner.rotate_matrix(angle, original_w, original_h)
+            self.R, self.rotated_w,self.rotated_h = trainscanner.rotate_matrix(-angle*math.pi/180, original_w, original_h)
             frame = cv2.warpAffine(frame, self.R, (self.rotated_w,self.rotated_h))
 
         if pers is not None:
             self.M = trainscanner.warp_matrix(pers,self.rotated_w,self.rotated_h)
             frame = cv2.warpPerspective(frame,self.M,(self.rotated_w,self.rotated_h))
+        else:
+            self.M = None
         #cropping
         self.frame = frame[crop[0]*self.rotated_h/1000:crop[1]*self.rotated_h/1000, :, :]
-        self.cropped_h,self.cropped_w = frame.shape[0:2]
+        self.cropped_h,self.cropped_w = self.frame.shape[0:2]
 
         #Prepare a scalable canvas with the origin.
         self.canvas = [self.cropped_w,self.cropped_h,100,0,0]
-
+        #sys.stderr.write("canvas size{0} {1} {2} {3}\n".format(self.canvas[0],self.canvas[1],*self.crop))
+        #sys.exit(1)
         self.LOG = sys.stdout
-        self.LOG.write("{0}\n".format(movie))
-        self.LOG.write("#-r {0}\n".format(degree))
+        self.LOG.write("{0}\n".format(filename))
+        self.LOG.write("#-r {0}\n".format(angle))
         if pers is not None:
             self.LOG.write("#-p {0},{1},{2},{3}\n".format(*pers))
         self.LOG.write("#-c {0},{1}\n".format(*crop))
@@ -117,15 +181,9 @@ class Pass1():
         self.absx,self.absy = 0, 0
         self.lastdx, self.lastdy = 0, 0
         self.tr = 0
-        preview_size = 500
-        self.preview_ratio = 1.0
-        if self.cropped_w > self.cropped_h:
-            if self.cropped_w > preview_size:
-                self.preview_ratio = float(preview_size) / self.cropped_w
-        else:
-            if self.cropped_h > preview_size:
-                self.preview_ratio = float(preview_size) / self.cropped_h
-        self.preview = cv2.resize(self.frame,None,fx=self.preview_ratio, fy=self.preview_ratio, interpolation = cv2.INTER_CUBIC)
+        self.preview_size = 500
+        self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
+        self.preview_ratio = float(self.preview.shape[0]) / self.frame.shape[0]
 
 
     def after(self):
@@ -136,23 +194,21 @@ class Pass1():
         for i in range(self.every-1):  #skip frames
             ret = self.cap.grab()
             if not ret:
-                return False
+                return None
             self.nframes += 1
-        if not ret:
-            return False
         ret, nextframe = self.cap.read()
         if not ret:
-            return False
+            return None
         if self.angle:
             nextframe = cv2.warpAffine(nextframe, self.R, (self.rotated_w,self.rotated_h))
             #w and h are sizes after rotation
         self.nframes += 1
-        if pers is not None:
+        if self.M is not None:
             #this does not change the aspect ratio
             nextframe = cv2.warpPerspective(nextframe,self.M,(self.rotated_w,self.rotated_h))
         #cropping
-        nextframe = nextframe[crop[0]*self.rotated_h/1000:crop[1]*self.rotated_h/1000, :, :]
-        nextpreview = cv2.resize(nextframe,None,fx=self.preview_ratio, fy=self.preview_ratio, interpolation = cv2.INTER_CUBIC)
+        nextframe = nextframe[self.crop[0]*self.rotated_h/1000:self.crop[1]*self.rotated_h/1000, :, :]
+        nextpreview = trainscanner.fit_to_square(nextframe,self.preview_size)
         #h,w = nextframe.shape[0:2]
         diff = cv2.absdiff(nextframe,self.frame)
         diff = np.sum(diff) / (self.cropped_h*self.cropped_w*3)
@@ -178,7 +234,7 @@ class Pass1():
                 dx = 0
             else:
                 dy = 0
-        diffview(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.focus)
+        diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.focus)
         if (abs(dx) > self.antishake or abs(dy) > self.antishake):
             self.onWork += 1
             self.tr = 0
@@ -191,78 +247,30 @@ class Pass1():
                     sys.stderr.write(">>({2}) {0} {1} #{3}\n".format(dx,dy,self.tr,np.amax(diff)))
                 else:
                     #end of work
-                    return False
+                    return None
         self.absx += dx
         self.absy += dy
         if self.onWork:
             self.lastdx, self.lastdy = dx,dy
             self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
+            #sys.stderr.write("canvas size{0} {1}\n".format(self.canvas[0],self.canvas[1]))
             self.LOG.write("{0} {1} {2} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy))
             self.LOG.flush()
             #This flushes the buffer, that causes immediate processing in the next command connected by a pipe "|"
         self.frame   = nextframe
         self.preview = nextpreview
-        return True
+        return diff_img
 
 
 if __name__ == "__main__":
-    import sys
-
-    seek  = 0
-    zero  = False
-    pers = None 
-    antishake = 5
-    trailing = 10
-    angle = 0
-    degree = 0
-    every = 1
-    identity = 2.0
-    crop = 0,1000
-    margin = 0 # pixels, work in progress.
-    #It may be able to unify with antishake.
-    focus = [333, 666, 333, 666]
-    while len(sys.argv) > 2:
-        if sys.argv[1] in ("-a", "--antishake"):
-            antishake = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-c", "--crop"):
-            param = sys.argv.pop(2)
-            crop = [int(x) for x in param.split(",")]
-        elif sys.argv[1] in ("-e", "--every"):
-            every = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-f", "--focus", "--frame"):
-            param = sys.argv.pop(2)
-            focus = [int(x) for x in param.split(",")]
-        elif sys.argv[1] in ("-i", "--identity"):
-            identity = float(sys.argv.pop(2))
-        elif sys.argv[1] in ("-m", "--margin"):
-            margin = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-p", "--pers", "--perspective"):
-            #followed by four numbers separated by comma.
-            #left top, bottom, right top, bottom
-            param = sys.argv.pop(2)
-            pers  = [int(x) for x in param.split(",")]
-        elif sys.argv[1] in ("-r", "--rotate"):
-            degree = float(sys.argv.pop(2))
-            angle = -degree * math.pi / 180
-        elif sys.argv[1] in ("-S", "--seek"):
-            seek = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-t", "--trail"):
-            trailing = int(sys.argv.pop(2))
-        elif sys.argv[1] in ("-z", "--zero"):
-            zero  = True
-        elif sys.argv[1][0] == "-":
-            print("Unknown option: ", sys.argv[1])
-            Usage(sys.argv)
-        sys.argv.pop(1)
-
-    if len(sys.argv) != 2:
-        Usage(sys.argv)
-
-    movie = sys.argv[1]
-    pass1 = Pass1(movie, seek=seek,angle=angle,pers=pers,crop=crop,every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake, )
-
+    pass1 = Pass1(argv=sys.argv)
     pass1.before()
     while True:
-        if False == pass1.onestep():
+        ret = pass1.onestep()
+        if ret is None:
             break
+        if ret is not True: #True means skipping
+            cv2.imshow("pass1", ret)
+            cv2.waitKey(1)
+            
     pass1.after()
