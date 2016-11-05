@@ -71,6 +71,7 @@ class Stitcher(Canvas):
         helix = False
         label= ""
         dimen = None
+        scale = 1.0
         # -r and -p option must be identical to pass1.py
         #(or they may be given in the input file)
         while len(argv) > 1:
@@ -80,6 +81,8 @@ class Stitcher(Canvas):
                 dimen = [int(x) for x in argv.pop(2).split(",")]
             elif argv[1] in ("-s", "--slit"):
                 slitpos = int(argv.pop(2))
+            elif argv[1] in ("-S", "--scale"):
+                scale = float(argv.pop(2))
             elif argv[1] in ("-w", "--width"):
                 slitwidth = float(argv.pop(2))
             elif argv[1] in ("-l", "--label"):
@@ -108,9 +111,9 @@ class Stitcher(Canvas):
                 crop  = [int(x) for x in line.split()[1].split(",")]
             else:
                 break
-        self.initWithParams(filename=filename, istream=LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=1, crop=crop, dimen=dimen)
+        self.initWithParams(filename=filename, istream=LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=scale, crop=crop, dimen=dimen)
 
-    def initWithParams(self, filename="", istream=None, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=None):
+    def initWithParams(self, filename="", istream=None, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=(10,10,0,0)):
         self.filename = filename
 
         self.angle = angle
@@ -120,17 +123,16 @@ class Stitcher(Canvas):
         self.visual = visual
         self.R = None
         self.M = None
-        self.ratio = scale
+        self.scale = scale
         self.crop  = crop
-        if dimen is None:
-            dimen = (10,10,0,0)
-        self.dimen = dimen
-        Canvas.__init__(self,np.zeros((dimen[1],dimen[0],3),np.uint8), dimen[2:4]) #python2 style
+        self.dimen = [int(x*scale) for x in dimen]
+        Canvas.__init__(self,np.zeros((self.dimen[1],self.dimen[0],3),np.uint8), self.dimen[2:4]) #python2 style
         locations = [(1,0,0,0,0)] #frame,absx, absy,dx,dy
         for line in istream.readlines():
             if len(line) > 0 and line[0] != '@':
                 cols = [int(x) for x in line.split()]
                 if len(cols) > 0:
+                    cols[1:] = [int(x*self.scale) for x in cols[1:]]
                     locations.append(cols)
         self.locations = locations
         self.total_frames = len(locations)
@@ -148,24 +150,19 @@ class Stitcher(Canvas):
             #Apply rotation
             self.R, self.rotated_w, self.rotated_h = trainscanner.rotate_matrix(self.angle, imgw,imgh)
             #print(self.w,self.h,"*"
-            self.R *= self.ratio
-            self.rotated_w *= self.ratio
-            self.rotated_h *= self.ratio
-            self.rotated_w = int(self.rotated_w)
-            self.rotated_h = int(self.rotated_h)
         if self.M is None and self.pers is not None:
-            self.M = trainscanner.warp_matrix(self.pers, self.rotated_w, self.rotated_h)
+            self.M,self.warpedw = trainscanner.warp_matrix2(self.pers, self.rotated_w, self.rotated_h)
 
-        #rotate andd scale
+        #rotate and scale
         frame = cv2.warpAffine(frame, self.R, (self.rotated_w,self.rotated_h))
         if self.M is not None:
-            frame = cv2.warpPerspective(frame,self.M,(self.rotated_w,self.rotated_h))
+            frame = cv2.warpPerspective(frame,self.M,(self.warpedw,self.rotated_h))
         frame = frame[self.crop[0]*self.rotated_h/1000:self.crop[1]*self.rotated_h/1000, :, :]
         cropped_h,cropped_w = frame.shape[0:2]
         
-        alpha = trainscanner.make_vert_alpha( int(idx*self.ratio), cropped_w, cropped_h, self.slitpos, self.slitwidth )
+        alpha = trainscanner.make_vert_alpha( int(idx), cropped_w, cropped_h, self.slitpos, self.slitwidth )
         #cv2.imshow("", alpha)
-        self.abs_merge(frame, int(absx*self.ratio), int(absy*self.ratio), alpha=alpha)
+        self.abs_merge(frame, absx, absy, alpha=alpha)
         if self.visual:
             cv2.imshow("canvas", self.canvas[0])
             cv2.waitKey(1)  #This causes ERROR
@@ -190,6 +187,7 @@ class Stitcher(Canvas):
             return self.canvas[0]
         self.frames += 1
         if self.frames == self.locations[0][0]:
+            frame = cv2.resize(frame, None, fx=self.scale, fy=self.scale)
             self.add_image(frame, *self.locations[0][1:])
             self.locations.pop(0)
             if len(self.locations) == 0:

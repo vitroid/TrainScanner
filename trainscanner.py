@@ -102,6 +102,10 @@ def motion(ref, img, focus=(333, 666, 333, 666), margin=0, delta=(0,0), antishak
         roiy0 = hmin + delta[1] - margin
         roix1 = wmax + delta[0] + margin
         roiy1 = hmax + delta[1] + margin
+        refh,refw = ref.shape[0:2]
+        if roix0 < 0 or roix1 >= refw or roiy0 < 0 or roiy1 >= refh:
+            #print(roix0,roix1,roiy0,roiy1,refw,refh)
+            return None
         crop = ref[roiy0:roiy1, roix0:roix1, :]
         res = cv2.matchTemplate(crop,template,cv2.TM_SQDIFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
@@ -225,7 +229,7 @@ def preview(frame, name="Preview", focus=None, size=700.):
     cv2.waitKey(1)
 
 
-def warp_matrix(pers, w,h):
+def warp_matrix0(pers, w,h):
     """
     Warp.  Save the perspective matrix to the file for future use.
      """
@@ -234,6 +238,27 @@ def warp_matrix(pers, w,h):
     p2 = np.float32([(0, (pers[0]*pers[1])**0.5*h/1000), (w,(pers[0]*pers[1])**0.5*h/1000),
                         (0,(pers[2]*pers[3])**0.5*h/1000), (w,(pers[2]*pers[3])**0.5*h/1000)])
     return cv2.getPerspectiveTransform(p1,p2)
+
+
+def warp_matrix2(pers, w,h):
+    """
+    Warp.  Save the perspective matrix to the file for future use.
+    """
+    L = (pers[2]-pers[0])*h/1000
+    S = (pers[3]-pers[1])*h/1000
+    if L < S:
+        L,S  = S,L
+    LS = (L*S)**0.5
+    fdist = float(L)/S
+    ndist = LS/S
+    sratio = ((fdist - 1.0)**2 + 1)**0.5
+    neww = int(w*sratio/ndist)
+    woffset = (neww - w)/2
+    p1 = np.float32([(0,pers[0]*h/1000), (w,pers[1]*h/1000), (0,pers[2]*h/1000), (w,pers[3]*h/1000)])
+    #Unskew
+    p2 = np.float32([(0, (pers[0]*pers[1])**0.5*h/1000), (neww,(pers[0]*pers[1])**0.5*h/1000),
+                        (0,(pers[2]*pers[3])**0.5*h/1000), (neww,(pers[2]*pers[3])**0.5*h/1000)])
+    return cv2.getPerspectiveTransform(p1,p2),neww
 
 
 

@@ -109,8 +109,10 @@ class Example(QWidget):
         st = stitch.Stitcher(argv=sys.argv)
         #determine the shrink ratio to avoid too huge preview
         preview_ratio = 1.0
-        if st.dimen[0] > 1600:
-            preview_ratio = 1600.0 / st.dimen[0]
+        if st.dimen[0] > 10000:
+            preview_ratio = 10000.0 / st.dimen[0]
+        if st.dimen[1]*preview_ratio > 500:
+            preview_ratio = 500.0 / st.dimen[1]
 
         self.thread = QThread()
         self.thread.start()
@@ -126,7 +128,7 @@ class Example(QWidget):
 
         self.scrollArea = QScrollArea()
         self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
+        self.scrollArea.resize(500,height)
         self.largecanvas = ExtensibleCanvasWidget(width, height)
         self.worker.frameRendered.connect(self.largecanvas.updatePixmap)
         #Do not close the window when finished.

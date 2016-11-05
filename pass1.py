@@ -59,7 +59,7 @@ def Usage(argv):
 
 
 class Pass1():
-    def __init__(self,argv=None,filename="",seek=0,angle=0,pers=None,crop=[0,1000],every=1, identity=2.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, ):
+    def __init__(self,argv=None,filename="",seek=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, ):
         if argv is not None:
             self.initWithArgv(argv)
         else:
@@ -73,8 +73,9 @@ class Pass1():
         trailing = 10
         angle = 0   #angle in degree
         every = 1
-        identity = 2.0
+        identity = 1.0
         crop = 0,1000
+        runin = True
         margin = 0 # pixels, work in progress.
         #It may be able to unify with antishake.
         focus = [333, 666, 333, 666]
@@ -106,6 +107,8 @@ class Pass1():
                 trailing = int(argv.pop(2))
             elif argv[1] in ("-z", "--zero"):
                 zero  = True
+            elif argv[1] in ("-x", "--stall"):
+                runin = False
             elif argv[1][0] == "-":
                 print("Unknown option: ", argv[1])
                 Usage(argv)
@@ -116,9 +119,9 @@ class Pass1():
 
         filename = argv[1]
         #call it as a normal method instead of a constructor.
-        self.initWithParams(filename=filename, seek=seek,angle=angle,pers=pers,crop=crop,every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake, )
+        self.initWithParams(filename=filename, seek=seek,angle=angle,pers=pers,crop=crop,every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake, runin=runin )
         
-    def initWithParams(self,filename="",seek=0,angle=0,pers=None,crop=[0,1000],every=1, identity=2.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, ):
+    def initWithParams(self,filename="",seek=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, runin=True):
         self.filename    = filename
         self.cap      = cv2.VideoCapture(filename)
         self.every    = every
@@ -131,6 +134,7 @@ class Pass1():
         self.antishake= antishake
         self.nframes  = 0  #1 is the first frame
         self.crop     = crop
+        self.runin    = runin
         ret = True
         for i in range(seek):  #skip frames
             ret = self.cap.grab()
@@ -144,6 +148,7 @@ class Pass1():
         self.nframes += 1
         if not ret:
             sys.exit(0)
+        self.rawframe = frame.copy()
         original_h, original_w, d = frame.shape
         self.rotated_h, self.rotated_w = original_h,original_w
         if angle:
@@ -152,8 +157,8 @@ class Pass1():
             frame = cv2.warpAffine(frame, self.R, (self.rotated_w,self.rotated_h))
 
         if pers is not None:
-            self.M = trainscanner.warp_matrix(pers,self.rotated_w,self.rotated_h)
-            frame = cv2.warpPerspective(frame,self.M,(self.rotated_w,self.rotated_h))
+            self.M, self.warpedw = trainscanner.warp_matrix2(pers,self.rotated_w,self.rotated_h)
+            frame = cv2.warpPerspective(frame,self.M,(self.warpedw,self.rotated_h))
         else:
             self.M = None
         #cropping
@@ -177,10 +182,19 @@ class Pass1():
         """
         prepare for the loop
         """
-        self.onWork = 0
         self.absx,self.absy = 0, 0
-        self.lastdx, self.lastdy = 0, 0
+        self.velx, self.vely = 0.0, 0.0
         self.tr = 0
+        if self.runin:
+            #we cannot predict the run-in velocity
+            #so the prediction is off by default.
+            self.predict = False
+        else:
+            #runin=False means the train is stalling.
+            #prediction must be on by default.
+            self.predict = True
+            self.tr = 1
+        self.precount = 0
         self.preview_size = 500
         self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
         self.preview_ratio = float(self.preview.shape[0]) / self.frame.shape[0]
@@ -191,72 +205,94 @@ class Pass1():
 
     def onestep(self):
         ret = True
-        for i in range(self.every-1):  #skip frames
+        ##### Pick up every x frame
+        for i in range(self.every-1):
             ret = self.cap.grab()
+            self.nframes += 1
             if not ret:
                 return None
-            self.nframes += 1
         ret, nextframe = self.cap.read()
+        self.nframes += 1
+        ##### return None if the frame is empty
         if not ret:
             return None
-        if self.angle:
-            nextframe = cv2.warpAffine(nextframe, self.R, (self.rotated_w,self.rotated_h))
-            #w and h are sizes after rotation
-        self.nframes += 1
-        if self.M is not None:
-            #this does not change the aspect ratio
-            nextframe = cv2.warpPerspective(nextframe,self.M,(self.rotated_w,self.rotated_h))
-        #cropping
-        nextframe = nextframe[self.crop[0]*self.rotated_h/1000:self.crop[1]*self.rotated_h/1000, :, :]
-        nextpreview = trainscanner.fit_to_square(nextframe,self.preview_size)
-        #h,w = nextframe.shape[0:2]
-        diff = cv2.absdiff(nextframe,self.frame)
-        diff = np.sum(diff) / (self.cropped_h*self.cropped_w*3)
+        ##### compare with the previous raw frame
+        diff = cv2.absdiff(nextframe,self.rawframe)
+        ##### preserve the raw frame for next comparison.
+        self.rawframe = nextframe.copy()
+        diff = np.sum(diff) / np.product(diff.shape)
         if diff < self.identity:
             sys.stderr.write("skip identical frame #{0}\n".format(diff))
             #They are identical frames
             #This happens when the frame rate difference is compensated.
             return True
-        #focusing after applying cropping.
-        #This means focus area moves when croppings are changed.
-        #It should be OK, because motion detection area must be always inside the image.
-        if self.margin > 0 and self.onWork > 10:
+        ##### Warping the frame
+        #######(1) rotation
+        if self.angle:
+            nextframe = cv2.warpAffine(nextframe, self.R, (self.rotated_w,self.rotated_h))
+            #w and h are sizes after rotation
+        #######(2) skew deformation
+        if self.M is not None:
+            #this does not change the aspect ratio
+            nextframe = cv2.warpPerspective(nextframe,self.M,(self.warpedw,self.rotated_h))
+        #######(3) top-bottom crop
+        nextframe = nextframe[self.crop[0]*self.rotated_h/1000:self.crop[1]*self.rotated_h/1000, :, :]
+        ##### Make the preview image
+        nextpreview = trainscanner.fit_to_square(nextframe,self.preview_size)
+        ##### motion detection.
+        #if margin is set, motion detection area becomes very narrow
+        #assuming that the train is running at constant speed.
+        #This mode is activated after the 10th frames.
+
+        #Now I do care only magrin case.
+        if self.margin > 0 and self.predict:
             #do not apply margin for the first 10 frames
             #because the velocity uncertainty.
-            dx,dy = trainscanner.motion(self.frame, nextframe, focus=self.focus, margin=self.margin, delta=(self.lastdx,self.lastdy) )
+            delta = trainscanner.motion(self.frame, nextframe, focus=self.focus, margin=int(self.margin*self.tr), delta=(int(self.velx*self.tr),int(self.vely*self.tr)) )
+            if delta is None:
+                return None
+            dx,dy = delta
         else:
             dx,dy = trainscanner.motion(self.frame, nextframe, focus=self.focus)
             
-        sys.stderr.write("{0} {1} {2} #{3}\n".format(self.nframes,dx,dy,np.amax(diff)))
-
+        ##### Suppress drifting.
         if self.zero:
             if abs(dx) < abs(dy):
                 dx = 0
             else:
                 dy = 0
         diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.focus)
-        if (abs(dx) > self.antishake or abs(dy) > self.antishake):
-            self.onWork += 1
-            self.tr = 0
-        else:
-            if self.onWork:
-                if self.tr <= self.trailing:
-                    self.tr += 1
-                    dx = self.lastdx
-                    dy = self.lastdy
-                    sys.stderr.write(">>({2}) {0} {1} #{3}\n".format(dx,dy,self.tr,np.amax(diff)))
-                else:
-                    #end of work
-                    return None
+        ##### if the motion is very small
+        if self.predict and (abs(dx) < self.antishake and abs(dy) < self.antishake):
+            ##### accumulate the motion
+            ##### wait until motion becomes enough.
+            if self.tr <= self.trailing:
+                self.tr += 1
+                sys.stderr.write("({0} {1} {2})\n".format(self.nframes,dx,dy))
+                ####Do not update the original frame and preview.
+                ####That is, accumulate the changes.
+                ####tr is the number of accumulation.
+                return diff_img
+            else:
+                #end of work
+                return None
+        if self.predict:
+            self.velx = dx / self.tr
+            self.vely = dy / self.tr
+        elif (abs(dx) >= self.antishake or abs(dy) >= self.antishake):
+            self.precount += 1
+            if self.precount == 5:
+                self.predict = True
+                self.velx = dx
+                self.vely = dy
+
+        self.tr = 1
+        sys.stderr.write(" {0} {1} {2} {4} {5} #{3}\n".format(self.nframes,dx,dy,np.amax(diff), self.velx, self.vely))
         self.absx += dx
         self.absy += dy
-        if self.onWork:
-            self.lastdx, self.lastdy = dx,dy
-            self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
-            #sys.stderr.write("canvas size{0} {1}\n".format(self.canvas[0],self.canvas[1]))
-            self.LOG.write("{0} {1} {2} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy))
-            self.LOG.flush()
-            #This flushes the buffer, that causes immediate processing in the next command connected by a pipe "|"
+        self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
+        self.LOG.write("{0} {1} {2} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy))
+        self.LOG.flush()
         self.frame   = nextframe
         self.preview = nextpreview
         return diff_img

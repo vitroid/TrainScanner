@@ -161,6 +161,138 @@ class SettingsGUI(QWidget):
         rows = 0
         #http://myenigma.hatenablog.com/entry/2016/01/24/113413
 
+
+        
+        #Example of a slider with a label ###################################
+        #the slider is in a Hbox
+        
+        settings2_layout.addWidget(QLabel(self.tr('Slit mixing')), rows, 0, Qt.AlignRight)
+        
+        self.slitwidth_slider_valuelabel = QLabel(str(self.slitwidth))
+        settings2_layout.addWidget(self.slitwidth_slider_valuelabel, rows, 0.5)
+        
+        settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2)
+        self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.slitwidth_slider.setRange(1, 10)  # スライダの範囲
+        self.slitwidth_slider.setValue(5)  # 初期値
+        #スライダの目盛りを両方に出す
+        self.slitwidth_slider.setTickPosition(QSlider.TicksBelow)
+        self.connect(self.slitwidth_slider, SIGNAL('valueChanged(int)'), self.slitwidth_slider_on_draw)
+        settings2_layout.addWidget(self.slitwidth_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(self.tr('Diffuse')), rows, 4)
+
+        rows += 1
+        #####################################################################
+
+
+        #Example of a slider with a label ###################################
+        #the slider is in a Hbox
+
+        settings2_layout.addWidget(QLabel(self.tr('Minimal displacement between the frames')), rows, 0, Qt.AlignRight)
+        
+        self.antishake_slider_valuelabel = QLabel(str(self.antishake))
+        settings2_layout.addWidget(self.antishake_slider_valuelabel, rows, 1)
+        
+        settings2_layout.addWidget(QLabel(self.tr('Small')), rows, 2)
+        self.antishake_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.antishake_slider.setRange(0, 15)  # スライダの範囲
+        self.antishake_slider.setValue(5)  # 初期値
+        #スライダの目盛りを両方に出す
+        self.antishake_slider.setTickPosition(QSlider.TicksBelow)
+        self.connect(self.antishake_slider, SIGNAL('valueChanged(int)'), self.antishake_slider_on_draw)
+        settings2_layout.addWidget(self.antishake_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(self.tr('Large')), rows, 4)
+
+        rows += 1
+        #####################################################################
+
+
+        #####################################################################
+        #Example of a checkbox
+        settings2_layout.addWidget(QLabel(self.tr('Ignore vertical displacements')), rows, 0, Qt.AlignRight)
+        self.btn_zerodrift = QCheckBox()
+        self.btn_zerodrift.setCheckState(Qt.Checked)
+        #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
+        settings2_layout.addWidget(self.btn_zerodrift,rows, 1)
+        rows += 1
+        #####################################################################
+
+
+        #####################################################################
+        #Example of a checkbox
+        settings2_layout.addWidget(QLabel(self.tr('The train is initially stalling in the motion detection area.')), rows, 0, Qt.AlignRight)
+        self.btn_stall = QCheckBox()
+        #self.btn_stall.setCheckState(Qt.Checked)
+        #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
+        settings2_layout.addWidget(self.btn_stall,rows, 1)
+        rows += 1
+        #####################################################################
+
+
+        # #####################################################################
+        # #Example of a checkbox
+        # settings2_layout.addWidget(QLabel(self.tr('Limit maximum acceleration')), rows, 0, Qt.AlignRight)
+        # self.btn_accel = QCheckBox()
+        # self.btn_accel.setCheckState(Qt.Checked)
+        # settings2_layout.addWidget(self.btn_accel,rows, 1)
+        # rows += 1
+        # #####################################################################
+        # #Example of a slider with a label ###################################
+        # #the slider is in a Hbox
+
+        # #settings2_layout.addWidget(QLabel(self.tr('Permit camera waggle')), rows, 0, Qt.AlignRight)
+        
+        # self.accel_slider_valuelabel = QLabel(str(self.accel))
+        # settings2_layout.addWidget(self.accel_slider_valuelabel, rows, 1)
+        
+        # settings2_layout.addWidget(QLabel(self.tr('Smooth')), rows, 2)
+        # self.accel_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        # self.accel_slider.setRange(1, 5)  # スライダの範囲
+        # self.accel_slider.setValue(1)  # 初期値
+        # #スライダの目盛りを両方に出す
+        # self.accel_slider.setTickPosition(QSlider.TicksBelow)
+        # self.connect(self.accel_slider, SIGNAL('valueChanged(int)'), self.accel_slider_on_draw)
+        # settings2_layout.addWidget(self.accel_slider, rows, 3)
+        # settings2_layout.addWidget(QLabel(self.tr('Jerky')), rows, 4)
+        # self.btn_accel.toggled.connect(self.btn_accel_toggle)
+
+        # rows += 1
+        # #####################################################################
+
+
+
+
+
+
+
+        
+        # #Example of a checkbox and slider with a label
+        # #-i (identity)
+
+        # settings2_layout.addWidget(QLabel(self.tr('Skip identical frames')), rows, 0, Qt.AlignRight)
+
+        # #self.btn_skipident = QCheckBox(self.tr('Skip identical frames'))
+        # #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
+        # #skipident_layout.addWidget(self.btn_skipident)
+        
+        
+        # self.skipident_valuelabel = QLabel(str(self.identity))
+        # settings2_layout.addWidget(self.skipident_valuelabel, rows, 1)
+    
+        # settings2_layout.addWidget(QLabel(self.tr('Strict')), rows, 2)
+        # self.identthres_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        # self.identthres_slider.setRange(1, 5)  # スライダの範囲
+        # self.identthres_slider.setValue(2)  # 初期値
+        # #スライダの目盛りを両方に出す
+        # self.identthres_slider.setTickPosition(QSlider.TicksBelow)
+        # self.connect(self.identthres_slider, SIGNAL('valueChanged(int)'), self.identthres_slider_on_draw)
+        # #the slider is in a Hbox
+        # settings2_layout.addWidget(self.identthres_slider, rows, 3)
+        # settings2_layout.addWidget(QLabel(self.tr('Loose')), rows, 4)
+        # rows += 1
+        # #####################################################################
+
+
         #Example of a slider with a label ###################################
         #the slider is in a Hbox
 
@@ -181,125 +313,6 @@ class SettingsGUI(QWidget):
 
         rows += 1
         #####################################################################
-
-        
-        #Example of a slider with a label ###################################
-        #the slider is in a Hbox
-        
-        settings2_layout.addWidget(QLabel(self.tr('Slit mixing')), rows, 0, Qt.AlignRight)
-        
-        self.slitwidth_slider_valuelabel = QLabel(str(self.slitwidth))
-        settings2_layout.addWidget(self.slitwidth_slider_valuelabel, rows, 1)
-        
-        settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2)
-        self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
-        self.slitwidth_slider.setRange(1, 30)  # スライダの範囲
-        self.slitwidth_slider.setValue(10)  # 初期値
-        #スライダの目盛りを両方に出す
-        self.slitwidth_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.slitwidth_slider, SIGNAL('valueChanged(int)'), self.slitwidth_slider_on_draw)
-        settings2_layout.addWidget(self.slitwidth_slider, rows, 3)
-        settings2_layout.addWidget(QLabel(self.tr('Diffuse')), rows, 4)
-
-        rows += 1
-        #####################################################################
-
-
-        #Example of a slider with a label ###################################
-        #the slider is in a Hbox
-
-        settings2_layout.addWidget(QLabel(self.tr('Permit camera waggle')), rows, 0, Qt.AlignRight)
-        
-        self.antishake_slider_valuelabel = QLabel(str(self.antishake))
-        settings2_layout.addWidget(self.antishake_slider_valuelabel, rows, 1)
-        
-        settings2_layout.addWidget(QLabel(self.tr('Small')), rows, 2)
-        self.antishake_slider = QSlider(Qt.Horizontal)  # スライダの向き
-        self.antishake_slider.setRange(1, 15)  # スライダの範囲
-        self.antishake_slider.setValue(5)  # 初期値
-        #スライダの目盛りを両方に出す
-        self.antishake_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.antishake_slider, SIGNAL('valueChanged(int)'), self.antishake_slider_on_draw)
-        settings2_layout.addWidget(self.antishake_slider, rows, 3)
-        settings2_layout.addWidget(QLabel(self.tr('Large')), rows, 4)
-
-        rows += 1
-        #####################################################################
-
-
-        #####################################################################
-        #Example of a checkbox
-        settings2_layout.addWidget(QLabel(self.tr('Ignore vertical displacements')), rows, 0, Qt.AlignRight)
-        self.btn_zerodrift = QCheckBox()
-        #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        settings2_layout.addWidget(self.btn_zerodrift,rows, 1)
-        rows += 1
-        #####################################################################
-
-
-        #####################################################################
-        #Example of a checkbox
-        settings2_layout.addWidget(QLabel(self.tr('Limit maximum acceleration')), rows, 0, Qt.AlignRight)
-        self.btn_accel = QCheckBox()
-        self.btn_accel.setCheckState(Qt.Checked)
-        settings2_layout.addWidget(self.btn_accel,rows, 1)
-        rows += 1
-        #####################################################################
-        #Example of a slider with a label ###################################
-        #the slider is in a Hbox
-
-        #settings2_layout.addWidget(QLabel(self.tr('Permit camera waggle')), rows, 0, Qt.AlignRight)
-        
-        self.accel_slider_valuelabel = QLabel(str(self.accel))
-        settings2_layout.addWidget(self.accel_slider_valuelabel, rows, 1)
-        
-        settings2_layout.addWidget(QLabel(self.tr('Smooth')), rows, 2)
-        self.accel_slider = QSlider(Qt.Horizontal)  # スライダの向き
-        self.accel_slider.setRange(1, 5)  # スライダの範囲
-        self.accel_slider.setValue(1)  # 初期値
-        #スライダの目盛りを両方に出す
-        self.accel_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.accel_slider, SIGNAL('valueChanged(int)'), self.accel_slider_on_draw)
-        settings2_layout.addWidget(self.accel_slider, rows, 3)
-        settings2_layout.addWidget(QLabel(self.tr('Jerky')), rows, 4)
-        self.btn_accel.toggled.connect(self.btn_accel_toggle)
-
-        rows += 1
-        #####################################################################
-
-
-
-
-
-
-
-        
-        #Example of a checkbox and slider with a label
-        #-i (identity)
-
-        settings2_layout.addWidget(QLabel(self.tr('Skip identical frames')), rows, 0, Qt.AlignRight)
-
-        #self.btn_skipident = QCheckBox(self.tr('Skip identical frames'))
-        #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        #skipident_layout.addWidget(self.btn_skipident)
-        
-        
-        self.skipident_valuelabel = QLabel(str(self.identity))
-        settings2_layout.addWidget(self.skipident_valuelabel, rows, 1)
-    
-        settings2_layout.addWidget(QLabel(self.tr('Strict')), rows, 2)
-        self.identthres_slider = QSlider(Qt.Horizontal)  # スライダの向き
-        self.identthres_slider.setRange(1, 5)  # スライダの範囲
-        self.identthres_slider.setValue(2)  # 初期値
-        #スライダの目盛りを両方に出す
-        self.identthres_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.identthres_slider, SIGNAL('valueChanged(int)'), self.identthres_slider_on_draw)
-        #the slider is in a Hbox
-        settings2_layout.addWidget(self.identthres_slider, rows, 3)
-        settings2_layout.addWidget(QLabel(self.tr('Loose')), rows, 4)
-        rows += 1
-        #####################################################################
-
 
 
         gbox_settings.setLayout(settings2_layout)
@@ -359,8 +372,8 @@ class SettingsGUI(QWidget):
         
 
 
-    def btn_accel_toggle(self, state):
-        self.accel_slider.setEnabled(state)
+##    def btn_accel_toggle(self, state):
+##        self.accel_slider.setEnabled(state)
 
         
     def trailing_slider_on_draw(self):
@@ -378,19 +391,20 @@ class SettingsGUI(QWidget):
         self.antishake_slider_valuelabel.setText(str(self.antishake))
 
 
-    def accel_slider_on_draw(self):
-        self.accel = self.accel_slider.value()
-        self.accel_slider_valuelabel.setText(str(self.accel))
+##    def accel_slider_on_draw(self):
+##        self.accel = self.accel_slider.value()
+##        self.accel_slider_valuelabel.setText(str(self.accel))
 
 
-    def identthres_slider_on_draw(self):
-        self.identity = self.identthres_slider.value()
-        self.skipident_valuelabel.setText(str(self.identity))
+##    def identthres_slider_on_draw(self):
+##        self.identity = self.identthres_slider.value()
+##        self.skipident_valuelabel.setText(str(self.identity))
 
 
     def start_process(self):
         if self.editor is None:
             return
+        ###self.sefDisabled(True)
         pass1_options = " -r {0}".format(self.editor.angle_degree)
         pass1_options += " -t {0}".format(self.trailing)
         pass1_options += " -a {0}".format(self.antishake)
@@ -399,17 +413,21 @@ class SettingsGUI(QWidget):
         pass1_options += " -c {0},{1}".format(self.editor.croptop,self.editor.cropbottom)
         if self.btn_zerodrift.isChecked():
             pass1_options += " -z"
-        if self.btn_accel.isChecked():
-            pass1_options += " -m {0}".format(self.accel)
+        if self.btn_stall.isChecked():
+            pass1_options += " -x"
+##        if self.btn_accel.isChecked():
+##            pass1_options += " -m {0}".format(self.accel)
+        pass1_options += " -m 1"
         #if self.btn_skipident.isChecked():
-        pass1_options += " -i {0}".format(self.identity)
+##        pass1_options += " -i {0}".format(self.identity)
+        #pass1_options += " -e 5"   ##for debug
         stitch_options = " -s {0}".format(self.editor.slitpos)
         stitch_options += " -w {0}".format(self.slitwidth)
             
         file_name = self.filename
         cmd = []
         if self.btn_finish_stitch.isChecked():
-            print("./pass1_gui.py {0} {1} >  {1}.pass1.log".format(pass1_options, file_name))
+            print("./pass1_gui.py {0} '{1}' >  '{1}.pass1.log'".format(pass1_options, file_name))
             ret = os.system("./pass1_gui.py {0} '{1}' >  '{1}'.pass1.log".format(pass1_options, file_name))
             if ret:  #error or terminated
                 return
@@ -431,6 +449,7 @@ class SettingsGUI(QWidget):
             file_name += ".helix.jpg"
         print(" && ".join(cmd))
         subprocess.Popen(" && ".join(cmd), shell=True)
+        ###self.sefDisabled(False)
         
 
     def closeEvent(self,event):
@@ -698,8 +717,9 @@ class EditorGUI(QWidget):
         #color order is different between cv2 and pyqt
         self.put_cv2_image(image, self.raw_image_pane)
         #Right image: warped
-        M = trainscanner.warp_matrix(self.pers,width,height)
-        processed = cv2.warpPerspective(processed,M,(width,height))
+        #M = trainscanner.warp_matrix0(self.pers,width,height)
+        M,wwidth = trainscanner.warp_matrix2(self.pers,width,height)
+        processed = cv2.warpPerspective(processed,M,(wwidth,height))
         processed = processed[self.croptop*height/1000:self.cropbottom*height/1000, :, :]
         if region is not None:
             print(region)
