@@ -135,6 +135,7 @@ class Pass1():
         self.nframes  = 0  #1 is the first frame
         self.crop     = crop
         self.runin    = runin
+        self.pers     = pers
         ret = True
         for i in range(seek):  #skip frames
             ret = self.cap.grab()
@@ -149,24 +150,11 @@ class Pass1():
         if not ret:
             sys.exit(0)
         self.rawframe = frame.copy()
-        original_h, original_w, d = frame.shape
-        self.rotated_h, self.rotated_w = original_h,original_w
-        if angle:
-            #Apply rotation
-            self.R, self.rotated_w,self.rotated_h = trainscanner.rotate_matrix(-angle*math.pi/180, original_w, original_h)
-            frame = cv2.warpAffine(frame, self.R, (self.rotated_w,self.rotated_h))
-
-        if pers is not None:
-            self.M, self.warpedw = trainscanner.warp_matrix2(pers,self.rotated_w,self.rotated_h)
-            frame = cv2.warpPerspective(frame,self.M,(self.warpedw,self.rotated_h))
-        else:
-            self.M = None
-        #cropping
-        self.frame = frame[crop[0]*self.rotated_h/1000:crop[1]*self.rotated_h/1000, :, :]
-        self.cropped_h,self.cropped_w = self.frame.shape[0:2]
-
+        self.transform = trainscanner.transformation(self.angle, self.pers, self.crop)
+        rotated, warped, cropped = self.transform.process_first_image(frame)
+        self.frame = cropped
         #Prepare a scalable canvas with the origin.
-        self.canvas = [self.cropped_w,self.cropped_h,100,0,0]
+        self.canvas = [cropped.shape[1], cropped.shape[0],100,0,0]
         #sys.stderr.write("canvas size{0} {1} {2} {3}\n".format(self.canvas[0],self.canvas[1],*self.crop))
         #sys.exit(1)
         self.LOG = sys.stdout
@@ -227,16 +215,8 @@ class Pass1():
             #This happens when the frame rate difference is compensated.
             return True
         ##### Warping the frame
-        #######(1) rotation
-        if self.angle:
-            nextframe = cv2.warpAffine(nextframe, self.R, (self.rotated_w,self.rotated_h))
-            #w and h are sizes after rotation
-        #######(2) skew deformation
-        if self.M is not None:
-            #this does not change the aspect ratio
-            nextframe = cv2.warpPerspective(nextframe,self.M,(self.warpedw,self.rotated_h))
-        #######(3) top-bottom crop
-        nextframe = nextframe[self.crop[0]*self.rotated_h/1000:self.crop[1]*self.rotated_h/1000, :, :]
+        rotated, warped, cropped = self.transform.process_next_image(nextframe)
+        nextframe = cropped
         ##### Make the preview image
         nextpreview = trainscanner.fit_to_square(nextframe,self.preview_size)
         ##### motion detection.

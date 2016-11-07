@@ -28,6 +28,86 @@ def fit_to_square(image, size):
     return cv2.resize(image,(w,h),interpolation = cv2.INTER_CUBIC)
 
 
+class transformation():
+    def __init__(self, angle, pers, crop):
+        self.angle = -angle * math.pi / 180.0
+        self.pers = pers
+        self.crop = crop
+        self.R    = None
+        self.M    = None
+    def rotation_affine(self,w,h):
+        a = math.cos(self.angle)
+        b = math.sin(self.angle)
+        rh = max(abs(h*a), abs(w*b))
+        rw = max(abs(h*b), abs(w*a))
+        self.rh, self.rw = int(rh), int(rw)
+        self.R = np.matrix(((a,b,(1-a)*w/2 - b*h/2 +(rw-w)/2),(-b,a,b*w/2+(1-a)*h/2+(rh-h)/2)))
+    def rotated_image(self, image):
+        return cv2.warpAffine(image, self.R, (self.rw,self.rh))
+    def warp_affine(self):
+        """
+        Warp.  Save the perspective matrix to the file for future use.
+        """
+        w = self.rw
+        h = self.rh
+        L = (self.pers[2]-self.pers[0])*h/1000
+        S = (self.pers[3]-self.pers[1])*h/1000
+        if L < S:
+            L,S  = S,L
+        LS = (L*S)**0.5
+        fdist = float(L)/S
+        ndist = LS/S
+        sratio = ((fdist - 1.0)**2 + 1)**0.5
+        neww = int(w*sratio/ndist)
+        woffset = (neww - w)/2
+        p1 = np.float32([(0,self.pers[0]*h/1000),
+                         (w,self.pers[1]*h/1000),
+                         (0,self.pers[2]*h/1000),
+                         (w,self.pers[3]*h/1000)])
+        #Unskew
+        p2 = np.float32([(0, (self.pers[0]*self.pers[1])**0.5*h/1000),
+                         (neww,(self.pers[0]*self.pers[1])**0.5*h/1000),
+                         (0,(self.pers[2]*self.pers[3])**0.5*h/1000),
+                         (neww,(self.pers[2]*self.pers[3])**0.5*h/1000)])
+        self.M = cv2.getPerspectiveTransform(p1,p2)
+        self.ww = neww
+    def warped_image(self, image):
+        h = image.shape[0]
+        return cv2.warpPerspective(image,self.M,(self.ww,h))
+    def cropped_image(self, image):
+        h,w = image.shape[:2]
+        return image[self.crop[0]*h/1000:self.crop[1]*h/1000, :, :]
+    def process_first_image(self, image):
+        h,w = image.shape[:2]
+        self.rotation_affine(w,h)
+        self.warp_affine()
+        return self.process_next_image(image)
+    def process_next_image(self, image):
+        rotated = self.rotated_image(image)
+        warped  = self.warped_image(rotated)
+        cropped = self.cropped_image(warped)
+        return rotated, warped, cropped
+    def process_image(self, image):
+        if self.R is None:
+            return self.process_first_image(image)
+        else:
+            return self.process_next_image(image)
+    def process_images(self, images):
+        h,w = images[0].shape[:2]
+        self.rotation_affine(w,h)
+        self.warp_affine()
+        rs = []
+        ws = []
+        cs = []
+        for image in images:
+            rotated, warped, cropped = self.process_next_image(image)
+            rs.append(rotated)
+            ws.append(warped)
+            cs.append(cropped)
+        return rs,ws,cs
+        
+        
+    
 
 def draw_focus_area(f, focus, delta=0):
     h, w = f.shape[0:2]
@@ -240,40 +320,14 @@ def warp_matrix0(pers, w,h):
     return cv2.getPerspectiveTransform(p1,p2)
 
 
-def warp_matrix2(pers, w,h):
-    """
-    Warp.  Save the perspective matrix to the file for future use.
-    """
-    L = (pers[2]-pers[0])*h/1000
-    S = (pers[3]-pers[1])*h/1000
-    if L < S:
-        L,S  = S,L
-    LS = (L*S)**0.5
-    fdist = float(L)/S
-    ndist = LS/S
-    sratio = ((fdist - 1.0)**2 + 1)**0.5
-    neww = int(w*sratio/ndist)
-    woffset = (neww - w)/2
-    p1 = np.float32([(0,pers[0]*h/1000), (w,pers[1]*h/1000), (0,pers[2]*h/1000), (w,pers[3]*h/1000)])
-    #Unskew
-    p2 = np.float32([(0, (pers[0]*pers[1])**0.5*h/1000), (neww,(pers[0]*pers[1])**0.5*h/1000),
-                        (0,(pers[2]*pers[3])**0.5*h/1000), (neww,(pers[2]*pers[3])**0.5*h/1000)])
-    return cv2.getPerspectiveTransform(p1,p2),neww
 
 
 
-def rotate_matrix(angle,w,h):
-    a = math.cos(angle)
-    b = math.sin(angle)
-    rh = max(abs(h*a), abs(w*b))
-    rw = max(abs(h*b), abs(w*a))
-    rh, rw = int(rh), int(rw)
-    R = np.matrix(((a,b,(1-a)*w/2 - b*h/2 +(rw-w)/2),(-b,a,b*w/2+(1-a)*h/2+(rh-h)/2)))
-    return R,rw,rh
 
 if __name__ == "__main__":
     import sys
-
+    print("It is now useless for a command line tool. Use GUI or pass1.py.")
+    sys.exit(1)
     debug = False #True
     guide = False
     seek  = 0
@@ -375,7 +429,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if pers is not None:
-        M = warp_matrix(pers,w,h)
+        M = warp_matrix0(pers,w,h)
         frame = cv2.warpPerspective(frame,M,(w,h))
         print(M)
         np.save("{0}.perspective.npy".format(movie), M) #Required to recover the perspective

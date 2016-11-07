@@ -99,32 +99,30 @@ class Stitcher(Canvas):
         line = LOG.readline()
         filename = line.splitlines()[0] #chomp
         angle = 0
-        gpts = None #np.float32([380, 350, 1680, 1715])
+        pers = None #np.float32([380, 350, 1680, 1715])
         crop = 0,1000
         while True:
             line = LOG.readline()
             if line[0:3] == "#-r":
                 angle = -float(line.split()[1]) * math.pi / 180
             elif line[0:3] == "#-p":
-                gpts  = [int(x) for x in line.split()[1].split(",")]
+                pers  = [int(x) for x in line.split()[1].split(",")]
             elif line[0:3] == "#-c":
                 crop  = [int(x) for x in line.split()[1].split(",")]
             else:
                 break
-        self.initWithParams(filename=filename, istream=LOG, angle=angle, pers=gpts, slitpos=slitpos, slitwidth=slitwidth, scale=scale, crop=crop, dimen=dimen)
+        self.initWithParams(filename=filename, istream=LOG, angle=angle, pers=pers, slitpos=slitpos, slitwidth=slitwidth, scale=scale, crop=crop, dimen=dimen)
 
     def initWithParams(self, filename="", istream=None, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=(10,10,0,0)):
         self.filename = filename
 
-        self.angle = angle
-        self.pers  = pers
         self.slitpos = slitpos
         self.slitwidth = slitwidth
         self.visual = visual
         self.R = None
         self.M = None
         self.scale = scale
-        self.crop  = crop
+        self.transform = trainscanner.transformation(angle, pers, crop)
         self.dimen = [int(x*scale) for x in dimen]
         Canvas.__init__(self,np.zeros((self.dimen[1],self.dimen[0],3),np.uint8), self.dimen[2:4]) #python2 style
         locations = [(1,0,0,0,0)] #frame,absx, absy,dx,dy
@@ -144,25 +142,10 @@ class Stitcher(Canvas):
         return (num, den)
     
     def add_image(self, frame, absx,absy,idx,idy):
-        imgh, imgw = frame.shape[0:2]
-        #self.h, self.w = imgh,imgw  #transformed size
-        if self.R is None:
-            #Apply rotation
-            self.R, self.rotated_w, self.rotated_h = trainscanner.rotate_matrix(self.angle, imgw,imgh)
-            #print(self.w,self.h,"*"
-        if self.M is None and self.pers is not None:
-            self.M,self.warpedw = trainscanner.warp_matrix2(self.pers, self.rotated_w, self.rotated_h)
-
-        #rotate and scale
-        frame = cv2.warpAffine(frame, self.R, (self.rotated_w,self.rotated_h))
-        if self.M is not None:
-            frame = cv2.warpPerspective(frame,self.M,(self.warpedw,self.rotated_h))
-        frame = frame[self.crop[0]*self.rotated_h/1000:self.crop[1]*self.rotated_h/1000, :, :]
-        cropped_h,cropped_w = frame.shape[0:2]
-        
-        alpha = trainscanner.make_vert_alpha( int(idx), cropped_w, cropped_h, self.slitpos, self.slitwidth )
+        rotated,warped,cropped = self.transform.process_image(frame)
+        alpha = trainscanner.make_vert_alpha( int(idx), cropped.shape[1], cropped.shape[0], self.slitpos, self.slitwidth )
         #cv2.imshow("", alpha)
-        self.abs_merge(frame, absx, absy, alpha=alpha)
+        self.abs_merge(cropped, absx, absy, alpha=alpha)
         if self.visual:
             cv2.imshow("canvas", self.canvas[0])
             cv2.waitKey(1)  #This causes ERROR
