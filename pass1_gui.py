@@ -48,11 +48,11 @@ class Worker(QObject):
         self._isRunning = False
 
 
-class SimulationUi(QWidget):
+class MatcherUI(QWidget):
     thread_invoker = pyqtSignal()
     
     def __init__(self):
-        super(SimulationUi, self).__init__()
+        super(MatcherUI, self).__init__()
 
         self.btnStop = QPushButton('Stop')
         self.image_pane = QLabel()
@@ -103,7 +103,8 @@ class SimulationUi(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    simul = SimulationUi()
-    simul.show()
-    simul.raise_()
+    match = MatcherUI()
+    match.setWindowTitle("Matcher Preview")
+    match.show()
+    match.raise_()
     sys.exit(app.exec_())

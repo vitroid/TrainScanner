@@ -406,6 +406,7 @@ class SettingsGUI(QWidget):
         pass1_options = " -r {0}".format(self.editor.angle_degree)
         pass1_options += " -t {0}".format(self.trailing)
         pass1_options += " -a {0}".format(self.antishake)
+        pass1_options += " -S {0}".format(int(len(self.editor.asyncimageloader.snapshots)*10*self.editor.imageselector.trimmed))
         pass1_options += " -p {0}".format(",".join([str(x) for x in self.editor.pers]))
         pass1_options += " -f {0}".format(",".join([str(x) for x in self.editor.focus]))
         pass1_options += " -c {0},{1}".format(self.editor.croptop,self.editor.cropbottom)
@@ -490,20 +491,25 @@ class EditorGUI(QWidget):
         #http://stackoverflow.com/questions/27420338/how-to-clear-child-window-reference-stored-in-parent-application-when-child-wind
         #self.setAttribute(Qt.WA_DeleteOnClose)
         layout = self.make_layout()
-        glayout = QVBoxLayout()
         self.imageselector = ImageSelector()
         self.imageselector.connect(self.imageselector.slider, SIGNAL('valueChanged(int)'), self.frameChanged)
-        glayout.addWidget(self.imageselector)
+        imageselector_layout = QHBoxLayout()
+        imageselector_layout.addWidget(self.imageselector)
+        imageselector_gbox = QGroupBox(self.tr('1. Seek the first video frame'))
+        imageselector_gbox.setLayout(imageselector_layout)
+        glayout = QVBoxLayout()
+        glayout.addWidget(imageselector_gbox)
         glayout.addLayout(layout)
         self.setLayout(glayout)
         self.setWindowTitle("Editor")
         self.show_snapshots()
 
 
+
     def updateTimeLine(self, cv2thumbs):
         #count time and limit update
         now = time.time()
-        if now - self.lastupdatethumbs < 0.5:
+        if now - self.lastupdatethumbs < 0.2:
             return
         qthumbs = []
         #temporary
@@ -603,7 +609,7 @@ class EditorGUI(QWidget):
         raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignTop)
         
         processed_edit_gbox_layout = QVBoxLayout()
-        processed_edit_gbox = QGroupBox(self.tr('2. Motion Detection and Slit'))
+        processed_edit_gbox = QGroupBox(self.tr('3. Motion Detection and Slit'))
         box = QVBoxLayout()
         processed_image_layout = QVBoxLayout()
         self.processed_pane = MyLabel(func=self.show_snapshots)
@@ -643,7 +649,7 @@ class EditorGUI(QWidget):
         left_layout.addLayout(topleft_layout)
         left_layout.addLayout(rotation_layout)
         left_layout.setAlignment(rotation_layout, Qt.AlignTop)
-        raw_edit_gbox = QGroupBox(self.tr('1. Repair deformation'))
+        raw_edit_gbox = QGroupBox(self.tr('2. Repair deformation'))
         raw_edit_gbox.setLayout(left_layout)
         raw_edit_gbox_layout = QVBoxLayout()
         raw_edit_gbox_layout.addWidget(raw_edit_gbox)

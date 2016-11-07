@@ -40,6 +40,7 @@ class Canvas():
         else:
             newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = image[:,:,:]*alpha[:,:,:] + newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:]*(1-alpha[:,:,:])
         self.canvas = (newcanvas, (xmin,ymin))
+        #print(newcanvas.shape,xmin,ymin)
         
 
 def Usage(argv):
@@ -69,8 +70,7 @@ class Stitcher(Canvas):
         slitwidth = 1
         film = False
         helix = False
-        label= ""
-        dimen = None
+        dimen = (10,10,0,0)
         scale = 1.0
         # -r and -p option must be identical to pass1.py
         #(or they may be given in the input file)
@@ -81,12 +81,10 @@ class Stitcher(Canvas):
                 dimen = [int(x) for x in argv.pop(2).split(",")]
             elif argv[1] in ("-s", "--slit"):
                 slitpos = int(argv.pop(2))
-            elif argv[1] in ("-S", "--scale"):
+            elif argv[1] in ("-y", "--scale"):
                 scale = float(argv.pop(2))
             elif argv[1] in ("-w", "--width"):
                 slitwidth = float(argv.pop(2))
-            elif argv[1] in ("-l", "--label"):
-                label = argv.pop(2)
             elif argv[1][0] == "-":
                 print("Unknown option: ", argv[1])
                 Usage(argv)
@@ -104,7 +102,7 @@ class Stitcher(Canvas):
         while True:
             line = LOG.readline()
             if line[0:3] == "#-r":
-                angle = -float(line.split()[1]) * math.pi / 180
+                angle = float(line.split()[1])
             elif line[0:3] == "#-p":
                 pers  = [int(x) for x in line.split()[1].split(",")]
             elif line[0:3] == "#-c":
@@ -122,6 +120,7 @@ class Stitcher(Canvas):
         self.R = None
         self.M = None
         self.scale = scale
+        print("scale=",scale)
         self.transform = trainscanner.transformation(angle, pers, crop)
         self.dimen = [int(x*scale) for x in dimen]
         Canvas.__init__(self,np.zeros((self.dimen[1],self.dimen[0],3),np.uint8), self.dimen[2:4]) #python2 style
@@ -165,16 +164,24 @@ class Stitcher(Canvas):
         self.frames = 0  #1 is the first frame
 
     def onestep(self):
-        ret, frame = self.cap.read()
+        nextframe = self.locations[0][0]
+        while self.frames + 1 < nextframe:
+            ret = self.cap.grab()
+            if not ret:
+                return self.canvas[0]
+            self.frames += 1
+        ret,frame = self.cap.read()
         if not ret:
             return self.canvas[0]
         self.frames += 1
-        if self.frames == self.locations[0][0]:
-            frame = cv2.resize(frame, None, fx=self.scale, fy=self.scale)
-            self.add_image(frame, *self.locations[0][1:])
-            self.locations.pop(0)
-            if len(self.locations) == 0:
-                return self.canvas[0]
+        frame = cv2.resize(frame, None, fx=self.scale, fy=self.scale)
+        #print("here")
+        #print("add image ",self.scale,*self.locations[0])
+        #print(frame.shape)
+        self.add_image(frame, *self.locations[0][1:])
+        self.locations.pop(0)
+        if len(self.locations) == 0:
+            return self.canvas[0]
         return None  #not end
 
     def after(self):

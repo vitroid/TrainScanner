@@ -38,12 +38,17 @@ class Renderer(QObject):
             self._isRunning = True
 
         while self._isRunning == True:
+            #print("step")
             result = self.st.onestep()
             canvas = self.st.canvas[0].copy()
             height, width = canvas.shape[0:2]
             h = int(height*self.preview_ratio)
             w = int(width *self.preview_ratio)
             resized = cv2.resize(canvas, (w, h), interpolation = cv2.INTER_CUBIC)
+            #print(resized.shape)
+            #cv2.imwrite("preview.png",resized)
+            #cv2.imwrite("canvas.png",canvas)
+            #cv2.waitKey(0)
             self.cv2toQImage(resized)
             image = QImage(resized.data, w, h, w*3, QImage.Format_RGB888)
             self.frameRendered.emit(image)
@@ -105,7 +110,7 @@ class Example(QWidget):
     def __init__(self, parent=None):
         super(Example, self).__init__(parent)
 
-        self.setWindowTitle("Main Window")
+        self.setWindowTitle("Stitcher Preview")
         st = stitch.Stitcher(argv=sys.argv)
         #determine the shrink ratio to avoid too huge preview
         preview_ratio = 1.0

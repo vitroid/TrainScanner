@@ -1,77 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE TS><TS version="2.0" language="ja_JP" sourcelanguage="">
+<!DOCTYPE TS>
+<TS version="2.0" language="ja_JP">
 <context>
     <name>EditorGUI</name>
     <message>
-        <location filename="gui2.py" line="446"/>
+        <location filename="gui4.py" line="540"/>
         <source>rotation</source>
         <translation>回転</translation>
     </message>
     <message>
         <location filename="gui2.py" line="527"/>
         <source>2. Motion Detection and Slit</source>
-        <translation>2. うごきをとらえる/スリットの位置</translation>
+        <translation type="obsolete">2. うごきをとらえる/スリットの位置</translation>
     </message>
     <message>
         <location filename="gui2.py" line="569"/>
         <source>1. Repair deformation</source>
-        <translation>1. ゆがみをなおす</translation>
+        <translation type="obsolete">1. ゆがみをなおす</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="544"/>
+        <location filename="gui4.py" line="630"/>
         <source>Slit position</source>
         <translation>スリットのつなぎ目</translation>
+    </message>
+    <message>
+        <location filename="gui4.py" line="499"/>
+        <source>1. Seek the first video frame</source>
+        <translation>1. 最初のフレームまで早送りする</translation>
+    </message>
+    <message>
+        <location filename="gui4.py" line="613"/>
+        <source>3. Motion Detection and Slit</source>
+        <translation>3. うごきをとらえる/スリットの位置</translation>
+    </message>
+    <message>
+        <location filename="gui4.py" line="653"/>
+        <source>2. Repair deformation</source>
+        <translation>2. ゆがみをなおす</translation>
     </message>
 </context>
 <context>
     <name>SettingsGUI</name>
     <message>
-        <location filename="gui2.py" line="103"/>
+        <location filename="gui4.py" line="145"/>
         <source>Open a movie</source>
         <translation>ムービーを開く</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="298"/>
+        <location filename="gui4.py" line="353"/>
         <source>(File name appears here)</source>
         <translation>(ここにファイル名が表示されます)</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="115"/>
+        <location filename="gui4.py" line="157"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="188"/>
+        <location filename="gui4.py" line="210"/>
         <source>Ignore vertical displacements</source>
         <translation>縦方向のずれを無視する</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="266"/>
+        <location filename="gui4.py" line="321"/>
         <source>Finish</source>
         <translation>仕上げ</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="269"/>
+        <location filename="gui4.py" line="324"/>
         <source>Stitch to a long image strip</source>
         <translation>つないで長い画像をつくる</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="273"/>
+        <location filename="gui4.py" line="328"/>
         <source>Add the film perforations</source>
         <translation>フィルムの縁をつける</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="276"/>
+        <location filename="gui4.py" line="331"/>
         <source>Make a helical image</source>
         <translation>らせん画像を作る</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="279"/>
+        <location filename="gui4.py" line="334"/>
         <source>Start</source>
         <translation>開始</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="303"/>
+        <location filename="gui4.py" line="358"/>
         <source>Open file</source>
         <translation>ファイルを開く</translation>
     </message>
@@ -81,12 +97,12 @@
         <translation type="obsolete">列車が去ったあともスキャンを継続する:</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="128"/>
+        <location filename="gui4.py" line="302"/>
         <source>Short</source>
         <translation>短</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="136"/>
+        <location filename="gui4.py" line="310"/>
         <source>Long</source>
         <translation>長</translation>
     </message>
@@ -96,69 +112,79 @@
         <translation type="obsolete">スリットのつなぎ目:</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="150"/>
+        <location filename="gui4.py" line="172"/>
         <source>Sharp</source>
         <translation>くっきり</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="158"/>
+        <location filename="gui4.py" line="180"/>
         <source>Diffuse</source>
         <translation>ぼんやり</translation>
     </message>
     <message>
         <location filename="gui2.py" line="167"/>
         <source>Permit camera waggle</source>
-        <translation>カメラの揺れを無視する</translation>
+        <translation type="obsolete">カメラの揺れを無視する</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="172"/>
+        <location filename="gui4.py" line="194"/>
         <source>Small</source>
         <translation>小</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="180"/>
+        <location filename="gui4.py" line="202"/>
         <source>Large</source>
         <translation>大</translation>
     </message>
     <message>
         <location filename="gui2.py" line="236"/>
         <source>Skip identical frames</source>
-        <translation>同一のコマを飛ばす</translation>
+        <translation type="obsolete">同一のコマを飛ばす</translation>
     </message>
     <message>
         <location filename="gui2.py" line="246"/>
         <source>Strict</source>
-        <translation>きっちり</translation>
+        <translation type="obsolete">きっちり</translation>
     </message>
     <message>
         <location filename="gui2.py" line="255"/>
         <source>Loose</source>
-        <translation>おおまか</translation>
+        <translation type="obsolete">おおまか</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="123"/>
+        <location filename="gui4.py" line="297"/>
         <source>Trailing frames</source>
         <translation>列車が去ったあともスキャンを継続する</translation>
     </message>
     <message>
-        <location filename="gui2.py" line="145"/>
+        <location filename="gui4.py" line="167"/>
         <source>Slit mixing</source>
         <translation>スリットのつなぎ目</translation>
     </message>
     <message>
         <location filename="gui2.py" line="198"/>
         <source>Limit maximum acceleration</source>
-        <translation>フレーム間の速度変化の上限</translation>
+        <translation type="obsolete">フレーム間の速度変化の上限</translation>
     </message>
     <message>
         <location filename="gui2.py" line="212"/>
         <source>Smooth</source>
-        <translation>スムーズ</translation>
+        <translation type="obsolete">スムーズ</translation>
     </message>
     <message>
         <location filename="gui2.py" line="220"/>
         <source>Jerky</source>
-        <translation>ぎくしゃく</translation>
+        <translation type="obsolete">ぎくしゃく</translation>
+    </message>
+    <message>
+        <location filename="gui4.py" line="189"/>
+        <source>Minimal displacement between the frames</source>
+        <translation>フレーム間での移動距離の最小値\ln (これより小さい移動は無視する)</translation>
+    </message>
+    <message>
+        <location filename="gui4.py" line="221"/>
+        <source>The train is initially stalling in the motion detection area.</source>
+        <translation>最初、列車は移動検知窓の中に止まっている.</translation>
     </message>
 </context>
 </TS>
