@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
+
 import sys
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -133,7 +134,7 @@ class SettingsGUI(QWidget):
         self.trailing = 10
         self.editor = None
         self.antishake = 5
-        self.slitwidth = 0.5
+        self.slitwidth = 50
         self.identity = 2.0
         self.accel    = 1
         #private
@@ -166,13 +167,13 @@ class SettingsGUI(QWidget):
         
         settings2_layout.addWidget(QLabel(self.tr('Slit mixing')), rows, 0, Qt.AlignRight)
         
-        self.slitwidth_slider_valuelabel = QLabel(str(self.slitwidth))
+        self.slitwidth_slider_valuelabel = QLabel("{0}%".format(self.slitwidth))
         settings2_layout.addWidget(self.slitwidth_slider_valuelabel, rows, 1)
         
         settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2)
         self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
-        self.slitwidth_slider.setRange(1, 10)  # スライダの範囲
-        self.slitwidth_slider.setValue(5)  # 初期値
+        self.slitwidth_slider.setRange(5, 100)  # スライダの範囲
+        self.slitwidth_slider.setValue(self.slitwidth)  # 初期値
         #スライダの目盛りを両方に出す
         self.slitwidth_slider.setTickPosition(QSlider.TicksBelow)
         self.connect(self.slitwidth_slider, SIGNAL('valueChanged(int)'), self.slitwidth_slider_on_draw)
@@ -188,7 +189,7 @@ class SettingsGUI(QWidget):
 
         settings2_layout.addWidget(QLabel(self.tr('Minimal displacement between the frames')), rows, 0, Qt.AlignRight)
         
-        self.antishake_slider_valuelabel = QLabel(str(self.antishake))
+        self.antishake_slider_valuelabel = QLabel("{0} ".format(self.antishake)+self.tr("pixels"))
         settings2_layout.addWidget(self.antishake_slider_valuelabel, rows, 1)
         
         settings2_layout.addWidget(QLabel(self.tr('Small')), rows, 2)
@@ -296,7 +297,7 @@ class SettingsGUI(QWidget):
 
         settings2_layout.addWidget(QLabel(self.tr('Trailing frames')), rows,0, Qt.AlignRight)
         
-        self.trailing_slider_valuelabel = QLabel(str(self.trailing))
+        self.trailing_slider_valuelabel = QLabel("{0} ".format(self.trailing)+self.tr("frames"))
         settings2_layout.addWidget(self.trailing_slider_valuelabel, rows,1)
 
         settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2)
@@ -376,17 +377,17 @@ class SettingsGUI(QWidget):
         
     def trailing_slider_on_draw(self):
         self.trailing = self.trailing_slider.value()
-        self.trailing_slider_valuelabel.setText(str(self.trailing))
+        self.trailing_slider_valuelabel.setText("{0} ".format(self.trailing)+self.tr("frames"))
 
 
     def slitwidth_slider_on_draw(self):
-        self.slitwidth = self.slitwidth_slider.value() / 10.0
-        self.slitwidth_slider_valuelabel.setText(str(self.slitwidth))
+        self.slitwidth = self.slitwidth_slider.value()
+        self.slitwidth_slider_valuelabel.setText("{0}%".format(self.slitwidth))
 
 
     def antishake_slider_on_draw(self):
         self.antishake = self.antishake_slider.value()
-        self.antishake_slider_valuelabel.setText(str(self.antishake))
+        self.antishake_slider_valuelabel.setText("{0} ".format(self.antishake)+self.tr("pixels"))
 
 
 ##    def accel_slider_on_draw(self):
@@ -421,7 +422,7 @@ class SettingsGUI(QWidget):
 ##        pass1_options += " -i {0}".format(self.identity)
         #pass1_options += " -e 5"   ##for debug
         stitch_options = " -s {0}".format(self.editor.slitpos)
-        stitch_options += " -w {0}".format(self.slitwidth)
+        stitch_options += " -w {0}".format(self.slitwidth/100.0)
             
         file_name = self.filename
         cmd = []
@@ -665,28 +666,28 @@ class EditorGUI(QWidget):
     def angle_inc(self):
         self.angle_degree += 1
         self.angle_degree %= 360
-        self.angle_label.setText(str(self.angle_degree))
+        self.angle_label.setText("{0} ".format(self.angle_degree)+self.tr("degrees"))
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def angle_dec(self):
         self.angle_degree -= 1
         self.angle_degree %= 360
-        self.angle_label.setText(str(self.angle_degree))
+        self.angle_label.setText("{0} ".format(self.angle_degree)+self.tr("degrees"))
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def angle_add90(self):
         self.angle_degree += 90
         self.angle_degree %= 360
-        self.angle_label.setText(str(self.angle_degree))
+        self.angle_label.setText("{0} ".format(self.angle_degree)+self.tr("degrees"))
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def angle_sub90(self):
         self.angle_degree -= 90
         self.angle_degree %= 360
-        self.angle_label.setText(str(self.angle_degree))
+        self.angle_label.setText("{0} ".format(self.angle_degree)+self.tr("degrees"))
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
@@ -839,7 +840,7 @@ class EditorGUI(QWidget):
 def main():
     app = QApplication(sys.argv)
     translator = QTranslator(app)
-    translator.load("gui2_ja")
+    translator.load("gui4_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()

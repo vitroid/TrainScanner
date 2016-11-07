@@ -24,7 +24,7 @@ class ImageBar(QtGui.QLabel):
         if len(self.thumbs) == 0:
             return
         h = self.thumbs[0].height()
-        w = self.thumbs[0].width()
+        w = self.thumbs[0].width() + 5
         pw = self.width()
         nframes = int(pw/w) + 1
         for i in range(nframes):
