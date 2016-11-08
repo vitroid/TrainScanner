@@ -120,11 +120,11 @@ class Stitcher(Canvas):
         self.R = None
         self.M = None
         self.scale = scale
-        print("scale=",scale)
+        #print("scale=",scale)
         self.transform = trainscanner.transformation(angle, pers, crop)
         self.dimen = [int(x*scale) for x in dimen]
         Canvas.__init__(self,np.zeros((self.dimen[1],self.dimen[0],3),np.uint8), self.dimen[2:4]) #python2 style
-        locations = [(1,0,0,0,0)] #frame,absx, absy,dx,dy
+        locations = [] #(1,0,0,0,0)] #frame,absx, absy,dx,dy
         for line in istream.readlines():
             if len(line) > 0 and line[0] != '@':
                 cols = [int(x) for x in line.split()]
@@ -133,7 +133,7 @@ class Stitcher(Canvas):
                     locations.append(cols)
         self.locations = locations
         self.total_frames = len(locations)
-            
+        self.outfilename = filename+"+{0}.png".format(self.locations[0][0])
 
     def progress(self):
         den = self.total_frames
@@ -161,19 +161,18 @@ class Stitcher(Canvas):
 
     def before(self):
         self.cap = cv2.VideoCapture(self.filename)
-        self.frames = 0  #1 is the first frame
 
     def onestep(self):
-        nextframe = self.locations[0][0]
-        while self.frames + 1 < nextframe:
-            ret = self.cap.grab()
-            if not ret:
-                return self.canvas[0]
-            self.frames += 1
+        nextframe = self.locations[0][0]  #in locations, 1 is the first frame.
+        self.cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, nextframe)
+        ## while self.frames + 1 < nextframe:
+        ##     ret = self.cap.grab()
+        ##     if not ret:
+        ##         return self.canvas[0]
+        ##     self.frames += 1
         ret,frame = self.cap.read()
         if not ret:
             return self.canvas[0]
-        self.frames += 1
         frame = cv2.resize(frame, None, fx=self.scale, fy=self.scale)
         #print("here")
         #print("add image ",self.scale,*self.locations[0])
@@ -185,7 +184,7 @@ class Stitcher(Canvas):
         return None  #not end
 
     def after(self):
-        cv2.imwrite("{0}.png".format(self.filename), self.canvas[0])
+        cv2.imwrite(self.outfilename, self.canvas[0])
         
 
 if __name__ == "__main__":

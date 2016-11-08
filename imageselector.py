@@ -27,17 +27,19 @@ class ImageSelector(QWidget):
         lastlen = len(self.imagebar.thumbs)
         lasttrim = self.trimmed * lastlen
         lastslid = self.slider.value()
+        #print(lastlen,lasttrim,lastslid)
 
         self.imagebar.setThumbs(thumbs)
         self.slider.setRange(0,len(thumbs)-1)
         self.slider.setValue(lastslid)
-        self.leftEnd(int(lasttrim / len(thumbs)))
+        self.leftEnd(lasttrim / len(thumbs))
 
     def leftEnd(self, value):
+        #print("LeftEnd",value)
         self.trimmed = value  #0.0 ... 1.0
         self.firstFrame = int(value * len(self.imagebar.thumbs))
-        if self.slider.value() < self.firstFrame:
-            self.slider.setValue(self.firstFrame)
+        #if self.slider.value() < self.firstFrame:
+        self.slider.setValue(self.firstFrame)
             
     def resizeEvent(self, event):
         self.resized.emit(int(self.trimmed*self.width()))

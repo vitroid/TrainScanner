@@ -11,11 +11,15 @@ class ImageBar(QtGui.QLabel):
         self.setFrameStyle(QtGui.QFrame.StyledPanel)
         self.thumbs = []
         self.setFixedHeight(100)
+        self.transformer=lambda x:x  #no conversion
         #self._prepareImage()
 
     def paintEvent(self, event):
         self._prepareImage()
-    
+
+    def setTransformer(self, func):
+        self.transformer = func
+        
     def _prepareImage(self):
         """
         set the pixmap here.
@@ -23,14 +27,15 @@ class ImageBar(QtGui.QLabel):
         painter = QtGui.QPainter(self)
         if len(self.thumbs) == 0:
             return
-        h = self.thumbs[0].height()
-        w = self.thumbs[0].width() + 5
+        first = self.transformer(self.thumbs[0])
+        h = first.height()
+        w = first.width() + 2
         pw = self.width()
         nframes = int(pw/w) + 1
         for i in range(nframes):
             f = i*len(self.thumbs)/nframes
             point = QtCore.QPoint(i*w,0)
-            painter.drawImage(point, self.thumbs[f])
+            painter.drawImage(point, self.transformer(self.thumbs[f]))
 
     def setThumbs(self,thumbs):
         self.thumbs = thumbs

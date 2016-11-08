@@ -168,9 +168,9 @@ class SettingsGUI(QWidget):
         settings2_layout.addWidget(QLabel(self.tr('Slit mixing')), rows, 0, Qt.AlignRight)
         
         self.slitwidth_slider_valuelabel = QLabel("{0}%".format(self.slitwidth))
-        settings2_layout.addWidget(self.slitwidth_slider_valuelabel, rows, 1)
+        settings2_layout.addWidget(self.slitwidth_slider_valuelabel, rows, 1, Qt.AlignCenter)
         
-        settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2)
+        settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2, Qt.AlignRight)
         self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.slitwidth_slider.setRange(5, 100)  # スライダの範囲
         self.slitwidth_slider.setValue(self.slitwidth)  # 初期値
@@ -190,9 +190,9 @@ class SettingsGUI(QWidget):
         settings2_layout.addWidget(QLabel(self.tr('Minimal displacement between the frames')), rows, 0, Qt.AlignRight)
         
         self.antishake_slider_valuelabel = QLabel("{0} ".format(self.antishake)+self.tr("pixels"))
-        settings2_layout.addWidget(self.antishake_slider_valuelabel, rows, 1)
+        settings2_layout.addWidget(self.antishake_slider_valuelabel, rows, 1, Qt.AlignCenter)
         
-        settings2_layout.addWidget(QLabel(self.tr('Small')), rows, 2)
+        settings2_layout.addWidget(QLabel(self.tr('Small')), rows, 2, Qt.AlignRight)
         self.antishake_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.antishake_slider.setRange(0, 15)  # スライダの範囲
         self.antishake_slider.setValue(5)  # 初期値
@@ -212,7 +212,7 @@ class SettingsGUI(QWidget):
         self.btn_zerodrift = QCheckBox()
         self.btn_zerodrift.setCheckState(Qt.Checked)
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        settings2_layout.addWidget(self.btn_zerodrift,rows, 1)
+        settings2_layout.addWidget(self.btn_zerodrift,rows, 1, Qt.AlignCenter)
         rows += 1
         #####################################################################
 
@@ -223,7 +223,7 @@ class SettingsGUI(QWidget):
         self.btn_stall = QCheckBox()
         #self.btn_stall.setCheckState(Qt.Checked)
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        settings2_layout.addWidget(self.btn_stall,rows, 1)
+        settings2_layout.addWidget(self.btn_stall,rows, 1, Qt.AlignCenter)
         rows += 1
         #####################################################################
 
@@ -298,9 +298,9 @@ class SettingsGUI(QWidget):
         settings2_layout.addWidget(QLabel(self.tr('Trailing frames')), rows,0, Qt.AlignRight)
         
         self.trailing_slider_valuelabel = QLabel("{0} ".format(self.trailing)+self.tr("frames"))
-        settings2_layout.addWidget(self.trailing_slider_valuelabel, rows,1)
+        settings2_layout.addWidget(self.trailing_slider_valuelabel, rows,1, Qt.AlignCenter)
 
-        settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2)
+        settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2, Qt.AlignRight)
         self.trailing_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.trailing_slider.setRange(1, 30)  # スライダの範囲
         self.trailing_slider.setValue(10)  # 初期値
@@ -507,22 +507,22 @@ class EditorGUI(QWidget):
 
 
 
+    def thumbtransformer(self, cv2image):
+        rotated,warped,cropped = self.transform.process_image(cv2image)
+        h,w = cropped.shape[0:2]
+        thumbh = 100
+        thumbw = 50# w*thumbh/h
+        thumb = cv2.resize(cropped,(thumbw,thumbh),interpolation = cv2.INTER_CUBIC)
+        return self.cv2toQImage(thumb)
+        
     def updateTimeLine(self, cv2thumbs):
         #count time and limit update
         now = time.time()
         if now - self.lastupdatethumbs < 0.2:
             return
-        qthumbs = []
-        #temporary
-        transform = trainscanner.transformation(self.angle_degree, self.pers, (self.croptop, self.cropbottom))
-        for frame in cv2thumbs:
-            rotated,warped,cropped = transform.process_image(frame)
-            h,w = cropped.shape[0:2]
-            thumbh = 100
-            thumbw = w*thumbh/h
-            thumb = cv2.resize(cropped,(thumbw,thumbh),interpolation = cv2.INTER_CUBIC)
-            qthumbs.append(self.cv2toQImage(thumb))
-        self.imageselector.setThumbs(qthumbs)
+        #transformation filter
+        self.imageselector.imagebar.setTransformer(self.thumbtransformer)
+        self.imageselector.setThumbs(cv2thumbs)
         self.lastupdatethumbs = time.time()
         
     def make_layout(self):
@@ -732,8 +732,8 @@ class EditorGUI(QWidget):
         if self.frame < 0:
             return
         image = self.asyncimageloader.snapshots[self.frame]
-        transform = trainscanner.transformation(self.angle_degree, self.pers, [self.croptop, self.cropbottom])
-        rotated, warped, cropped = transform.process_first_image(image)
+        self.transform = trainscanner.transformation(self.angle_degree, self.pers, [self.croptop, self.cropbottom])
+        rotated, warped, cropped = self.transform.process_first_image(image)
         self.put_cv2_image(rotated, self.raw_image_pane)
         if region is not None:
             print(region)

@@ -12,7 +12,6 @@ class ImageTrimBar(ImageBar):
     def __init__(self):
         super(ImageTrimBar, self).__init__()
         self.currentQRubberBand = QtGui.QRubberBand(QtGui.QRubberBand.Rectangle, self)
-        self.trim = 0.0
         #pal = QtGui.QPalette()
         #pal.setBrush(QtGui.QPalette.Highlight, QtGui.QBrush(Qt.red));
         #pal.setBrush(QtGui.QPalette.Base, QtGui.QBrush(Qt.red));

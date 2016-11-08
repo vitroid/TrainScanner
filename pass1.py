@@ -137,16 +137,18 @@ class Pass1():
         self.runin    = runin
         #self.pers     = pers
         ret = True
-        for i in range(skip):  #skip frames
-            ret = self.cap.grab()
-            if not ret:
-                break
-            #ret, frame = cap.read()
-            self.nframes += 1
-        if not ret:
-            sys.exit(0)
+        self.cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, skip)
+        self.nframes = skip
+        ## for i in range(skip):  #skip frames
+        ##     ret = self.cap.grab()
+        ##     if not ret:
+        ##         break
+        ##     #ret, frame = cap.read()
+        ##     self.nframes += 1
+        ## if not ret:
+        ##     sys.exit(0)
         ret, frame = self.cap.read()
-        self.nframes += 1
+        self.nframes += 1    #first frame is 1
         if not ret:
             sys.exit(0)
         self.rawframe = frame.copy()
