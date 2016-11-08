@@ -45,6 +45,7 @@ class Canvas():
 
 def Usage(argv):
     print("usage: {0} [-d][-s r][-w x][-F][-H][-l label][-C w,h,x,y] < output_of_pass1_py.log".format(argv[0]))
+    print("usage: {0} [-d][-s r][-w x][-F][-H][-l label][-C w,h,x,y] output_of_pass1_py.log".format(argv[0]))
     print("\t-d\tDebug mode.")
     print("\t-s r\tSet slit position to r (1).")
     print("\t-w r\tSet slit width (1=same as the length of the interframe motion vector).")
@@ -63,7 +64,6 @@ class Stitcher(Canvas):
             self.initWithArgv(argv)
 
     def initWithArgv(self,argv):
-        import sys
 
         debug = False #True
         slitpos = 250
@@ -74,7 +74,8 @@ class Stitcher(Canvas):
         scale = 1.0
         # -r and -p option must be identical to pass1.py
         #(or they may be given in the input file)
-        while len(argv) > 1:
+        print(argv)
+        while len(argv) > 1 and argv[1][0] =="-":
             if argv[1] in ("-d", "--debug"):
                 debug = True
             elif argv[1] in ("-C", "--canvas"):
@@ -89,11 +90,14 @@ class Stitcher(Canvas):
                 print("Unknown option: ", argv[1])
                 Usage(argv)
             argv.pop(1)
-
-        #if len(sys.argv) != 2:
-        if len(argv) != 1:
+        print(argv)
+        if len(argv) == 2:
+            LOG = open(argv[1])
+        elif len(argv) != 1:
             Usage(argv)
-        LOG = sys.stdin
+        else:
+            LOG = sys.stdin
+        print(LOG,"LOG")
         line = LOG.readline()
         filename = line.splitlines()[0] #chomp
         angle = 0

@@ -12,6 +12,7 @@ import stitch
 import math
 import numpy as np
 import cv2
+import sys
 
 class Renderer(QObject):
     frameRendered = pyqtSignal(QImage)  # it is target of emit()
@@ -104,21 +105,21 @@ class ExtensibleCanvasWidget(QWidget):
     #    self.thread.render(self.size())
 
 
-class Example(QWidget):
+class StitcherUI(QDialog):
     thread_invoker = pyqtSignal()
 
-    def __init__(self, parent=None):
-        super(Example, self).__init__(parent)
-
+    def __init__(self, argv, terminate, parent=None):
+        super(StitcherUI, self).__init__(parent)
         self.setWindowTitle("Stitcher Preview")
-        st = stitch.Stitcher(argv=sys.argv)
+        st = stitch.Stitcher(argv=argv)
+        self.st = st
         #determine the shrink ratio to avoid too huge preview
         preview_ratio = 1.0
         if st.dimen[0] > 10000:
             preview_ratio = 10000.0 / st.dimen[0]
         if st.dimen[1]*preview_ratio > 500:
             preview_ratio = 500.0 / st.dimen[1]
-
+        self.terminate = terminate
         self.thread = QThread()
         self.thread.start()
 
@@ -156,11 +157,13 @@ class Example(QWidget):
         self.layout.addWidget(self.progress)
         self.layout.addWidget(self.scrollArea)
         self.setLayout(self.layout)
+        
 
         
     def terminateIt(self):
         self.close()
-        sys.exit(1)  #terminated
+        if self.terminate:
+            sys.exit(1)  #terminated
         
     def finishIt(self):
         self.close()
@@ -179,7 +182,7 @@ if __name__ == '__main__':
     import sys
 
     app = QApplication(sys.argv)
-    win = Example()
+    win = StitcherUI(sys.argv, True)
     win.show()
     win.raise_()
     sys.exit(app.exec_())

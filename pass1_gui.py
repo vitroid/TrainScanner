@@ -23,10 +23,10 @@ class Worker(QObject):
     frameRendered = pyqtSignal(QImage)
     finished = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, argv):
         super(Worker, self).__init__()
         self._isRunning = True
-        self.pass1 = pass1.Pass1(sys.argv)
+        self.pass1 = pass1.Pass1(argv=argv)
         self.pass1.before()
 
     def task(self):
@@ -40,18 +40,18 @@ class Worker(QObject):
             if ret is not True: #True means skipping frame
                 self.frameRendered.emit(cv2toQImage(ret))
 
-        #print "finished..."
         self.pass1.after()
+        #print("finished...")
         self.finished.emit()
 
     def stop(self):
         self._isRunning = False
 
 
-class MatcherUI(QWidget):
+class MatcherUI(QDialog):
     thread_invoker = pyqtSignal()
     
-    def __init__(self):
+    def __init__(self, argv, terminate=False):
         super(MatcherUI, self).__init__()
 
         self.btnStop = QPushButton('Stop')
@@ -65,7 +65,7 @@ class MatcherUI(QWidget):
         self.thread = QThread()
         self.thread.start()
 
-        self.worker = Worker()
+        self.worker = Worker(argv)
         self.worker.moveToThread(self.thread)
         self.thread_invoker.connect(self.worker.task)
         self.thread_invoker.emit()
@@ -73,8 +73,10 @@ class MatcherUI(QWidget):
         self.worker.frameRendered.connect(self.updatePixmap)
         self.worker.finished.connect(self.finishIt)
 
+        self.terminate = terminate
         self.btnStop.clicked.connect(lambda: self.worker.stop())
         self.btnStop.clicked.connect(self.terminateIt)
+        self.terminated = False
         
     def updatePixmap(self, image):
         #it is called only when the pixmap is really updated by the thread.
@@ -88,7 +90,9 @@ class MatcherUI(QWidget):
 
     def terminateIt(self):
         self.close()
-        sys.exit(1)  #terminated
+        if self.terminate:
+            sys.exit(1)  #terminated
+        self.terminated = True
         
     def finishIt(self):
         self.close()
@@ -103,7 +107,7 @@ class MatcherUI(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    match = MatcherUI()
+    match = MatcherUI(sys.argv, True)
     match.setWindowTitle("Matcher Preview")
     match.show()
     match.raise_()

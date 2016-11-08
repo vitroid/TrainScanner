@@ -76,6 +76,7 @@ class Pass1():
         identity = 1.0
         crop = 0,1000
         runin = True
+        ostream = sys.stdout
         margin = 0 # pixels, work in progress.
         #It may be able to unify with antishake.
         focus = [333, 666, 333, 666]
@@ -109,6 +110,9 @@ class Pass1():
                 zero  = True
             elif argv[1] in ("-x", "--stall"):
                 runin = False
+            elif argv[1] in ("-L", "--log"):
+                ostream = open(argv.pop(2),"w")
+                print("L option")
             elif argv[1][0] == "-":
                 print("Unknown option: ", argv[1])
                 Usage(argv)
@@ -119,9 +123,9 @@ class Pass1():
 
         filename = argv[1]
         #call it as a normal method instead of a constructor.
-        self.initWithParams(filename=filename, skip=skip,angle=angle,pers=pers,crop=crop,every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake, runin=runin )
+        self.initWithParams(filename=filename, skip=skip,angle=angle,pers=pers,crop=crop,every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake, runin=runin, ostream=ostream )
         
-    def initWithParams(self,filename="",skip=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, runin=True):
+    def initWithParams(self,filename="",skip=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, runin=True, ostream=sys.stdout):
         self.filename    = filename
         self.cap      = cv2.VideoCapture(filename)
         self.every    = every
@@ -135,20 +139,28 @@ class Pass1():
         self.nframes  = 0  #1 is the first frame
         #self.crop     = crop
         self.runin    = runin
+        self.LOG  = ostream
         #self.pers     = pers
         ret = True
+        #This does not work with some kind of MOV. (really?)
         self.cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, skip)
+        print("skip",skip)
         self.nframes = skip
-        ## for i in range(skip):  #skip frames
-        ##     ret = self.cap.grab()
-        ##     if not ret:
-        ##         break
-        ##     #ret, frame = cap.read()
-        ##     self.nframes += 1
-        ## if not ret:
-        ##     sys.exit(0)
         ret, frame = self.cap.read()
+        if not ret:
+            print("retry")
+            self.nframes = 0
+            # CV_CAP_PROP_POS_FRAMES failed.
+            for i in range(skip):  #skip frames
+                ret = self.cap.grab()
+                if not ret:
+                    break
+                self.nframes += 1
+            ret, frame = self.cap.read()
+        if not ret:
+            sys.exit(0)
         self.nframes += 1    #first frame is 1
+        print(ret)
         if not ret:
             sys.exit(0)
         self.rawframe = frame.copy()
@@ -159,7 +171,7 @@ class Pass1():
         self.canvas = [cropped.shape[1], cropped.shape[0],100,0,0]
         #sys.stderr.write("canvas size{0} {1} {2} {3}\n".format(self.canvas[0],self.canvas[1],*self.crop))
         #sys.exit(1)
-        self.LOG = sys.stdout
+        print(self.LOG)
         self.LOG.write("{0}\n".format(filename))
         self.LOG.write("#-r {0}\n".format(angle))
         if pers is not None:
@@ -192,6 +204,7 @@ class Pass1():
 
     def after(self):
         self.LOG.write("@ {0} {1} {2} {3}\n".format(*self.canvas))
+        self.LOG.close()
 
     def onestep(self):
         ret = True
