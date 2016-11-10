@@ -168,7 +168,7 @@ class Stitcher(Canvas):
 
     def onestep(self):
         nextframe = self.locations[0][0]  #in locations, 1 is the first frame.
-        self.cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, nextframe)
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, nextframe)
         ## while self.frames + 1 < nextframe:
         ##     ret = self.cap.grab()
         ##     if not ret:

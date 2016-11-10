@@ -143,7 +143,7 @@ class Pass1():
         #self.pers     = pers
         ret = True
         #This does not work with some kind of MOV. (really?)
-        self.cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, skip)
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, skip)
         print("skip",skip)
         self.nframes = skip
         ret, frame = self.cap.read()
