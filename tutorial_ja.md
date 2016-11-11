@@ -1,6 +1,6 @@
 #TrainScannerの使い方
 ##インストール
-[DropBox](https://www.dropbox.com/sh/3a1p84nqxz1b7b3/AACdmHd9jVsqVgU9Nj2TZ2oYa?dl=0)にてアプリを配布しています．
+[DropBox](https://www.dropbox.com/sh/3a1p84nqxz1b7b3/AACdmHd9jVsqVgU9Nj2TZ2oYa?dl=0)にてアプリを配布しています．Mac app is available at [DropBox](https://www.dropbox.com/sh/3a1p84nqxz1b7b3/AACdmHd9jVsqVgU9Nj2TZ2oYa?dl=0).
 
 当面，Mac用を配布します．TrainScannerはPythonで書かれているので，Windows/Linuxにも容易に移植できるはずですが，開発者の手が回っていません．協力を募集しています．
 ##撮影方法
