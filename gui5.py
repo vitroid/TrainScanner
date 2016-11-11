@@ -19,7 +19,7 @@ import helix
 
 class AsyncImageLoader(QObject):
     frameIncreased = pyqtSignal(list)
-
+    
     def __init__(self, parent=None, filename="", size=0):
         super(AsyncImageLoader, self).__init__(parent)
         self.isRunning = True
@@ -555,19 +555,19 @@ class EditorGUI(QWidget):
         
         #second left panel for image rotation
         rotation_layout = QHBoxLayout()
-        self.btn = QPushButton("-90")
+        self.btn = QPushButton(self.tr("-90"))
         self.btn.clicked.connect(self.angle_sub90)
         rotation_layout.addWidget(self.btn)
-        self.btn = QPushButton("-1")
+        self.btn = QPushButton(self.tr("-1"))
         self.btn.clicked.connect(self.angle_dec)
         rotation_layout.addWidget(self.btn)
         rotation_layout.addWidget(QLabel(self.tr('rotation')))
-        self.angle_label = QLabel("0")
+        self.angle_label = QLabel("0 "+self.tr("degrees"))
         rotation_layout.addWidget(self.angle_label)
-        self.btn = QPushButton("+1")
+        self.btn = QPushButton(self.tr("+1"))
         self.btn.clicked.connect(self.angle_inc)
         rotation_layout.addWidget(self.btn)
-        self.btn = QPushButton("+90")
+        self.btn = QPushButton(self.tr("+90"))
         self.btn.clicked.connect(self.angle_add90)
         rotation_layout.addWidget(self.btn)
 
@@ -864,7 +864,7 @@ class EditorGUI(QWidget):
 def main():
     app = QApplication(sys.argv)
     translator = QTranslator(app)
-    translator.load("gui4_ja")
+    translator.load("gui5_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()

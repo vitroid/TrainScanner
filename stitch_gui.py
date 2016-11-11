@@ -26,7 +26,6 @@ class Renderer(QObject):
         self.preview_ratio = preview_ratio
         self.st.before()
 
-
     def cv2toQImage(self,image):
         tmp = np.zeros_like(image[:,:,0])
         tmp = image[:,:,0].copy()
@@ -53,7 +52,7 @@ class Renderer(QObject):
             self.cv2toQImage(resized)
             image = QImage(resized.data, w, h, w*3, QImage.Format_RGB888)
             self.frameRendered.emit(image)
-            num,den = self.st.progress()
+            num,den = self.st.getProgress()
             self.progress.emit(num*100/den)
             
             if result is not None:

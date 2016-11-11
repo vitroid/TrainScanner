@@ -139,7 +139,7 @@ class Stitcher(Canvas):
         self.total_frames = len(locations)
         self.outfilename = filename+"+{0}.png".format(self.locations[0][0])
 
-    def progress(self):
+    def getProgress(self):
         den = self.total_frames
         num = den - len(self.locations)
         return (num, den)

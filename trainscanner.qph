@@ -100,4 +100,20 @@
     <source>The train is initially stalling in the motion detection area.</source>
     <target>最初、列車は移動検知窓の中に止まっている.</target>
 </phrase>
+<phrase>
+    <source>pixels</source>
+    <target>画素</target>
+</phrase>
+<phrase>
+    <source>Minimal displacement between the frames</source>
+    <target>フレーム間での移動距離の最小値\n (これより小さい移動は無視する)</target>
+</phrase>
+<phrase>
+    <source>frames</source>
+    <target>コマ</target>
+</phrase>
+<phrase>
+    <source>degrees</source>
+    <target>度</target>
+</phrase>
 </QPH>
