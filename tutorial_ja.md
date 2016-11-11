@@ -5,38 +5,38 @@
 列車をビデオカメラで側面から撮影します。
 
 * 必ず三脚を使用して下さい。手振れすると、最終的な列車の写真がぐにゃぐにゃになります。
-* 三脚の利用を禁じている駅があります。いろいろ工夫してみて下さい。
+* プラットホームでの三脚の利用を禁じている駅があります。いろいろ工夫してみて下さい。
 
 ほかにもいろいろアドバイスはありますが、はじめは気にしなくても大丈夫です。
 ##TrainScannerで開く
-1. まず、「開く」を押してムービーファイルを開いて下さい。主要なフォーマットであればそのまま開けますが、開けない場合は、QuickTimeやffmpegなどを利用してフォーマットを変換してから再挑戦して下さい。
+1. まず、「ムービーを開く」を押してムービーファイルを開いて下さい。主要なフォーマットであればそのまま開けますが、開けない場合は、QuickTimeやffmpegなどを利用してフォーマットを変換してから再挑戦して下さい。
 
-![settings](https://github.com/vitroid/TrainScanner/blob/master/images_jasettings.png?raw=true)
+![settings](https://github.com/vitroid/TrainScanner/blob/master/images_ja/settings.png?raw=true)
 
 1. ファイルが無事に開くと、大きなダイアログ画面が表示されます。一番上が頭出しのためのスナップショット表示窓、左が列車の歪みを修正するための窓、そして右が動きを検出する枠を指定するための窓です。この順番で作業します。
 
-![edit1](https://github.com/vitroid/TrainScanner/blob/master/images_jaedit1.png?raw=true)
+![edit1](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit1.png?raw=true)
 
 1. まず、一番上の窓で、列車が視野に入りかける瞬間を指定して下さい。下の左右の窓には、指定されたフレームが表示されます。
 
-![edit1a](https://github.com/vitroid/TrainScanner/blob/master/images_jaedit1a.png?raw=true)
+![edit1a](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit1a.png?raw=true)
 
 1. スナップショット表示窓のすぐ下にある、横長のスライダーを使って、すきなフレームを表示させます。
 
-![edit1b](https://github.com/vitroid/TrainScanner/blob/master/images_jaedit1b.png?raw=true)
+![edit1b](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit1b.png?raw=true)
 
 1. 縦位置で撮影した場合や、カメラが傾いている(あるいはローリングシャッターで画像が傾いている)場合には、左窓下のボタンで画像を回転して、列車の窓枠が垂直になるようにして下さい。(水平は別の方法でも調節できます。)
 
-![edit2a](https://github.com/vitroid/TrainScanner/blob/master/images_jaedit2a.png?raw=true)
+![edit2a](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit2a.png?raw=true)
 
 1. 左窓の四隅にあるスライダーを使って、画面内の赤い線が列車に平行になるように調節して下さい。右の窓に表示される列車が、水平になるまで調整します。この作業は省略しても構いません。
 
-![edit2b](https://github.com/vitroid/TrainScanner/blob/master/images_jaedit2b.png?raw=true)
+![edit2b](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit2b.png?raw=true)
 
 1. 右の窓では、列車の動きを検知する枠を指定します。初期設定では視野の上下左右1/3の中央部分が指定されていますが、うまく動きを検知できない場合は、枠を指定しなおして下さい。
 1. 右の窓の赤い縦線の位置が、スリットの位置です。つまり、この赤い線に沿った細長い写真の短冊を並べることで、長い列車の写真ができます。赤い線の位置は、右窓下のスライダーで動かせます。背景にあわせて、スリットの位置を決めて下さい。
 
-![edit2c](https://github.com/vitroid/TrainScanner/blob/master/images_jaedit2c.png?raw=true)
+![edit2c](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit2c.png?raw=true)
 
 
 ##TrainScannerでつなぐ
