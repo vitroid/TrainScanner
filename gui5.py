@@ -151,6 +151,7 @@ class SettingsGUI(QWidget):
         left_layout.addWidget(self.btn)
     
         self.le = QLabel(self.tr('(File name appears here)'))
+        #self.le = QLabel()
         left_layout.addWidget(self.le)
         
         #self.pbar = QProgressBar()
@@ -860,11 +861,38 @@ class EditorGUI(QWidget):
     #def resizeEvent(self, event):
     #    self.asyncimageloader.render()
 
-        
+
+def SystemLanguage():
+    import platform
+    ostype = platform.system()
+    loc = ""
+    if ostype == "Darwin":
+        #for macos
+        import commands
+        output = commands.getstatusoutput('defaults read -g AppleLanguages')
+        primary = output[1].split("\n")
+        loc     = primary[1].split('"')[1]
+    return loc
+    
+#for pyinstaller
+def resource_path(relative):
+    return os.path.join(
+        os.environ.get(
+            "_MEIPASS",
+            os.path.abspath(".")
+        ),
+        relative
+    )
+
+import pkgutil
+
 def main():
     app = QApplication(sys.argv)
     translator = QTranslator(app)
-    translator.load("gui5_ja")
+    rpath = getattr(sys, '_MEIPASS', os.getcwd())
+    loc = SystemLanguage()
+    if len(loc) > 1 and loc[:2] == "ja":
+        translator.load(rpath+"/i18n/gui5_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()

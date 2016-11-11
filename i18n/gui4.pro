@@ -1,4 +1,4 @@
 TRANSLATIONS = gui4_ja.ts
-SOURCES      = gui4.py
+SOURCES      = ../gui4.py
 
 

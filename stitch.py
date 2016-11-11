@@ -30,7 +30,6 @@ class Canvas():
         ymin = min(cymin,iymin)
         ymax = max(cymax,iymax)
         if (xmax-xmin, ymax-ymin) != (self.canvas[0].shape[1], self.canvas[0].shape[0]):
-            print("Resize canvas to ",xmax-xmin, ymax-ymin)
             newcanvas = np.zeros((ymax-ymin, xmax-xmin,3), np.uint8)
             newcanvas[cymin-ymin:cymax-ymin, cxmin-xmin:cxmax-xmin, :] = self.canvas[0][:,:,:]
         else:
@@ -40,7 +39,6 @@ class Canvas():
         else:
             newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = image[:,:,:]*alpha[:,:,:] + newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:]*(1-alpha[:,:,:])
         self.canvas = (newcanvas, (xmin,ymin))
-        #print(newcanvas.shape,xmin,ymin)
         
 
 def Usage(argv):
@@ -74,7 +72,6 @@ class Stitcher(Canvas):
         scale = 1.0
         # -r and -p option must be identical to pass1.py
         #(or they may be given in the input file)
-        print(argv)
         while len(argv) > 1 and argv[1][0] =="-":
             if argv[1] in ("-d", "--debug"):
                 debug = True
@@ -90,14 +87,12 @@ class Stitcher(Canvas):
                 print("Unknown option: ", argv[1])
                 Usage(argv)
             argv.pop(1)
-        print(argv)
         if len(argv) == 2:
             LOG = open(argv[1])
         elif len(argv) != 1:
             Usage(argv)
         else:
             LOG = sys.stdin
-        print(LOG,"LOG")
         line = LOG.readline()
         filename = line.splitlines()[0] #chomp
         angle = 0
@@ -178,9 +173,6 @@ class Stitcher(Canvas):
         if not ret:
             return self.canvas[0]
         frame = cv2.resize(frame, None, fx=self.scale, fy=self.scale)
-        #print("here")
-        #print("add image ",self.scale,*self.locations[0])
-        #print(frame.shape)
         self.add_image(frame, *self.locations[0][1:])
         self.locations.pop(0)
         if len(self.locations) == 0:
