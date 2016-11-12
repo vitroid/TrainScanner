@@ -18,7 +18,6 @@ def cv2toQImage(cv2image):
     return QImage(cv2image.data, width, height, width*3, QImage.Format_RGB888)
 
 class Worker(QObject):
-    'Object managing the simulation'
 
     frameRendered = pyqtSignal(QImage)
     finished = pyqtSignal()
@@ -26,13 +25,16 @@ class Worker(QObject):
     def __init__(self, argv):
         super(Worker, self).__init__()
         self._isRunning = True
+        q = QImage()
+        q.load("test/by.png")
+        self.frameRendered.emit(q)
         self.pass1 = pass1.Pass1(argv=argv)
-        self.pass1.before()
 
     def task(self):
         if not self._isRunning:
             self._isRunning = True
 
+        self.pass1.before()
         while self._isRunning == True:
             ret = self.pass1.onestep()
             if ret is None:
@@ -109,6 +111,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     match = MatcherUI(sys.argv, True)
     match.setWindowTitle("Matcher Preview")
+    print("show")
     match.show()
     match.raise_()
     sys.exit(app.exec_())

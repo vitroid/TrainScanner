@@ -19,7 +19,7 @@ Other advises are listed in the last section.
 
 ![edit1](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit1.png?raw=true)
 
-1. First of all, find the first frame, that is, the frame in which the train is about to enter in the sight, by clicking the thumbnail bar.
+1. First of all, find the first frame, that is, the frame in which the train is about to enter in the sight, by clicking the thumbnail bar. 
 
 ![edit1a](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit1a.png?raw=true)
 
@@ -44,7 +44,7 @@ Other advises are listed in the last section.
 ##Stitch in TrainScanner
 When you finished editing the frames, let's go stitching.
 
-1. Go back to the first, small dialog.  (Do not close the large window.)  Just press the "Start" button.  Firstly, a motion detection dialog window appears, in which interframe difference is shown.  If the two successive frames are identical, the window becomes white, while difference is indicated in colors.  If the software detect the train motion correctly, the image region of the train becomes white and the background becomes colored.
+1. Go back to the first, small dialog.  (Do not close the large window.)  Just press the "Start" button.  Firstly, a motion detection dialog window appears, in which interframe difference is shown.  If the two successive frames are identical, the window becomes white, while difference is indicated in colors.  If the software detect the train motion correctly, the image region of the train becomes white and the background becomes colored. (Note: it takes fairly long time for now because the seeking feature in OpenCV2 is very inaccurate. Sorry for convenience.)
 1. After the motion detection is completed, a stitching dialog appears.  In the window, you can watch the making process of the long train image strip.  After completing the stitch, the product image is saved at the same folder where the original video resides.
 
 ##For better product photo

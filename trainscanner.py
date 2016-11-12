@@ -29,7 +29,7 @@ def fit_to_square(image, size):
 
 
 class transformation():
-    def __init__(self, angle, pers, crop):
+    def __init__(self, angle=0, pers=None, crop=None):
         self.angle = -angle * math.pi / 180.0
         self.pers = pers
         self.crop = crop
@@ -48,6 +48,8 @@ class transformation():
         """
         Warp.  Save the perspective matrix to the file for future use.
         """
+        if self.pers is None:
+            return
         w = self.rw
         h = self.rh
         L = (self.pers[2]-self.pers[0])*h/1000
@@ -72,9 +74,13 @@ class transformation():
         self.M = cv2.getPerspectiveTransform(p1,p2)
         self.ww = neww
     def warped_image(self, image):
+        if self.pers is None:
+            return image
         h = image.shape[0]
         return cv2.warpPerspective(image,self.M,(self.ww,h))
     def cropped_image(self, image):
+        if self.crop is None:
+            return image
         h,w = image.shape[:2]
         return image[self.crop[0]*h/1000:self.crop[1]*h/1000, :, :]
     def process_first_image(self, image):

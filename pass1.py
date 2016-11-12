@@ -127,58 +127,63 @@ class Pass1():
     def initWithParams(self,filename="",skip=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, runin=True, ostream=sys.stdout):
         self.filename    = filename
         self.cap      = cv2.VideoCapture(filename)
+        self.skip = skip
+        self.angle    = angle
+        self.pers     = pers
+        self.crop     = crop
         self.every    = every
         self.identity = identity
         self.margin   = margin
+        self.focus    = focus
         self.zero     = zero
         self.trailing = trailing
-        #self.angle    = angle
-        self.focus    = focus
         self.antishake= antishake
-        self.nframes  = 0  #1 is the first frame
         #self.crop     = crop
         self.runin    = runin
         self.LOG  = ostream
-        #self.pers     = pers
+        
+    def before(self):
+        """
+        prepare for the loop
+        """
+        self.nframes  = 0  #1 is the first frame
+
         ret = True
         #This does not work with some kind of MOV. (really?)
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, skip)
-        self.nframes = skip
+        #self.cap.set(cv2.CAP_PROP_POS_FRAMES, skip)
+        #self.nframes = skip
+        #ret, frame = self.cap.read()
+        #if not ret:
+        self.nframes = 0
+        #print("skip:",skip)
+        for i in range(self.skip):  #skip frames
+            ret = self.cap.grab()
+            if not ret:
+                break
+            self.nframes += 1
+        #print("get:",self.cap.get(cv2.CAP_PROP_POS_FRAMES))
         ret, frame = self.cap.read()
-        if not ret:
-            self.nframes = 0
-            # CV_CAP_PROP_POS_FRAMES failed.
-            for i in range(skip):  #skip frames
-                ret = self.cap.grab()
-                if not ret:
-                    break
-                self.nframes += 1
-            ret, frame = self.cap.read()
         if not ret:
             sys.exit(0)
         self.nframes += 1    #first frame is 1
         if not ret:
             sys.exit(0)
         self.rawframe = frame.copy()
-        self.transform = trainscanner.transformation(angle, pers, crop)
+        self.transform = trainscanner.transformation(angle=self.angle, pers=self.pers, crop=self.crop)
         rotated, warped, cropped = self.transform.process_first_image(frame)
         self.frame = cropped
         #Prepare a scalable canvas with the origin.
         self.canvas = [cropped.shape[1], cropped.shape[0],100,0,0]
         #sys.stderr.write("canvas size{0} {1} {2} {3}\n".format(self.canvas[0],self.canvas[1],*self.crop))
         #sys.exit(1)
-        self.LOG.write("{0}\n".format(filename))
-        self.LOG.write("#-r {0}\n".format(angle))
-        if pers is not None:
-            self.LOG.write("#-p {0},{1},{2},{3}\n".format(*pers))
-        self.LOG.write("#-c {0},{1}\n".format(*crop))
+        self.LOG.write("{0}\n".format(self.filename))
+        self.LOG.write("#-r {0}\n".format(self.angle))
+        if self.pers is not None:
+            self.LOG.write("#-p {0},{1},{2},{3}\n".format(*self.pers))
+        self.LOG.write("#-c {0},{1}\n".format(*self.crop))
         #end of the header
         self.LOG.write("\n")
         
-    def before(self):
-        """
-        prepare for the loop
-        """
         self.absx,self.absy = 0, 0
         self.velx, self.vely = 0.0, 0.0
         self.tr = 0

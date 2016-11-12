@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import math
 import trainscanner
-from imageselector import ImageSelector
+from imageselector2 import ImageSelector2
 import time
 import pass1_gui    
 import stitch_gui
@@ -30,7 +30,6 @@ class AsyncImageLoader(QObject):
         ret, frame = self.cap.read()
         if self.size:
             frame = trainscanner.fit_to_square(frame, self.size)
-        self.count = 1
         self.snapshots = [frame]
 
 
@@ -48,15 +47,14 @@ class AsyncImageLoader(QObject):
             ret, frame = self.cap.read()
             if not ret:
                 break
-            if self.count % 10 == 0:  #load every 10 frames; it might be too many.
-                if self.size:
-                    frame = trainscanner.fit_to_square(frame, self.size)
-                self.snapshots.append(frame)
-                #print(len(self.snapshots))
-                #these are for the preview, so we can shrink it.
-                #We want to emit the snapshots itself. Can we?
-                self.frameIncreased.emit(self.snapshots)
-            self.count += 1
+            if self.size:
+                frame = trainscanner.fit_to_square(frame, self.size)
+            self.snapshots.append(frame)
+            self.frameIncreased.emit(self.snapshots)
+            for i in range(9):
+                ret = self.cap.grab()
+                if not ret:
+                    break
 
         #print("Finished")
 
@@ -102,8 +100,19 @@ class MyLabel(QLabel):
         painter = QPainter(self)
         painter.setPen(Qt.red)
         x,y,w,h = self.geometry
-        painter.drawLine(x+w/2-self.slitpos*w/1000,y,x+w/2-self.slitpos*w/1000,y+h)
-        painter.drawLine(x+w/2+self.slitpos*w/1000,y,x+w/2+self.slitpos*w/1000,y+h)
+        d = 20
+        painter.drawLine(x+w/2-self.slitpos*w/1000,y,
+                         x+w/2-self.slitpos*w/1000,y+h)
+        painter.drawLine(x+w/2-self.slitpos*w/1000-d,y+h/2,
+                         x+w/2-self.slitpos*w/1000,  y+h/2-d)
+        painter.drawLine(x+w/2-self.slitpos*w/1000-d,y+h/2,
+                         x+w/2-self.slitpos*w/1000,  y+h/2+d)
+        painter.drawLine(x+w/2+self.slitpos*w/1000,y,
+                         x+w/2+self.slitpos*w/1000,y+h)
+        painter.drawLine(x+w/2+self.slitpos*w/1000+d,y+h/2,
+                         x+w/2+self.slitpos*w/1000,  y+h/2-d)
+        painter.drawLine(x+w/2+self.slitpos*w/1000+d,y+h/2,
+                         x+w/2+self.slitpos*w/1000,  y+h/2+d)
         painter.setPen(Qt.green)
         painter.drawRect(x+w*self.focus[0]/1000,y+h*self.focus[2]/1000,w*(self.focus[1]-self.focus[0])/1000,h*(self.focus[3]-self.focus[2])/1000)
         
@@ -407,11 +416,13 @@ class SettingsGUI(QWidget):
     def start_process(self):
         if self.editor is None:
             return
+        now = time.time()
+        logfilename = self.filename+".match.{0}.log".format(now)
         if self.btn_finish_stitch.isChecked():
             argv = ["pass1"]
             argv += ["-t", "{0}".format(self.trailing)]
             argv += ["-a", "{0}".format(self.antishake)]
-            argv += ["-S", "{0}".format(int(len(self.editor.asyncimageloader.snapshots)*10*self.editor.imageselector.trimmed))]
+            argv += ["-S", "{0}".format(self.editor.imageselector2.slider.value()*10)]
             argv += ["-p", "{0}".format(",".join([str(x) for x in self.editor.pers]))]
             argv += ["-f", "{0}".format(",".join([str(x) for x in self.editor.focus]))]
             argv += ["-c","{0},{1}".format(self.editor.croptop,self.editor.cropbottom)]
@@ -421,27 +432,26 @@ class SettingsGUI(QWidget):
                 argv += ["-x"]
             argv += ["-m","1"]
             argv += ["-r", "{0}".format(self.editor.angle_degree)]
-            argv += ["-L", self.filename+".match.log",]
+            argv += ["-L", logfilename]
             argv += [self.filename,]
         
             self.matcher = pass1_gui.MatcherUI(argv, False)  #do not terminate
             self.matcher.exec_()
             if self.matcher.terminated:
                 return
-            print("Here")
 
             argv = ["stitch"]
             argv += ["-s", "{0}".format(self.editor.slitpos)]
             argv += ["-w", "{0}".format(self.slitwidth/100.0)]
             
-            log = open("{0}.match.log".format(self.filename))
+            log = open(logfilename)
             while True:
                 line = log.readline()
                 if line[0] == "@":
                     break
             canvas_dimen = [int(x) for x in line.split()[1:]]
             argv += ["-C","{0},{1},{2},{3}".format(*canvas_dimen)]
-            argv += [ self.filename+".match.log",]
+            argv += [ logfilename,]
             self.stitcher = stitch_gui.StitcherUI(argv, False)
             file_name = self.stitcher.st.outfilename
             if self.btn_finish_perf.isChecked() or self.btn_finish_helix.isChecked():
@@ -452,7 +462,7 @@ class SettingsGUI(QWidget):
                 self.stitcher.show()
         else:
             #assume filename from the log.
-            istream = open(self.filename+".match.log")
+            istream = open(logfilename)
             line = istream.readline()
             for line in istream.readlines():
                 if len(line) > 0 and line[0] not in ('@', '#'):
@@ -517,10 +527,10 @@ class EditorGUI(QWidget):
         #http://stackoverflow.com/questions/27420338/how-to-clear-child-window-reference-stored-in-parent-application-when-child-wind
         #self.setAttribute(Qt.WA_DeleteOnClose)
         layout = self.make_layout()
-        self.imageselector = ImageSelector()
-        self.imageselector.connect(self.imageselector.slider, SIGNAL('valueChanged(int)'), self.frameChanged)
+        self.imageselector2 = ImageSelector2()
+        self.imageselector2.connect(self.imageselector2.slider, SIGNAL('valueChanged(int)'), self.frameChanged)
         imageselector_layout = QHBoxLayout()
-        imageselector_layout.addWidget(self.imageselector)
+        imageselector_layout.addWidget(self.imageselector2)
         imageselector_gbox = QGroupBox(self.tr('1. Seek the first video frame'))
         imageselector_gbox.setLayout(imageselector_layout)
         glayout = QVBoxLayout()
@@ -546,8 +556,8 @@ class EditorGUI(QWidget):
         if now - self.lastupdatethumbs < 0.2:
             return
         #transformation filter
-        self.imageselector.imagebar.setTransformer(self.thumbtransformer)
-        self.imageselector.setThumbs(cv2thumbs)
+        self.imageselector2.imagebar.setTransformer(self.thumbtransformer)
+        self.imageselector2.setThumbs(cv2thumbs)
         self.lastupdatethumbs = time.time()
         
     def make_layout(self):
@@ -654,7 +664,7 @@ class EditorGUI(QWidget):
 
         slit_slider_label = QLabel(self.tr('Slit position'))
         self.slit_slider = QSlider(Qt.Horizontal)  # スライダの向き
-        self.slit_slider.setRange(0, 500)  # スライダの範囲
+        self.slit_slider.setRange(-500, 500)  # スライダの範囲
         self.slit_slider.setValue(self.slitpos)  # 初期値
         #スライダの目盛りを両方に出す
         self.slit_slider.setTickPosition(QSlider.TicksBelow)
@@ -717,8 +727,8 @@ class EditorGUI(QWidget):
         self.show_snapshots()
 
     def frameChanged(self, value):
-        if value < self.imageselector.firstFrame:
-            value = self.imageselector.firstFrame
+        #if value < self.imageselector2.firstFrame:
+        #    value = self.imageselector2.firstFrame
         self.frame = value
         self.show_snapshots()
 

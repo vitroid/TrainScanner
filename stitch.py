@@ -141,9 +141,12 @@ class Stitcher(Canvas):
     
     def add_image(self, frame, absx,absy,idx,idy):
         rotated,warped,cropped = self.transform.process_image(frame)
-        alpha = trainscanner.make_vert_alpha( int(idx), cropped.shape[1], cropped.shape[0], self.slitpos, self.slitwidth )
-        #cv2.imshow("", alpha)
-        self.abs_merge(cropped, absx, absy, alpha=alpha)
+        if self.firstFrame:
+            self.abs_merge(cropped, absx, absy)
+            self.firstFrame = False
+        else:
+            alpha = trainscanner.make_vert_alpha( int(idx), cropped.shape[1], cropped.shape[0], self.slitpos, self.slitwidth )
+            self.abs_merge(cropped, absx, absy, alpha=alpha)
         if self.visual:
             cv2.imshow("canvas", self.canvas[0])
             cv2.waitKey(1)  #This causes ERROR
@@ -160,16 +163,22 @@ class Stitcher(Canvas):
 
     def before(self):
         self.cap = cv2.VideoCapture(self.filename)
+        self.firstFrame = True
+        self.currentFrame = 0 #1 is the first frame
 
     def onestep(self):
-        nextframe = self.locations[0][0]  #in locations, 1 is the first frame.
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, nextframe)
-        ## while self.frames + 1 < nextframe:
-        ##     ret = self.cap.grab()
-        ##     if not ret:
-        ##         return self.canvas[0]
-        ##     self.frames += 1
+        ##if self.firstFrame:
+        ##    #NOT RELIABLE
+        ##    self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.locations[0][0]-##1)
+        ##    self.currentFrame = self.locations[0][0]
+        ##else:
+        while self.currentFrame + 1 < self.locations[0][0]:
+            ret = self.cap.grab()
+            if not ret:
+                return self.canvas[0]
+            self.currentFrame += 1
         ret,frame = self.cap.read()
+        self.currentFrame += 1
         if not ret:
             return self.canvas[0]
         frame = cv2.resize(frame, None, fx=self.scale, fy=self.scale)
