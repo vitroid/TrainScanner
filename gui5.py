@@ -185,7 +185,7 @@ class SettingsGUI(QWidget):
         
         settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2, Qt.AlignRight)
         self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
-        self.slitwidth_slider.setRange(5, 100)  # スライダの範囲
+        self.slitwidth_slider.setRange(5, 300)  # スライダの範囲
         self.slitwidth_slider.setValue(self.slitwidth)  # 初期値
         #スライダの目盛りを両方に出す
         self.slitwidth_slider.setTickPosition(QSlider.TicksBelow)
@@ -366,6 +366,17 @@ class SettingsGUI(QWidget):
         self.le.setText(self.tr('(File name appears here)'))
         
     def getfile(self):
+        #OSチェック
+        def os_check():
+            #windows
+            if os.name is 'nt':
+                code = 'cp932'
+                return code
+            #Unix、Mac
+            if os.name is not 'nt':
+                code = 'utf-8'
+                return code
+
         if self.editor is not None:
             self.editor.close()
         self.filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
@@ -375,7 +386,8 @@ class SettingsGUI(QWidget):
         #self.le.setPixmap(QPixmap(filename))
         #Load every 30 frames here for preview.
         self.le.setText(self.filename)
-        self.filename = str(self.filename)
+        self.filename = unicode(self.filename.toUtf8(), encoding=os_check())
+        print(self.filename)
         #dir = os.path.dirname(self.filename)
         #base = os.path.basename(self.filename)
         #self.filename = "sample3.mov"
@@ -419,21 +431,38 @@ class SettingsGUI(QWidget):
         now = time.time()
         logfilename = self.filename+".match.{0}.tsconf".format(now)
         if self.btn_finish_stitch.isChecked():
-            argv = ["pass1"]
-            argv += ["-t", "{0}".format(self.trailing)]
-            argv += ["-a", "{0}".format(self.antishake)]
-            argv += ["-S", "{0}".format(self.editor.imageselector2.slider.value()*10)]
-            argv += ["-p", "{0}".format(",".join([str(x) for x in self.editor.pers]))]
-            argv += ["-f", "{0}".format(",".join([str(x) for x in self.editor.focus]))]
-            argv += ["-c","{0},{1}".format(self.editor.croptop,self.editor.cropbottom)]
+            stitch_options = []
+            stitch_options.append(["--slit","{0}".format(self.editor.slitpos)])
+            stitch_options.append(["--width","{0}".format(self.slitwidth/100.0)])
+
+            common_options = []
+            common_options.append(["--perspective", "{0}".format(",".join([str(x) for x in self.editor.pers]))])
+            common_options.append(["--rotate", "{0}".format(self.editor.angle_degree)])
+            common_options.append(["--crop","{0},{1}".format(self.editor.croptop,self.editor.cropbottom)])
+            pass1_options = []
+            pass1_options.append(["--trail", "{0}".format(self.trailing)])
+            pass1_options.append(["--antishake", "{0}".format(self.antishake)])
+            pass1_options.append(["--skip", "{0}".format(self.editor.imageselector2.slider.value()*10)])
+            pass1_options.append(["--focus", "{0}".format(",".join([str(x) for x in self.editor.focus]))])
             if self.btn_zerodrift.isChecked():
-                argv +=["-z"]
+                pass1_options.append(["--zero"])
             if self.btn_stall.isChecked():
-                argv += ["-x"]
-            argv += ["-m","1"]
-            argv += ["-r", "{0}".format(self.editor.angle_degree)]
-            argv += ["-L", logfilename]
+                pass1_options.append(["--stall"])
+            pass1_options.append(["--margin","1"])
+            pass1_options.append(["--log", logfilename])
+
+            #wrap the options to record in the tsconf file
+            #THIS IS WEIRD. FIND BETTER WAY.
+            #LOG FILE MADE BY PASS1_GUI IS DIFFERENT FROM THAT BY GUI5.PY..
+            #IT IS ALSO WEIRD.
+            wrapped = []
+            for op in pass1_options + stitch_options:
+                wrapped.append(["-2", "%09".join(op)])
+            argv = ["pass1"]
+            for pair in common_options + pass1_options + wrapped:
+                argv += pair
             argv += [self.filename,]
+            print(argv)
         
             self.matcher = pass1_gui.MatcherUI(argv, False)  #do not terminate
             self.matcher.exec_()
@@ -442,8 +471,6 @@ class SettingsGUI(QWidget):
 
             argv = ["stitch"]
             argv += [ logfilename,]
-            argv += ["-s", "{0}".format(self.editor.slitpos)]
-            argv += ["-w", "{0}".format(self.slitwidth/100.0)]
             
             self.stitcher = stitch_gui.StitcherUI(argv, False)
             file_name = self.stitcher.st.outfilename
@@ -868,13 +895,16 @@ class EditorGUI(QWidget):
 def SystemLanguage():
     import platform
     ostype = platform.system()
-    loc = ""
+    loc = []
     if ostype == "Darwin":
         #for macos
         import commands
-        output = commands.getstatusoutput('defaults read -g AppleLanguages')
-        primary = output[1].split("\n")
-        loc     = primary[1].split('"')[1]
+        import re
+        ret,output = commands.getstatusoutput('defaults read -g AppleLanguages')
+        for l in output.split("\n")[1:len(output)-2]:
+            lang = re.sub(r'[ "]+', '', l)
+            loc.append(lang)
+        #print(loc)
     return loc
     
 #for pyinstaller
@@ -894,7 +924,7 @@ def main():
     translator = QTranslator(app)
     rpath = getattr(sys, '_MEIPASS', os.getcwd())
     loc = SystemLanguage()
-    if len(loc) > 1 and loc[:2] == "ja":
+    if len(loc[0]) > 1 and loc[0][:2] == "ja":
         translator.load(rpath+"/i18n/gui5_ja")
     app.installTranslator(translator)
     se = SettingsGUI()

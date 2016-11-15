@@ -213,18 +213,16 @@ def motion(ref, img, focus=(333, 666, 333, 666), margin=0, delta=(0,0), antishak
         
 
 #global
-alphas = dict()
 
 
-
-def make_vert_alpha( displace, img_width, img_height, slit=0, width=1.0 ):
+def make_vert_alpha( alphas, displace, img_width, img_height, slit=0, width=1.0 ):
     """
     Make an orthogonal mask
     slit position is -500 to 500
     slit width=1 is standard, width<1 is narrow (sharp) and width>1 is diffuse alpha
     """
-    if (displace, img_width, slit) in alphas:
-        return alphas[(displace, img_width, slit)]
+    if (displace, width, slit) in alphas:
+        return alphas[(displace, width, slit)]
     if displace == 0:
         return np.zeros((img_height,img_width,3))+1
     if displace > 0:
@@ -232,9 +230,9 @@ def make_vert_alpha( displace, img_width, img_height, slit=0, width=1.0 ):
     else:
         centerx = img_width/2 + slit*img_width/1000
     alpha = np.fromfunction(lambda y, x, v: (x-centerx)/(displace*width), (img_height, img_width, 3))
-    np.clip(alpha,-1,1,out=alpha)  # float 0..1 values
-    alpha = (alpha+1) / 2
-    alphas[(displace, img_width, slit)] = alpha
+    np.clip(alpha,0,1,out=alpha)  # float 0..1 values
+    #alpha += 1
+    alphas[(displace, width, slit)] = alpha
     return alpha
 
 #global

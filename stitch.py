@@ -51,6 +51,33 @@ def Usage(argv):
     sys.exit(1)
 
 
+def options_parser(argv, options):
+    #assume the first arg is removed
+    while len(argv) > 0 and argv[0][0] =="-":
+        arg1 = argv.pop(0)
+        if arg1 in ("-d", "--debug"):
+            options["debug"] = True
+        elif arg1 in ("-C", "--canvas"):
+            options["dimen"] = [int(x) for x in argv.pop(0).split(",")]
+        elif arg1 in ("-s", "--slit"):
+            options["slitpos"] = int(argv.pop(0))
+        elif arg1 in ("-y", "--scale"):
+            options["scale"] = float(argv.pop(0))
+        elif arg1 in ("-w", "--width"):
+            options["slitwidth"] = float(argv.pop(0))
+        elif arg1 in ("-r", "--rotate"):
+            options["angle"] = float(argv.pop(0))
+        elif arg1 in ("-p", "--perspective"):
+            options["pers"]  = [int(x) for x in argv.pop(0).split(",")]
+        elif arg1 in ("-c", "--crop"):
+            options["crop"]  = [int(x) for x in argv.pop(0).split(",")]
+        elif arg1 in ("--trail", "--antishake", "--skip", "--focus", "--margin", "--log"):
+            argv.pop(0) #pass1 options with an argument; ignore.
+        elif arg1 in ("--zero", "--stall"):
+            pass        #pass1 options without arguments; ignore.
+        elif arg1[0] == "-":
+            print("Unknown option: ", arg1)
+            Usage(argv)
 
 class Stitcher(Canvas):
     """
@@ -63,35 +90,12 @@ class Stitcher(Canvas):
             self.initWithArgv(argv)
 
     def initWithArgv(self,argv):
-        def options_parser(argv, options):
-            #assume the first arg is removed
-            while len(argv) > 0 and argv[0][0] =="-":
-                arg1 = argv.pop(0)
-                if arg1 in ("-d", "--debug"):
-                    options["debug"] = True
-                elif arg1 in ("-C", "--canvas"):
-                    options["dimen"] = [int(x) for x in argv.pop(0).split(",")]
-                elif arg1 in ("-s", "--slit"):
-                    options["slitpos"] = int(argv.pop(0))
-                elif arg1 in ("-y", "--scale"):
-                    options["scale"] = float(argv.pop(0))
-                elif arg1 in ("-w", "--width"):
-                    options["slitwidth"] = float(argv.pop(0))
-                elif arg1 in ("-r", "--rotate"):
-                    options["angle"] = float(line.split()[1])
-                elif arg1 in ("-p", "--perspective"):
-                    options["pers"]  = [int(x) for x in argv.pop(0).split(",")]
-                elif arg1 in ("-c", "--crop"):
-                    options["crop"]  = [int(x) for x in argv.pop(0).split(",")]
-                elif arg1[0] == "-":
-                    print("Unknown option: ", arg1)
-                    Usage(argv)
         options = dict()
-        options["debug"] = False #True
+        #options["debug"] = False #True
         options["slitpos"] = 250
         options["slitwidth"] = 1
-        options["film"] = False
-        options["helix"] = False
+        #options["film"] = False
+        #options["helix"] = False
         options["dimen"] = None
         options["scale"] = 1.0
         options["angle"] = 0
@@ -99,17 +103,18 @@ class Stitcher(Canvas):
         options["crop"] = 0,1000
         if len(argv) < 2:
             Usage(argv)
-        LOG = open(argv[1])
-        line = LOG.readline()
-        filename = line.splitlines()[0] #chomp
-        line = LOG.readline().rstrip()
+        options["istream"] = open(argv[1])
+        line = options["istream"].readline()
+        options["filename"] = line.splitlines()[0] #chomp
+        line = options["istream"].readline().rstrip()
         while len(line) and line[0]=="-":
             cols = line.split("\t")
             options_parser(cols, options)
-            line = LOG.readline().rstrip()
+            line = options["istream"].readline().rstrip()
         options_parser(argv[2:], options)
+        print(options)
         
-        self.initWithParams(filename=filename, istream=LOG, angle=options["angle"], pers=options["pers"], slitpos=options["slitpos"], slitwidth=options["slitwidth"], scale=options["scale"], crop=options["crop"], dimen=options["dimen"])
+        self.initWithParams(**options)
 
     def initWithParams(self, filename="", istream=None, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=None):
         self.filename = filename
@@ -138,6 +143,7 @@ class Stitcher(Canvas):
         self.locations = locations
         self.total_frames = len(locations)
         self.outfilename = filename+"+{0}.png".format(self.locations[0][0])
+        self.alphas = dict()
 
     def getProgress(self):
         den = self.total_frames
@@ -150,7 +156,7 @@ class Stitcher(Canvas):
             self.abs_merge(cropped, absx, absy)
             self.firstFrame = False
         else:
-            alpha = trainscanner.make_vert_alpha( int(idx), cropped.shape[1], cropped.shape[0], self.slitpos, self.slitwidth )
+            alpha = trainscanner.make_vert_alpha( self.alphas, int(idx), cropped.shape[1], cropped.shape[0], slit=self.slitpos, width=self.slitwidth )
             self.abs_merge(cropped, absx, absy, alpha=alpha)
         if self.visual:
             cv2.imshow("canvas", self.canvas[0])

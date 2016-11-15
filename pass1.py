@@ -8,7 +8,7 @@ import numpy as np
 import math
 import trainscanner
 import sys
-
+import re
     
 
 def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
@@ -61,6 +61,48 @@ def Usage(argv):
     sys.exit(1)
 
 
+def options_parser(argv, options):
+    #assume the first arg is removed
+    while len(argv) > 0 and argv[0][0] =="-":
+        arg1 = argv.pop(0)
+        if arg1 in ("-a", "--antishake"):
+            options["antishake"] = int(argv.pop(0))
+        elif arg1 in ("-c", "--crop"):
+            param = argv.pop(0)
+            options["crop"] = [int(x) for x in param.split(",")]
+        elif arg1 in ("-e", "--every"):
+            options["every"] = int(argv.pop(0))
+        elif arg1 in ("-f", "--focus", "--frame"):
+            param = argv.pop(0)
+            options["focus"] = [int(x) for x in param.split(",")]
+        elif arg1 in ("-i", "--identity"):
+            options["identity"] = float(argv.pop(0))
+        elif arg1 in ("-m", "--margin"):
+            options["margin"] = int(argv.pop(0))
+        elif arg1 in ("-p", "--pers", "--perspective"):
+            #followed by four numbers separated by comma.
+            #left top, bottom, right top, bottom
+            param = argv.pop(0)
+            options["pers"]  = [int(x) for x in param.split(",")]
+        elif arg1 in ("-r", "--rotate"):
+            options["angle"] = float(argv.pop(0))
+        elif arg1 in ("-S", "--skip"):
+            options["skip"] = int(argv.pop(0))
+        elif arg1 in ("-t", "--trail"):
+            options["trailing"] = int(argv.pop(0))
+        elif arg1 in ("-z", "--zero"):
+            options["zero"]  = True
+        elif arg1 in ("-x", "--stall"):
+            options["runin"] = False
+        elif arg1 in ("-L", "--log"):
+            options["ostream"] = open(argv.pop(0),"w")
+        elif arg1 in ("-2",):
+            #Options for the second pass == stitch
+            options["option2"].append(argv.pop(0))
+        elif arg1[0] == "-":
+            print("Unknown option: ", arg1)
+            Usage(argv)
+
 class Pass1():
     def __init__(self,argv=None,filename="",skip=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, ):
         if argv is not None:
@@ -69,65 +111,31 @@ class Pass1():
             self.initWithParams(filename=filename, skip=skip, angle=angle, pers=pers, crop=crop, every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake)
             
     def initWithArgv(self, argv):
-        skip  = 0
-        zero  = False
-        pers = None 
-        antishake = 5
-        trailing = 10
-        angle = 0   #angle in degree
-        every = 1
-        identity = 1.0
-        crop = 0,1000
-        runin = True
-        ostream = sys.stdout
-        margin = 0 # pixels, work in progress.
+        options = dict()
+        options["skip"]  = 0
+        options["zero"]  = False
+        options["pers"] = None 
+        options["antishake"] = 5
+        options["trailing"] = 10
+        options["angle"] = 0   #angle in degree
+        options["every"] = 1
+        options["identity"] = 1.0
+        options["crop"] = 0,1000
+        options["runin"] = True
+        options["ostream"] = sys.stdout
+        options["option2"] = []
+        options["margin"] = 0 # pixels, work in progress.
         #It may be able to unify with antishake.
-        focus = [333, 666, 333, 666]
-        while len(argv) > 2:
-            if argv[1] in ("-a", "--antishake"):
-                antishake = int(argv.pop(2))
-            elif argv[1] in ("-c", "--crop"):
-                param = argv.pop(2)
-                crop = [int(x) for x in param.split(",")]
-            elif argv[1] in ("-e", "--every"):
-                every = int(argv.pop(2))
-            elif argv[1] in ("-f", "--focus", "--frame"):
-                param = argv.pop(2)
-                focus = [int(x) for x in param.split(",")]
-            elif argv[1] in ("-i", "--identity"):
-                identity = float(argv.pop(2))
-            elif argv[1] in ("-m", "--margin"):
-                margin = int(argv.pop(2))
-            elif argv[1] in ("-p", "--pers", "--perspective"):
-                #followed by four numbers separated by comma.
-                #left top, bottom, right top, bottom
-                param = argv.pop(2)
-                pers  = [int(x) for x in param.split(",")]
-            elif argv[1] in ("-r", "--rotate"):
-                angle = float(argv.pop(2))
-            elif argv[1] in ("-S", "--skip"):
-                skip = int(argv.pop(2))
-            elif argv[1] in ("-t", "--trail"):
-                trailing = int(argv.pop(2))
-            elif argv[1] in ("-z", "--zero"):
-                zero  = True
-            elif argv[1] in ("-x", "--stall"):
-                runin = False
-            elif argv[1] in ("-L", "--log"):
-                ostream = open(argv.pop(2),"w")
-            elif argv[1][0] == "-":
-                print("Unknown option: ", argv[1])
-                Usage(argv)
-            argv.pop(1)
+        options["focus"] = [333, 666, 333, 666]
 
-        if len(argv) != 2:
-            Usage(argv)
-
-        filename = argv[1]
-        #call it as a normal method instead of a constructor.
-        self.initWithParams(filename=filename, skip=skip,angle=angle,pers=pers,crop=crop,every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake, runin=runin, ostream=ostream )
+        #last arg
+        options["filename"] = argv.pop(-1)
+        options_parser(argv[1:], options)
         
-    def initWithParams(self,filename="",skip=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, runin=True, ostream=sys.stdout):
+        #call it as a normal method instead of a constructor.
+        self.initWithParams(**options)
+        
+    def initWithParams(self,filename="",skip=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, runin=True, ostream=sys.stdout, option2=[] ):
         self.filename    = filename
         self.cap      = cv2.VideoCapture(filename)
         self.skip = skip
@@ -146,6 +154,7 @@ class Pass1():
         self.head     = []
         self.body     = []
         self.ostream   = ostream
+        self.option2  = option2
         
     def before(self):
         """
@@ -186,6 +195,8 @@ class Pass1():
         if self.pers is not None:
             self.head.append("--perspective\t{0},{1},{2},{3}\n".format(*self.pers))
         self.head.append("--crop\t{0},{1}\n".format(*self.crop))
+        for op in self.option2:
+            self.head.append(re.sub(r"%09","\t",op)+"\n")
         #end of the header
         
         self.absx,self.absy = 0, 0
