@@ -417,7 +417,7 @@ class SettingsGUI(QWidget):
         if self.editor is None:
             return
         now = time.time()
-        logfilename = self.filename+".match.{0}.log".format(now)
+        logfilename = self.filename+".match.{0}.tsconf".format(now)
         if self.btn_finish_stitch.isChecked():
             argv = ["pass1"]
             argv += ["-t", "{0}".format(self.trailing)]
@@ -441,17 +441,10 @@ class SettingsGUI(QWidget):
                 return
 
             argv = ["stitch"]
+            argv += [ logfilename,]
             argv += ["-s", "{0}".format(self.editor.slitpos)]
             argv += ["-w", "{0}".format(self.slitwidth/100.0)]
             
-            log = open(logfilename)
-            while True:
-                line = log.readline()
-                if line[0] == "@":
-                    break
-            canvas_dimen = [int(x) for x in line.split()[1:]]
-            argv += ["-C","{0},{1},{2},{3}".format(*canvas_dimen)]
-            argv += [ logfilename,]
             self.stitcher = stitch_gui.StitcherUI(argv, False)
             file_name = self.stitcher.st.outfilename
             if self.btn_finish_perf.isChecked() or self.btn_finish_helix.isChecked():

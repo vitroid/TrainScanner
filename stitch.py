@@ -11,10 +11,12 @@ import sys
 
 #Automatically extensible canvas.
 class Canvas():
-    def __init__(self,initial_canvas, origin=(0,0)):
-        #self.canvases = []
-        self.canvas = (initial_canvas, origin)
+    def __init__(self, image=None, position=None):
+        self.canvas = image, position
     def abs_merge(self, image, x, y, alpha=None ):
+        if self.canvas is None:
+            self.canvas = image.copy(), (x, y)
+            return
         absx, absy = self.canvas[1]   #absolute coordinate of the top left of the canvas
         cxmin = absx
         cymin = absy
@@ -42,8 +44,7 @@ class Canvas():
         
 
 def Usage(argv):
-    print("usage: {0} [-d][-s r][-w x][-F][-H][-l label][-C w,h,x,y] < output_of_pass1_py.log".format(argv[0]))
-    print("usage: {0} [-d][-s r][-w x][-F][-H][-l label][-C w,h,x,y] output_of_pass1_py.log".format(argv[0]))
+    print("usage: {0} output_of_pass1_py.tsconf [-d][-s r][-w x][-F][-H][-l label][-C w,h,x,y]".format(argv[0]))
     print("\t-d\tDebug mode.")
     print("\t-s r\tSet slit position to r (1).")
     print("\t-w r\tSet slit width (1=same as the length of the interframe motion vector).")
@@ -62,55 +63,55 @@ class Stitcher(Canvas):
             self.initWithArgv(argv)
 
     def initWithArgv(self,argv):
-
-        debug = False #True
-        slitpos = 250
-        slitwidth = 1
-        film = False
-        helix = False
-        dimen = (10,10,0,0)
-        scale = 1.0
-        # -r and -p option must be identical to pass1.py
-        #(or they may be given in the input file)
-        while len(argv) > 1 and argv[1][0] =="-":
-            if argv[1] in ("-d", "--debug"):
-                debug = True
-            elif argv[1] in ("-C", "--canvas"):
-                dimen = [int(x) for x in argv.pop(2).split(",")]
-            elif argv[1] in ("-s", "--slit"):
-                slitpos = int(argv.pop(2))
-            elif argv[1] in ("-y", "--scale"):
-                scale = float(argv.pop(2))
-            elif argv[1] in ("-w", "--width"):
-                slitwidth = float(argv.pop(2))
-            elif argv[1][0] == "-":
-                print("Unknown option: ", argv[1])
-                Usage(argv)
-            argv.pop(1)
-        if len(argv) == 2:
-            LOG = open(argv[1])
-        elif len(argv) != 1:
+        def options_parser(argv, options):
+            #assume the first arg is removed
+            while len(argv) > 0 and argv[0][0] =="-":
+                arg1 = argv.pop(0)
+                if arg1 in ("-d", "--debug"):
+                    options["debug"] = True
+                elif arg1 in ("-C", "--canvas"):
+                    options["dimen"] = [int(x) for x in argv.pop(0).split(",")]
+                elif arg1 in ("-s", "--slit"):
+                    options["slitpos"] = int(argv.pop(0))
+                elif arg1 in ("-y", "--scale"):
+                    options["scale"] = float(argv.pop(0))
+                elif arg1 in ("-w", "--width"):
+                    options["slitwidth"] = float(argv.pop(0))
+                elif arg1 in ("-r", "--rotate"):
+                    options["angle"] = float(line.split()[1])
+                elif arg1 in ("-p", "--perspective"):
+                    options["pers"]  = [int(x) for x in argv.pop(0).split(",")]
+                elif arg1 in ("-c", "--crop"):
+                    options["crop"]  = [int(x) for x in argv.pop(0).split(",")]
+                elif arg1[0] == "-":
+                    print("Unknown option: ", arg1)
+                    Usage(argv)
+        options = dict()
+        options["debug"] = False #True
+        options["slitpos"] = 250
+        options["slitwidth"] = 1
+        options["film"] = False
+        options["helix"] = False
+        options["dimen"] = None
+        options["scale"] = 1.0
+        options["angle"] = 0
+        options["pers"] = None #np.float32([380, 350, 1680, 1715])
+        options["crop"] = 0,1000
+        if len(argv) < 2:
             Usage(argv)
-        else:
-            LOG = sys.stdin
+        LOG = open(argv[1])
         line = LOG.readline()
         filename = line.splitlines()[0] #chomp
-        angle = 0
-        pers = None #np.float32([380, 350, 1680, 1715])
-        crop = 0,1000
-        while True:
-            line = LOG.readline()
-            if line[0:3] == "#-r":
-                angle = float(line.split()[1])
-            elif line[0:3] == "#-p":
-                pers  = [int(x) for x in line.split()[1].split(",")]
-            elif line[0:3] == "#-c":
-                crop  = [int(x) for x in line.split()[1].split(",")]
-            else:
-                break
-        self.initWithParams(filename=filename, istream=LOG, angle=angle, pers=pers, slitpos=slitpos, slitwidth=slitwidth, scale=scale, crop=crop, dimen=dimen)
+        line = LOG.readline().rstrip()
+        while len(line) and line[0]=="-":
+            cols = line.split("\t")
+            options_parser(cols, options)
+            line = LOG.readline().rstrip()
+        options_parser(argv[2:], options)
+        
+        self.initWithParams(filename=filename, istream=LOG, angle=options["angle"], pers=options["pers"], slitpos=options["slitpos"], slitwidth=options["slitwidth"], scale=options["scale"], crop=options["crop"], dimen=options["dimen"])
 
-    def initWithParams(self, filename="", istream=None, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=(10,10,0,0)):
+    def initWithParams(self, filename="", istream=None, angle=0, pers=None, slitpos=250, slitwidth=1.0, visual=False, scale=1.0, crop=(0,1000), dimen=None):
         self.filename = filename
 
         self.slitpos = slitpos
@@ -121,8 +122,12 @@ class Stitcher(Canvas):
         self.scale = scale
         #print("scale=",scale)
         self.transform = trainscanner.transformation(angle, pers, crop)
-        self.dimen = [int(x*scale) for x in dimen]
-        Canvas.__init__(self,np.zeros((self.dimen[1],self.dimen[0],3),np.uint8), self.dimen[2:4]) #python2 style
+        if dimen is None:
+            Canvas.__init__(self)
+            self.dimen = None
+        else:
+            self.dimen = [int(x*scale) for x in dimen]
+            Canvas.__init__(self,image=np.zeros((self.dimen[1],self.dimen[0],3),np.uint8), position=self.dimen[2:4]) #python2 style
         locations = [] #(1,0,0,0,0)] #frame,absx, absy,dx,dy
         for line in istream.readlines():
             if len(line) > 0 and line[0] != '@':

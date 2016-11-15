@@ -25,6 +25,9 @@ def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
 
 #Automatically extensible canvas.
 def canvas_size(canvas_dimen, image, x, y):
+    if canvas_dimen is None:
+        h,w = image.shape[:2]
+        return w,h,x,y
     absx, absy = canvas_dimen[2:4]   #absolute coordinate of the top left of the canvas
     cxmin = absx
     cymin = absy
@@ -140,7 +143,9 @@ class Pass1():
         self.antishake= antishake
         #self.crop     = crop
         self.runin    = runin
-        self.LOG  = ostream
+        self.head     = []
+        self.body     = []
+        self.ostream   = ostream
         
     def before(self):
         """
@@ -173,16 +178,15 @@ class Pass1():
         rotated, warped, cropped = self.transform.process_first_image(frame)
         self.frame = cropped
         #Prepare a scalable canvas with the origin.
-        self.canvas = [cropped.shape[1], cropped.shape[0],100,0,0]
+        self.canvas = None
         #sys.stderr.write("canvas size{0} {1} {2} {3}\n".format(self.canvas[0],self.canvas[1],*self.crop))
         #sys.exit(1)
-        self.LOG.write("{0}\n".format(self.filename))
-        self.LOG.write("#-r {0}\n".format(self.angle))
+        self.head.append("{0}\n".format(self.filename))
+        self.head.append("--rotate\t{0}\n".format(self.angle))
         if self.pers is not None:
-            self.LOG.write("#-p {0},{1},{2},{3}\n".format(*self.pers))
-        self.LOG.write("#-c {0},{1}\n".format(*self.crop))
+            self.head.append("--perspective\t{0},{1},{2},{3}\n".format(*self.pers))
+        self.head.append("--crop\t{0},{1}\n".format(*self.crop))
         #end of the header
-        self.LOG.write("\n")
         
         self.absx,self.absy = 0, 0
         self.velx, self.vely = 0.0, 0.0
@@ -203,8 +207,11 @@ class Pass1():
 
 
     def after(self):
-        self.LOG.write("@ {0} {1} {2} {3}\n".format(*self.canvas))
-        self.LOG.close()
+        self.head.append("--canvas\t{0},{1},{2},{3}\n".format(*self.canvas))
+        self.head.append("\n")
+        for line in self.head+self.body:
+            self.ostream.write(line)
+        self.ostream.close()
 
     def onestep(self):
         ret = True
@@ -287,8 +294,7 @@ class Pass1():
             self.absx += dx
             self.absy += dy
             self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
-            self.LOG.write("{0} {1} {2} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy))
-            self.LOG.flush()
+            self.body.append("{0} {1} {2} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy))
         self.frame   = nextframe
         self.preview = nextpreview
         return diff_img

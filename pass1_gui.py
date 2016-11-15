@@ -111,7 +111,6 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     match = MatcherUI(sys.argv, True)
     match.setWindowTitle("Matcher Preview")
-    print("show")
     match.show()
     match.raise_()
     sys.exit(app.exec_())
