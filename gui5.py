@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+from __future__ import print_function
 import sys
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -12,10 +13,13 @@ import math
 import trainscanner
 from imageselector2 import ImageSelector2
 import time
+from pass1 import prepare_parser as pp1
+from stitch import prepare_parser as pp2
 import pass1_gui    
 import stitch_gui
 import film
 import helix
+import argparse
 
 class AsyncImageLoader(QObject):
     frameIncreased = pyqtSignal(list)
@@ -380,19 +384,62 @@ class SettingsGUI(QWidget):
         if self.editor is not None:
             self.editor.close()
         self.filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
-            "","Movie files (*.mov *.mp4 *.mts)")
+            "","Movie files (*.mov *.mp4 *.mts *.tsconf)")
         if self.filename == "": # or if the file cannot be opened,
             return
         #self.le.setPixmap(QPixmap(filename))
         #Load every 30 frames here for preview.
-        self.le.setText(self.filename)
         self.filename = unicode(self.filename.toUtf8(), encoding=os_check())
         print(self.filename)
+        #if the file is tsconf (TrainScanner settings)
+        if self.filename.rfind(".tsconf") + 7 == len(self.filename):
+            #read all initial values from the file.
+            ap = argparse.ArgumentParser(fromfile_prefix_chars='@',
+                                        description='TrainScanner')
+            parser = pp2(ap)
+            params,unknown = parser.parse_known_args(["@"+self.filename])
+            print(3,params,unknown)
+            unknown += [params.filename] #supply filename for pass1 parser
+            #print(params.filename,"<<<")
+            self.filename = params.filename
+            parser2 = pp1()
+            params2,unknown2 = parser2.parse_known_args(unknown)
+            print(3,params2,unknown2)
+            p1 = vars(params)
+            p2 = vars(params2)
+            for key in p2:
+                p1[key] = p2[key]
+            print(p1)
+            #set variables in self
+            #and make the editor also.
+            self.editor = EditorGUI(self, params=p1)
+            self.slitwidth_slider.setValue(int(p1["slitwidth"]*100))
+            self.antishake_slider.setValue(p1["antishake"])
+            if p1["zero"]:
+                self.btn_zerodrift.setCheckState(Qt.Checked)
+            else:
+                self.btn_zerodrift.setCheckState(Qt.Unchecked)
+            if p1["stall"]:
+                self.btn_stall.setCheckState(Qt.Checked)
+            else:
+                self.btn_stall.setCheckState(Qt.Unchecked)
+            self.trailing_slider.setValue(p1["trailing"])
+            if p1["film"]:
+                self.btn_finish_perf.setCheckState(Qt.Checked)
+            else:
+                self.btn_finish_perf.setCheckState(Qt.Unchecked)
+            if p1["helix"]:
+                self.btn_finish_helix.setCheckState(Qt.Checked)
+            else:
+                self.btn_finish_helix.setCheckState(Qt.Unchecked)
+            
+        else:
+            self.editor = EditorGUI(self, filename=self.filename)
         #dir = os.path.dirname(self.filename)
         #base = os.path.basename(self.filename)
         #self.filename = "sample3.mov"
-        self.editor = EditorGUI(self, filename=self.filename)
         self.editor.show()
+        self.le.setText(self.filename)
         
 
 
@@ -428,39 +475,41 @@ class SettingsGUI(QWidget):
     def start_process(self):
         if self.editor is None:
             return
-        now = time.time()
-        logfilename = self.filename+".match.{0}.tsconf".format(now)
+        now = int(time.time()) % 100000
+        logfilenamebase = self.filename+".{0}".format(now)
         if self.btn_finish_stitch.isChecked():
             stitch_options = []
-            stitch_options.append(["--slit","{0}".format(self.editor.slitpos)])
-            stitch_options.append(["--width","{0}".format(self.slitwidth/100.0)])
+            stitch_options += ["slit={0}".format(self.editor.slitpos)]
+            stitch_options += ["width={0}".format(self.slitwidth/100.0)]
+            if self.btn_finish_perf.isChecked():
+                stitch_options += ["film"]
+            if self.btn_finish_helix.isChecked():
+                stitch_options += ["helix"]
 
             common_options = []
-            common_options.append(["--perspective", "{0}".format(",".join([str(x) for x in self.editor.pers]))])
-            common_options.append(["--rotate", "{0}".format(self.editor.angle_degree)])
-            common_options.append(["--crop","{0},{1}".format(self.editor.croptop,self.editor.cropbottom)])
+            common_options += ["--perspective",] + [str(x) for x in self.editor.pers]
+            common_options += ["--rotate", "{0}".format(self.editor.angle_degree)]
+            common_options += ["--crop",] + [str(x) for x in (self.editor.croptop,self.editor.cropbottom)]
             pass1_options = []
-            pass1_options.append(["--trail", "{0}".format(self.trailing)])
-            pass1_options.append(["--antishake", "{0}".format(self.antishake)])
-            pass1_options.append(["--skip", "{0}".format(self.editor.imageselector2.slider.value()*10)])
-            pass1_options.append(["--focus", "{0}".format(",".join([str(x) for x in self.editor.focus]))])
+            pass1_options += ["--trail", "{0}".format(self.trailing)]
+            pass1_options += ["--antishake", "{0}".format(self.antishake)]
+            pass1_options += ["--skip", "{0}".format(self.editor.imageselector2.slider.value()*10)]
+            pass1_options += ["--focus",] + [str(x) for x in self.editor.focus]
             if self.btn_zerodrift.isChecked():
-                pass1_options.append(["--zero"])
+                pass1_options += ["--zero",]
             if self.btn_stall.isChecked():
-                pass1_options.append(["--stall"])
-            pass1_options.append(["--margin","1"])
-            pass1_options.append(["--log", logfilename])
+                pass1_options += ["--stall",]
+            pass1_options += ["--margin","1"]
+            pass1_options += ["--log", logfilenamebase]
 
             #wrap the options to record in the tsconf file
             #THIS IS WEIRD. FIND BETTER WAY.
             #LOG FILE MADE BY PASS1_GUI IS DIFFERENT FROM THAT BY GUI5.PY..
             #IT IS ALSO WEIRD.
-            wrapped = []
-            for op in pass1_options + stitch_options:
-                wrapped.append(["-2", "%09".join(op)])
-            argv = ["pass1"]
-            for pair in common_options + pass1_options + wrapped:
-                argv += pair
+            #PASS1 must write the options and settings in the tsconf by itself.
+            argv = ["pass1", ] + common_options + pass1_options
+            for op in stitch_options:
+                argv += ["-2", op]
             argv += [self.filename,]
             print(argv)
         
@@ -470,19 +519,14 @@ class SettingsGUI(QWidget):
                 return
 
             argv = ["stitch"]
-            argv += [ logfilename,]
+            argv += [ "@"+logfilenamebase+".tsconf",]
             
             self.stitcher = stitch_gui.StitcherUI(argv, False)
             file_name = self.stitcher.st.outfilename
-            if self.btn_finish_perf.isChecked() or self.btn_finish_helix.isChecked():
-                self.stitcher.exec_()
-                #the post processes should be executed inside the stitcher.
-                #then the following assumption is not necessary.
-            else:
-                self.stitcher.show()
+            self.stitcher.show()
         else:
             #assume filename from the log.
-            istream = open(logfilename)
+            istream = open(logfilenamebase)
             line = istream.readline()
             for line in istream.readlines():
                 if len(line) > 0 and line[0] not in ('@', '#'):
@@ -491,20 +535,20 @@ class SettingsGUI(QWidget):
                         firstframe = int(cols[0])
                         break
             file_name = self.filename+"+{0}.png".format(firstframe)
-        if self.btn_finish_perf.isChecked():
-            img = cv2.imread(file_name)
-            img = film.filmify( img )
-            file_name += ".film.png"
-            cv2.imwrite(file_name, img)
-            if self.btn_finish_helix.isChecked():
+            if self.btn_finish_perf.isChecked():
+                img = cv2.imread(file_name)
+                img = film.filmify( img )
+                file_name += ".film.png"
+                cv2.imwrite(file_name, img)
+                if self.btn_finish_helix.isChecked():
+                    img = helix.helicify( img )
+                    file_name += ".helix.png"
+                    cv2.imwrite(file_name, img)
+            elif self.btn_finish_helix.isChecked():
+                img = cv2.imread(file_name)
                 img = helix.helicify( img )
                 file_name += ".helix.png"
                 cv2.imwrite(file_name, img)
-        elif self.btn_finish_helix.isChecked():
-            img = cv2.imread(file_name)
-            img = helix.helicify( img )
-            file_name += ".helix.png"
-            cv2.imwrite(file_name, img)
         
 
     def closeEvent(self,event):
@@ -515,22 +559,30 @@ class SettingsGUI(QWidget):
 class EditorGUI(QWidget):
     thread_invoker = pyqtSignal()
 
-    def __init__(self, settings, parent = None, filename=None):
+    def __init__(self, settings, parent = None, filename=None, params=None):
         super(EditorGUI, self).__init__(parent)
         
-
         # options
-        #private
-        self.settings = settings
-        self.angle_degree    = 0
-        #self.snapshots = []
-        self.frame     = 0
-        self.preview_size = 500
+        #self.skip       = 0
         self.pers = [0,0,1000,1000]
+        self.angle_degree    = 0
         self.focus = [333,666,333,666]
-        self.slitpos = 250
         self.croptop = 0
         self.cropbottom = 1000
+        self.slitpos = 250
+        if params is not None:
+            self.angle_degree = params["angle"]
+            if params["pers"] is not None:
+                self.pers     = params["pers"]
+            self.focus        = params["focus"]
+            self.slitpos      = params["slitpos"]
+            self.croptop, self.cropbottom = params["crop"]
+            #self.skip         = params["skip"] #no use
+            filename          = params["filename"]
+        #private
+        self.preview_size = 500
+        self.frame        = 0
+        self.settings = settings
         #make the threaded loader
         self.thread = QThread()
         self.thread.start()

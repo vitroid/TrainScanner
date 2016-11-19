@@ -8,6 +8,23 @@ import numpy as np
 import math
 
 
+#from parser to args
+def deparse(parser, params):
+    args = dict()
+    pvars = vars(params)
+    for key in pvars:
+        value = pvars[key]
+        for action in parser._actions:
+            kwargs = action._get_kwargs() #list of tuple
+            kwdict = dict(kwargs)
+            #print(kwdict)
+            if kwdict["dest"] is key:
+                options = kwdict["option_strings"]
+                if len(options) == 0:
+                    args["__UNNAMED__"] = value
+                else:
+                    args[options[-1]] = value
+    return args
 
 #fit image in a square
 def fit_to_square(image, size):

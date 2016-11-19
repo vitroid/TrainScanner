@@ -38,17 +38,12 @@ class Renderer(QObject):
             self._isRunning = True
 
         while self._isRunning == True:
-            #print("step")
             result = self.st.onestep()
-            canvas = self.st.canvas[0].copy()
+            canvas = self.st.image #.copy()
             height, width = canvas.shape[0:2]
             h = int(height*self.preview_ratio)
             w = int(width *self.preview_ratio)
             resized = cv2.resize(canvas, (w, h), interpolation = cv2.INTER_CUBIC)
-            #print(resized.shape)
-            #cv2.imwrite("preview.png",resized)
-            #cv2.imwrite("canvas.png",canvas)
-            #cv2.waitKey(0)
             self.cv2toQImage(resized)
             image = QImage(resized.data, w, h, w*3, QImage.Format_RGB888)
             self.frameRendered.emit(image)
@@ -114,10 +109,10 @@ class StitcherUI(QDialog):
         self.st = st
         #determine the shrink ratio to avoid too huge preview
         preview_ratio = 1.0
-        if st.dimen[0] > 10000:
-            preview_ratio = 10000.0 / st.dimen[0]
-        if st.dimen[1]*preview_ratio > 500:
-            preview_ratio = 500.0 / st.dimen[1]
+        if st.image.shape[1] > 10000:
+            preview_ratio = 10000.0 / st.image.shape[1]
+        if st.image.shape[0]*preview_ratio > 500:
+            preview_ratio = 500.0 / st.image.shape[0]
         self.terminate = terminate
         self.thread = QThread()
         self.thread.start()
@@ -126,7 +121,7 @@ class StitcherUI(QDialog):
         #it might be too early.
         
         #determine the window size
-        height,width = st.canvas[0].shape[0:2]
+        height,width = st.image.shape[0:2]
         height = int(height*preview_ratio)
         #determine the preview area size
         width = int(width*preview_ratio)

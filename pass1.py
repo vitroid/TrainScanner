@@ -9,7 +9,8 @@ import math
 import trainscanner
 import sys
 import re
-    
+import argparse
+import itertools
 
 def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
     affine = np.matrix(((1.0,0.0,dx),(0.0,1.0,dy)))
@@ -47,119 +48,113 @@ def canvas_size(canvas_dimen, image, x, y):
     return canvas_dimen
 
 
-def Usage(argv):
-    print("usage: {0} [-a x][-d][-f xmin,xmax,ymin,ymax][-g n][-p tl,bl,tr,br][-q][-s r][-t x][-w x][-z] filename".format(argv[0]))
-    print("\t-a x\tAntishake.  Ignore motion smaller than x pixels (5).")
-    print("\t-f xmin,xmax,ymin,ymax\tMotion detection area relative to the image size. (0.333,0.666,0.333,0.666)")
-    print("\t-p a,b,c,d\tSet perspective points. Note that perspective correction works for the vertically scrolling picture only.")
-    print("\t-q\tDo not show the snapshots.")
-    print("\t-s r\tSet slit position to r (1).")
-    print("\t-S n\tSkip the nth frame (0).")
-    print("\t-t x\tAdd trailing frames after the motion is not detected. (5).")
-    print("\t-w r\tSet slit width (1=same as the length of the interframe motion vector).")
-    print("\t-z\tSuppress drift.")
-    sys.exit(1)
+
+def prepare_parser():
+    parser = argparse.ArgumentParser(description='TrainScanner matcher')
+    parser.add_argument('-z', '--zero', action='store_true',
+                        dest='zero',
+                        help="Suppress drift.")
+    parser.add_argument('-S', '--skip', type=int, metavar='N',
+                        default=0,
+                        dest="skip",
+                        help="Skip first N frames.")
+    parser.add_argument('-p', '--pers', '--perspective',
+                        type=int,
+                        nargs=4, default=None,
+                        dest="pers",
+                        help="Specity perspective warp.")
+    parser.add_argument('-f', '--focus', type=int,
+                        nargs=4, default=[333,666,333,666],
+                        dest="focus", 
+                        help="Motion detection area relative to the image size.")
+    parser.add_argument('-a', '--antishake', type=int,
+                        default=5, metavar="x",
+                        dest="antishake",
+                        help="Antishake.  Ignore motion smaller than x pixels.")
+    parser.add_argument('-t', '--trail', type=int,
+                        default=10,
+                        dest="trailing",
+                        help="Trailing frames after the train runs away.")
+    parser.add_argument('-r', '--rotate', type=int,
+                        default=0,
+                        dest="angle",
+                        help="Image rotation.")
+    parser.add_argument('-e', '--every', type=int,
+                        default=1,
+                        dest="every", metavar="N",
+                        help="Load every N frames.")
+    parser.add_argument('-i', '--identity', type=float,
+                        default=1.0,
+                        dest="identity", metavar="x",
+                        help="Decide the identity of two successive frames with the threshold.")
+    parser.add_argument('-c', '--crop', type=int,
+                        nargs=2, default=[0,1000],
+                        dest="crop", metavar="t,b",
+                        help="Crop the image (top and bottom).")
+    parser.add_argument('-x', '--stall', action='store_true',
+                        dest="stall", default=False,
+                        help="Train is initially stopping inside the motion detection area.")
+    parser.add_argument('-m', '--margin', type=int,
+                        default=1,
+                        dest="margin", metavar="N",
+                        help="Interframe acceleration in pixels.")
+    parser.add_argument('-2', '--option2', type=str,
+                        action='append',
+                        dest="option2",
+                        help="Additional option (just ignored in this program).")
+    parser.add_argument('-l', '--log', type=str,
+                        dest='log', default=None,
+                        help="TrainScanner settings (.tsconf) file name.")
+    parser.add_argument('filename', type=str,
+                        help="Movie file name.")
+    return parser
 
 
-def options_parser(argv, options):
-    #assume the first arg is removed
-    while len(argv) > 0 and argv[0][0] =="-":
-        arg1 = argv.pop(0)
-        if arg1 in ("-a", "--antishake"):
-            options["antishake"] = int(argv.pop(0))
-        elif arg1 in ("-c", "--crop"):
-            param = argv.pop(0)
-            options["crop"] = [int(x) for x in param.split(",")]
-        elif arg1 in ("-e", "--every"):
-            options["every"] = int(argv.pop(0))
-        elif arg1 in ("-f", "--focus", "--frame"):
-            param = argv.pop(0)
-            options["focus"] = [int(x) for x in param.split(",")]
-        elif arg1 in ("-i", "--identity"):
-            options["identity"] = float(argv.pop(0))
-        elif arg1 in ("-m", "--margin"):
-            options["margin"] = int(argv.pop(0))
-        elif arg1 in ("-p", "--pers", "--perspective"):
-            #followed by four numbers separated by comma.
-            #left top, bottom, right top, bottom
-            param = argv.pop(0)
-            options["pers"]  = [int(x) for x in param.split(",")]
-        elif arg1 in ("-r", "--rotate"):
-            options["angle"] = float(argv.pop(0))
-        elif arg1 in ("-S", "--skip"):
-            options["skip"] = int(argv.pop(0))
-        elif arg1 in ("-t", "--trail"):
-            options["trailing"] = int(argv.pop(0))
-        elif arg1 in ("-z", "--zero"):
-            options["zero"]  = True
-        elif arg1 in ("-x", "--stall"):
-            options["runin"] = False
-        elif arg1 in ("-L", "--log"):
-            options["ostream"] = open(argv.pop(0),"w")
-        elif arg1 in ("-2",):
-            #Options for the second pass == stitch
-            options["option2"].append(argv.pop(0))
-        elif arg1[0] == "-":
-            print("Unknown option: ", arg1)
-            Usage(argv)
-
-class Pass1():
-    def __init__(self,argv=None,filename="",skip=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, ):
-        if argv is not None:
-            self.initWithArgv(argv)
-        else:
-            self.initWithParams(filename=filename, skip=skip, angle=angle, pers=pers, crop=crop, every=every, identity=identity, margin=margin, focus=focus, zero=zero, trailing=trailing, antishake=antishake)
+                
             
-    def initWithArgv(self, argv):
-        options = dict()
-        options["skip"]  = 0
-        options["zero"]  = False
-        options["pers"] = None 
-        options["antishake"] = 5
-        options["trailing"] = 10
-        options["angle"] = 0   #angle in degree
-        options["every"] = 1
-        options["identity"] = 1.0
-        options["crop"] = 0,1000
-        options["runin"] = True
-        options["ostream"] = sys.stdout
-        options["option2"] = []
-        options["margin"] = 0 # pixels, work in progress.
-        #It may be able to unify with antishake.
-        options["focus"] = [333, 666, 333, 666]
-
-        #last arg
-        options["filename"] = argv.pop(-1)
-        options_parser(argv[1:], options)
+class Pass1():
         
-        #call it as a normal method instead of a constructor.
-        self.initWithParams(**options)
-        
-    def initWithParams(self,filename="",skip=0,angle=0,pers=None,crop=[0,1000],every=1, identity=1.0, margin=0, focus=[333,666,333,666], zero=False, trailing=10, antishake=5, runin=True, ostream=sys.stdout, option2=[] ):
-        self.filename    = filename
-        self.cap      = cv2.VideoCapture(filename)
-        self.skip = skip
-        self.angle    = angle
-        self.pers     = pers
-        self.crop     = crop
-        self.every    = every
-        self.identity = identity
-        self.margin   = margin
-        self.focus    = focus
-        self.zero     = zero
-        self.trailing = trailing
-        self.antishake= antishake
-        #self.crop     = crop
-        self.runin    = runin
-        self.head     = []
-        self.body     = []
-        self.ostream   = ostream
-        self.option2  = option2
+    def __init__(self,argv):
+        self.parser = prepare_parser()
+        self.params = self.parser.parse_args(argv[1:])
+        print(vars(self.params))
         
     def before(self):
         """
         prepare for the loop
         """
+        ####prepare tsconf file#############################
+        self.head   = ""
+        args = trainscanner.deparse(self.parser,self.params)
+        self.head += "{0}\n".format(args["__UNNAMED__"])
+        for option in args:
+            value = args[option]
+            if value is None or option in ("__UNNAMED__"):
+                continue
+            if option == '--option2':
+                #Expand "key=value" to "--key\tvalue\n"
+                for v in value:
+                    equal = v.find("=")
+                    if equal >= 0:
+                        self.head += "--{0}\n{1}\n".format(v[:equal],v[equal+1:])
+                    else:
+                        self.head += "--{0}\n".format(v)
+            else:
+                if option in ("--perspective", "--focus", "--crop", ):  #multiple values
+                    self.head += "{0}\n".format(option)
+                    for v in value:
+                        self.head += "{0}\n".format(v)
+                elif option in ("--zero", "--stall", "--helix", "--film"):
+                    if value is True:
+                        self.head += option+"\n"
+                else:
+                    self.head += "{0}\n{1}\n".format(option,value)
+        #print(self.head)
+        #end of the header
+
+        self.cap    = cv2.VideoCapture(self.params.filename)
+        self.body   = ""
+
         self.nframes  = 0  #1 is the first frame
 
         ret = True
@@ -170,12 +165,12 @@ class Pass1():
         #if not ret:
         self.nframes = 0
         #print("skip:",skip)
-        for i in range(self.skip):  #skip frames
+        for i in range(self.params.skip):  #skip frames
             ret = self.cap.grab()
             if not ret:
                 break
             self.nframes += 1
-        #print("get:",self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+        #print("get:",self.cap.get(cv2.CAP_PROP_POS_FRAMES)) #inaccurate
         ret, frame = self.cap.read()
         if not ret:
             sys.exit(0)
@@ -183,34 +178,23 @@ class Pass1():
         if not ret:
             sys.exit(0)
         self.rawframe = frame.copy()
-        self.transform = trainscanner.transformation(angle=self.angle, pers=self.pers, crop=self.crop)
+        self.transform = trainscanner.transformation(angle=self.params.angle, pers=self.params.pers, crop=self.params.crop)
         rotated, warped, cropped = self.transform.process_first_image(frame)
         self.frame = cropped
         #Prepare a scalable canvas with the origin.
         self.canvas = None
-        #sys.stderr.write("canvas size{0} {1} {2} {3}\n".format(self.canvas[0],self.canvas[1],*self.crop))
-        #sys.exit(1)
-        self.head.append("{0}\n".format(self.filename))
-        self.head.append("--rotate\t{0}\n".format(self.angle))
-        if self.pers is not None:
-            self.head.append("--perspective\t{0},{1},{2},{3}\n".format(*self.pers))
-        self.head.append("--crop\t{0},{1}\n".format(*self.crop))
-        for op in self.option2:
-            self.head.append(re.sub(r"%09","\t",op)+"\n")
-        #end of the header
         
         self.absx,self.absy = 0, 0
         self.velx, self.vely = 0.0, 0.0
         self.tr = 0
-        if self.runin:
-            #we cannot predict the run-in velocity
-            #so the prediction is off by default.
-            self.predict = False
-        else:
-            #runin=False means the train is stalling.
+        if self.params.stall:
             #prediction must be on by default.
             self.predict = True
             self.tr = 1
+        else:
+            #we cannot predict the run-in velocity
+            #so the prediction is off by default.
+            self.predict = False
         self.precount = 0
         self.preview_size = 500
         self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
@@ -218,16 +202,21 @@ class Pass1():
 
 
     def after(self):
-        self.head.append("--canvas\t{0},{1},{2},{3}\n".format(*self.canvas))
-        self.head.append("\n")
-        for line in self.head+self.body:
-            self.ostream.write(line)
-        self.ostream.close()
+        self.head += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
+        if self.params.log is None:
+            ostream = sys.stdout
+        else:
+            ostream = open(self.params.log+".tsconf", "w")
+        ostream.write(self.head)
+        if self.params.log is not None:
+            ostream = open(self.params.log+".tspos", "w")
+        ostream.write(self.body)
+        ostream.close()
 
     def onestep(self):
         ret = True
         ##### Pick up every x frame
-        for i in range(self.every-1):
+        for i in range(self.params.every-1):
             ret = self.cap.grab()
             self.nframes += 1
             if not ret:
@@ -242,7 +231,7 @@ class Pass1():
         ##### preserve the raw frame for next comparison.
         self.rawframe = nextframe.copy()
         diff = np.sum(diff) / np.product(diff.shape)
-        if diff < self.identity:
+        if diff < self.params.identity:
             sys.stderr.write("skip identical frame #{0}\n".format(diff))
             #They are identical frames
             #This happens when the frame rate difference is compensated.
@@ -258,28 +247,28 @@ class Pass1():
         #This mode is activated after the 10th frames.
 
         #Now I do care only magrin case.
-        if self.margin > 0 and self.predict:
+        if self.params.margin > 0 and self.predict:
             #do not apply margin for the first 10 frames
             #because the velocity uncertainty.
-            delta = trainscanner.motion(self.frame, nextframe, focus=self.focus, margin=int(self.margin*self.tr), delta=(int(self.velx*self.tr),int(self.vely*self.tr)) )
+            delta = trainscanner.motion(self.frame, nextframe, focus=self.params.focus, margin=int(self.params.margin*self.tr), delta=(int(self.velx*self.tr),int(self.vely*self.tr)) )
             if delta is None:
                 return None
             dx,dy = delta
         else:
-            dx,dy = trainscanner.motion(self.frame, nextframe, focus=self.focus)
+            dx,dy = trainscanner.motion(self.frame, nextframe, focus=self.params.focus)
             
         ##### Suppress drifting.
-        if self.zero:
+        if self.params.zero:
             if abs(dx) < abs(dy):
                 dx = 0
             else:
                 dy = 0
-        diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.focus)
+        diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus)
         ##### if the motion is very small
-        if self.predict and (abs(dx) < self.antishake and abs(dy) < self.antishake):
+        if self.predict and (abs(dx) < self.params.antishake and abs(dy) < self.params.antishake):
             ##### accumulate the motion
             ##### wait until motion becomes enough.
-            if self.tr <= self.trailing:
+            if self.tr <= self.params.trailing:
                 self.tr += 1
                 sys.stderr.write("({0} {1} {2})\n".format(self.nframes,dx,dy))
                 ####Do not update the original frame and preview.
@@ -292,7 +281,7 @@ class Pass1():
         if self.predict:
             self.velx = dx / self.tr
             self.vely = dy / self.tr
-        elif (abs(dx) >= self.antishake or abs(dy) >= self.antishake):
+        elif (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
             self.precount += 1
             if self.precount == 5:
                 self.predict = True
@@ -301,11 +290,11 @@ class Pass1():
             
         self.tr = 1
         sys.stderr.write(" {0} {1} {2} {4} {5} #{3}\n".format(self.nframes,dx,dy,np.amax(diff), self.velx, self.vely))
-        if (abs(dx) >= self.antishake or abs(dy) >= self.antishake):
+        if (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
             self.absx += dx
             self.absy += dy
             self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
-            self.body.append("{0} {1} {2} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy))
+            self.body += "{0} {1} {2} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy)
         self.frame   = nextframe
         self.preview = nextpreview
         return diff_img
