@@ -86,4 +86,5 @@ TrainScannerでは，ビデオフレーム間の列車の移動距離を求め�
 
 ##Revision History
 
+* 2016-11-19 
 * 2016-11-11 GUI Version 0.1 is released.
