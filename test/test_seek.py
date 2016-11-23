@@ -6,13 +6,15 @@ import cv2
 cap = cv2.VideoCapture("/Users/matto/Desktop/Martinacek96CLC - Czech Level Crossing (2014).mp4")
 cap.set(cv2.CAP_PROP_POS_FRAMES, 3000)
 ret, frame = cap.read()
-#cv2.imwrite("set{0}.png".format(3000), frame)
+cv2.imshow("set",frame))
 
 cap = cv2.VideoCapture("/Users/matto/Desktop/Martinacek96CLC - Czech Level Crossing (2014).mp4")
 for i in range(3103):
     print(i,end="\r")
     ret = cap.grab()
-ret, frame = cap.read()
-cv2.imwrite("grab{0}.png".format(i), frame)
+ret, frame2 = cap.read()
+cv2.imshow("grab",frame2))
+cv2.waitkey(0)
+
 
 

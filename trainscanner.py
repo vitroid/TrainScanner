@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 #Now only the horizontal scroll is allowed
-from __future__ import print_function
+#from __future__ import print_function, division
 import cv2
 import numpy as np
 import math
@@ -32,12 +32,12 @@ def fit_to_square(image, size):
     modified = False
     if h > w:
         if h > size:
-            w = w*size/h
+            w = w*size//h
             h = size
             modified = True
     else:
         if w > size:
-            h = h*size/w
+            h = h*size//w
             w = size
             modified = True
     if not modified:
@@ -69,16 +69,16 @@ class transformation():
             return
         w = self.rw
         h = self.rh
-        L = (self.pers[2]-self.pers[0])*h/1000
-        S = (self.pers[3]-self.pers[1])*h/1000
+        L = (self.pers[2]-self.pers[0])*h//1000
+        S = (self.pers[3]-self.pers[1])*h//1000
         if L < S:
             L,S  = S,L
         LS = (L*S)**0.5
-        fdist = float(L)/S
-        ndist = LS/S
+        fdist = L/S
+        ndist = LS//S
         sratio = ((fdist - 1.0)**2 + 1)**0.5
         neww = int(w*sratio/ndist)
-        woffset = (neww - w)/2
+        woffset = (neww - w)//2
         p1 = np.float32([(0,self.pers[0]*h/1000),
                          (w,self.pers[1]*h/1000),
                          (0,self.pers[2]*h/1000),
@@ -99,7 +99,7 @@ class transformation():
         if self.crop is None:
             return image
         h,w = image.shape[:2]
-        return image[self.crop[0]*h/1000:self.crop[1]*h/1000, :, :]
+        return image[self.crop[0]*h//1000:self.crop[1]*h//1000, :, :]
     def process_first_image(self, image):
         h,w = image.shape[:2]
         self.rotation_affine(w,h)
@@ -134,10 +134,10 @@ class transformation():
 
 def draw_focus_area(f, focus, delta=0):
     h, w = f.shape[0:2]
-    pos = [w*focus[0]/1000,w*focus[1]/1000,h*focus[2]/1000,h*focus[3]/1000]
+    pos = [w*focus[0]//1000,w*focus[1]//1000,h*focus[2]//1000,h*focus[3]//1000]
     cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
     if delta != 0:
-        pos = [w*focus[0]/1000+delta,w*focus[1]/1000+delta,h*focus[2]/1000,h*focus[3]/1000]
+        pos = [w*focus[0]//1000+delta,w*focus[1]//1000+delta,h*focus[2]//1000,h*focus[3]//1000]
         cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (255, 255, 0), 1)
         
 
@@ -145,10 +145,10 @@ def draw_focus_area(f, focus, delta=0):
 def draw_slit_position(f, slitpos, dx):
     h, w = f.shape[0:2]
     if dx > 0:
-        x1 = w/2 + slitpos*w/1000
+        x1 = w//2 + slitpos*w//1000
         x2 = x1 - dx
     else:
-        x1 = w/2 - slitpos*w/1000
+        x1 = w//2 - slitpos*w//1000
         x2 = x1 - dx
     cv2.line(f, (x1,0),(x1,h), (0,255,0), 1)
     cv2.line(f, (x2,0),(x2,h), (0,255,0), 1)
@@ -186,10 +186,10 @@ def draw_guide(frame, pers, gauge=True):
 
 def motion(ref, img, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), antishake=2):
     hi,wi = img.shape[0:2]
-    wmin = wi*focus[0]/1000
-    wmax = wi*focus[1]/1000
-    hmin = hi*focus[2]/1000
-    hmax = hi*focus[3]/1000
+    wmin = wi*focus[0]//1000
+    wmax = wi*focus[1]//1000
+    hmin = hi*focus[2]//1000
+    hmax = hi*focus[3]//1000
     template = img[hmin:hmax,wmin:wmax,:]
     h,w = template.shape[0:2]
 

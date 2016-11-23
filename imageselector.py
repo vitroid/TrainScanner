@@ -1,5 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
+#from __future__ import print_function, division
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 from imagetrimbar import ImageTrimBar
@@ -84,7 +85,7 @@ def main():
             break
         h,w = frame.shape[0:2]
         thumbh = 100
-        thumbw = w*thumbh/h
+        thumbw = w*thumbh//h
         thumb = cv2.resize(frame,(thumbw,thumbh),interpolation = cv2.INTER_CUBIC)
         thumbs.append(cv2toQImage(thumb))
         for i in range(9):

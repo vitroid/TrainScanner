@@ -1,5 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#from __future__ import print_function, division
 import cv2
 import numpy as np
 import math
@@ -78,7 +79,7 @@ def helicify(img):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print "usage: {0} image".format(sys.argv[0])
+        print("usage: {0} image".format(sys.argv[0]))
         sys.exit(1)
     img = cv2.imread(sys.argv[1])
     canvas2 = helicify(img)

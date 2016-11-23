@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
+#from __future__ import print_function, division
 
 import cv2
 import numpy as np
@@ -199,7 +199,7 @@ class Pass1():
         self.precount = 0
         self.preview_size = 500
         self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
-        self.preview_ratio = float(self.preview.shape[0]) / self.frame.shape[0]
+        self.preview_ratio = self.preview.shape[0] / self.frame.shape[0]
         yield self.nframes, self.params.skip
 
         
@@ -281,8 +281,8 @@ class Pass1():
                 #end of work
                 return None
         if self.predict:
-            self.velx = dx / self.tr
-            self.vely = dy / self.tr
+            self.velx = dx // self.tr
+            self.vely = dy // self.tr
         elif (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
             self.precount += 1
             if self.precount == 5:

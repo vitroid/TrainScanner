@@ -1,10 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #Modified from Mandelbrot.py
 #http://ftp.ics.uci.edu/pub/centos0/ics-custom-build/BUILD/PyQt-x11-gpl-4.7.2/examples/threads/mandelbrot.py
 
 #This is a skeleton for a real time canvas. It is not sure it is extensible.
 
+#from __future__ import print_function, division
 from PyQt4.QtCore  import *
 from PyQt4.QtGui import *
 
@@ -24,8 +25,6 @@ class Renderer(QObject):
         self.st = st
         self._isRunning = True
         self.preview_ratio = preview_ratio
-        for num,den in self.st.before():
-            self.progress.emit(num*100/den)
             
 
     def cv2toQImage(self,image):
@@ -39,6 +38,8 @@ class Renderer(QObject):
         if not self._isRunning:
             self._isRunning = True
 
+        for num,den in self.st.before():
+            self.progress.emit(num*100//den)
         for num,den in self.st.loop():
             if not self._isRunning:
                 break
@@ -53,7 +54,7 @@ class Renderer(QObject):
             image = QImage(resized.data, w, h, w*3, QImage.Format_RGB888)
             self.frameRendered.emit(image)
         #    num,den = self.st.getProgress()
-            self.progress.emit(num*100/den)
+            self.progress.emit(num*100//den)
             
         #    if result is not None:
         #        break

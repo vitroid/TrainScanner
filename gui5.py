@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-from __future__ import print_function
+#from __future__ import print_function, division
 import sys
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -76,14 +76,14 @@ class DrawableLabel(QLabel):
         #painter.setBrush(Qt.yellow)
         #painter.drawRect(10, 10, 100, 100)
         x,y,w,h = self.geometry
-        painter.drawLine(x,y+self.pers[0]*h/1000,x+w,y+self.pers[1]*h/1000)
-        painter.drawLine(x,y+self.pers[2]*h/1000,x+w,y+self.pers[3]*h/1000)
+        painter.drawLine(x,y+self.pers[0]*h//1000,x+w,y+self.pers[1]*h//1000)
+        painter.drawLine(x,y+self.pers[2]*h//1000,x+w,y+self.pers[3]*h//1000)
 
 
 def draw_slitpos(f, slitpos):
     h, w = f.shape[0:2]
-    slitpos1 = (slitpos+500)*w/1000
-    slitpos2 = (500-slitpos)*w/1000
+    slitpos1 = (slitpos+500)*w//1000
+    slitpos2 = (500-slitpos)*w//1000
     cv2.line(f, (slitpos1,0),(slitpos1,h), (0, 0, 255), 1)
     cv2.line(f, (slitpos2,0),(slitpos2,h), (0, 0, 255), 1)
 
@@ -105,20 +105,20 @@ class MyLabel(QLabel):
         painter.setPen(Qt.red)
         x,y,w,h = self.geometry
         d = 20
-        painter.drawLine(x+w/2-self.slitpos*w/1000,y,
-                         x+w/2-self.slitpos*w/1000,y+h)
-        painter.drawLine(x+w/2-self.slitpos*w/1000-d,y+h/2,
-                         x+w/2-self.slitpos*w/1000,  y+h/2-d)
-        painter.drawLine(x+w/2-self.slitpos*w/1000-d,y+h/2,
-                         x+w/2-self.slitpos*w/1000,  y+h/2+d)
-        painter.drawLine(x+w/2+self.slitpos*w/1000,y,
-                         x+w/2+self.slitpos*w/1000,y+h)
-        painter.drawLine(x+w/2+self.slitpos*w/1000+d,y+h/2,
-                         x+w/2+self.slitpos*w/1000,  y+h/2-d)
-        painter.drawLine(x+w/2+self.slitpos*w/1000+d,y+h/2,
-                         x+w/2+self.slitpos*w/1000,  y+h/2+d)
+        painter.drawLine(x+w//2-self.slitpos*w//1000,y,
+                         x+w//2-self.slitpos*w//1000,y+h)
+        painter.drawLine(x+w//2-self.slitpos*w//1000-d,y+h/2,
+                         x+w//2-self.slitpos*w//1000,  y+h/2-d)
+        painter.drawLine(x+w//2-self.slitpos*w//1000-d,y+h/2,
+                         x+w//2-self.slitpos*w//1000,  y+h/2+d)
+        painter.drawLine(x+w//2+self.slitpos*w//1000,y,
+                         x+w//2+self.slitpos*w//1000,y+h)
+        painter.drawLine(x+w//2+self.slitpos*w//1000+d,y+h//2,
+                         x+w//2+self.slitpos*w//1000,  y+h//2-d)
+        painter.drawLine(x+w//2+self.slitpos*w//1000+d,y+h//2,
+                         x+w//2+self.slitpos*w//1000,  y+h//2+d)
         painter.setPen(Qt.green)
-        painter.drawRect(x+w*self.focus[0]/1000,y+h*self.focus[2]/1000,w*(self.focus[1]-self.focus[0])/1000,h*(self.focus[3]-self.focus[2])/1000)
+        painter.drawRect(x+w*self.focus[0]//1000,y+h*self.focus[2]//1000,w*(self.focus[1]-self.focus[0])//1000,h*(self.focus[3]-self.focus[2])//1000)
         
     def mousePressEvent(self, event):
     
@@ -247,7 +247,7 @@ class SettingsGUI(QWidget):
 
         # #####################################################################
         # #Example of a checkbox
-        settings2_layout.addWidget(QLabel(self.tr('Limit maximum acceleration')), rows, 0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('Max acceleration')), rows, 0, Qt.AlignRight)
         # self.btn_accel = QCheckBox()
         # self.btn_accel.setCheckState(Qt.Checked)
         # settings2_layout.addWidget(self.btn_accel,rows, 1)
@@ -382,16 +382,16 @@ class SettingsGUI(QWidget):
 
         if self.editor is not None:
             self.editor.close()
-        self.qstr_filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        self.filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Movie files (*.mov *.mp4 *.mts *.tsconf)")
-        if self.qstr_filename == "": # or if the file cannot be opened,
+        if self.filename == "": # or if the file cannot be opened,
             return
         #self.le.setPixmap(QPixmap(filename))
         #Load every 30 frames here for preview.
         #self.filename = unicode(self.filename.toUtf8(), encoding=os_check())
         #print(unicode(self.filename))
         #print(unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8'))
-        self.filename = unicode(self.qstr_filename.toUtf8(), encoding=os_check()).encode('utf-8')
+        #for py2 self.filename = unicode(self.qstr_filename.toUtf8(), encoding=os_check()).encode('utf-8')
         #print(self.filename.toUtf8())
         #if the file is tsconf (TrainScanner settings)
         if self.filename.rfind(".tsconf") + 7 == len(self.filename):
@@ -441,7 +441,7 @@ class SettingsGUI(QWidget):
         #base = os.path.basename(self.filename)
         #self.filename = "sample3.mov"
         self.editor.show()
-        self.le.setText(self.qstr_filename)
+        self.le.setText(self.filename)
         
 
 
@@ -952,9 +952,9 @@ def SystemLanguage():
     loc = []
     if ostype == "Darwin":
         #for macos
-        import commands
         import re
-        ret,output = commands.getstatusoutput('defaults read -g AppleLanguages')
+        output = subprocess.check_output(["defaults","read","-g","AppleLanguages"])
+        output = output.decode('utf-8')
         for l in output.split("\n")[1:len(output)-2]:
             lang = re.sub(r'[ "]+', '', l)
             loc.append(lang)

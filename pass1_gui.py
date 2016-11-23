@@ -1,4 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
+#from __future__ import print_function, division
+
 import time, sys
 from PyQt4.QtCore  import *
 from PyQt4.QtGui import *
@@ -38,7 +41,7 @@ class Worker(QObject):
         #self.pass1.before() is a generator.
         for num,den in self.pass1.before():
             if den:
-                self.progress.emit(num*100/den)
+                self.progress.emit(num*100//den)
         
         while self._isRunning == True:
             ret = self.pass1.onestep()

@@ -1,6 +1,6 @@
 #http://stackoverflow.com/questions/24106903/resizing-qpixmap-while-maintaining-aspect-ratio
 
-
+from __future__ import print_function, division
 from PyQt4 import QtGui, QtCore
 import sys
 from PyQt4.QtCore import Qt
@@ -31,9 +31,9 @@ class ImageBar(QtGui.QLabel):
         h = first.height()
         w = first.width() + 2
         pw = self.width()
-        nframes = int(pw/w) + 1
+        nframes = pw//w + 1
         for i in range(nframes):
-            f = i*len(self.thumbs)/nframes
+            f = i*len(self.thumbs)//nframes
             point = QtCore.QPoint(i*w,0)
             painter.drawImage(point, self.transformer(self.thumbs[f]))
 
@@ -73,7 +73,7 @@ def main():
             break
         h,w = frame.shape[0:2]
         thumbh = 100
-        thumbw = w*thumbh/h
+        thumbw = w*thumbh//h
         thumb = cv2.resize(frame,(thumbw,thumbh),interpolation = cv2.INTER_CUBIC)
         thumbs.append(cv2toQImage(thumb))
         for i in range(9):
