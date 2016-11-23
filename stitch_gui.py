@@ -24,7 +24,9 @@ class Renderer(QObject):
         self.st = st
         self._isRunning = True
         self.preview_ratio = preview_ratio
-        self.st.before()
+        for num,den in self.st.before():
+            self.progress.emit(num*100/den)
+            
 
     def cv2toQImage(self,image):
         tmp = np.zeros_like(image[:,:,0])
@@ -37,8 +39,11 @@ class Renderer(QObject):
         if not self._isRunning:
             self._isRunning = True
 
-        while self._isRunning == True:
-            result = self.st.onestep()
+        for num,den in self.st.loop():
+            if not self._isRunning:
+                break
+        #while self._isRunning == True:
+        #    result = self.st.onestep()
             canvas = self.st.image #.copy()
             height, width = canvas.shape[0:2]
             h = int(height*self.preview_ratio)
@@ -47,11 +52,11 @@ class Renderer(QObject):
             self.cv2toQImage(resized)
             image = QImage(resized.data, w, h, w*3, QImage.Format_RGB888)
             self.frameRendered.emit(image)
-            num,den = self.st.getProgress()
+        #    num,den = self.st.getProgress()
             self.progress.emit(num*100/den)
             
-            if result is not None:
-                break
+        #    if result is not None:
+        #        break
                         
         self.st.after()
         self.finished.emit()

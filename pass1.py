@@ -50,7 +50,7 @@ def canvas_size(canvas_dimen, image, x, y):
 
 
 def prepare_parser():
-    parser = argparse.ArgumentParser(description='TrainScanner matcher')
+    parser = argparse.ArgumentParser(description='TrainScanner matcher', fromfile_prefix_chars='@',)
     parser.add_argument('-z', '--zero', action='store_true',
                         dest='zero',
                         help="Suppress drift.")
@@ -94,9 +94,9 @@ def prepare_parser():
     parser.add_argument('-x', '--stall', action='store_true',
                         dest="stall", default=False,
                         help="Train is initially stopping inside the motion detection area.")
-    parser.add_argument('-m', '--margin', type=int,
+    parser.add_argument('-m', '--maxaccel', type=int,
                         default=1,
-                        dest="margin", metavar="N",
+                        dest="maxaccel", metavar="N",
                         help="Interframe acceleration in pixels.")
     parser.add_argument('-2', '--option2', type=str,
                         action='append',
@@ -116,12 +116,13 @@ class Pass1():
         
     def __init__(self,argv):
         self.parser = prepare_parser()
-        self.params = self.parser.parse_args(argv[1:])
+        self.params, unknown = self.parser.parse_known_args(argv[1:])
         print(vars(self.params))
         
     def before(self):
         """
         prepare for the loop
+        note that it is a generator.
         """
         ####prepare tsconf file#############################
         self.head   = ""
@@ -152,12 +153,12 @@ class Pass1():
         #print(self.head)
         #end of the header
 
+        #############Open the video file #############################
         self.cap    = cv2.VideoCapture(self.params.filename)
         self.body   = ""
 
         self.nframes  = 0  #1 is the first frame
 
-        ret = True
         #This does not work with some kind of MOV. (really?)
         #self.cap.set(cv2.CAP_PROP_POS_FRAMES, skip)
         #self.nframes = skip
@@ -165,21 +166,21 @@ class Pass1():
         #if not ret:
         self.nframes = 0
         #print("skip:",skip)
+    
         for i in range(self.params.skip):  #skip frames
             ret = self.cap.grab()
             if not ret:
                 break
             self.nframes += 1
-        #print("get:",self.cap.get(cv2.CAP_PROP_POS_FRAMES)) #inaccurate
+            yield self.nframes, self.params.skip #report progress
         ret, frame = self.cap.read()
         if not ret:
             sys.exit(0)
         self.nframes += 1    #first frame is 1
-        if not ret:
-            sys.exit(0)
-        self.rawframe = frame.copy()
+        self.rawframe = frame
+        
         self.transform = trainscanner.transformation(angle=self.params.angle, pers=self.params.pers, crop=self.params.crop)
-        rotated, warped, cropped = self.transform.process_first_image(frame)
+        rotated, warped, cropped = self.transform.process_first_image(self.rawframe)
         self.frame = cropped
         #Prepare a scalable canvas with the origin.
         self.canvas = None
@@ -199,8 +200,9 @@ class Pass1():
         self.preview_size = 500
         self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
         self.preview_ratio = float(self.preview.shape[0]) / self.frame.shape[0]
+        yield self.nframes, self.params.skip
 
-
+        
     def after(self):
         self.head += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
         if self.params.log is None:
@@ -242,15 +244,15 @@ class Pass1():
         ##### Make the preview image
         nextpreview = trainscanner.fit_to_square(nextframe,self.preview_size)
         ##### motion detection.
-        #if margin is set, motion detection area becomes very narrow
+        #if maxaccel is set, motion detection area becomes very narrow
         #assuming that the train is running at constant speed.
         #This mode is activated after the 10th frames.
 
         #Now I do care only magrin case.
-        if self.params.margin > 0 and self.predict:
-            #do not apply margin for the first 10 frames
+        if self.params.maxaccel > 0 and self.predict:
+            #do not apply maxaccel for the first 10 frames
             #because the velocity uncertainty.
-            delta = trainscanner.motion(self.frame, nextframe, focus=self.params.focus, margin=int(self.params.margin*self.tr), delta=(int(self.velx*self.tr),int(self.vely*self.tr)) )
+            delta = trainscanner.motion(self.frame, nextframe, focus=self.params.focus, maxaccel=int(self.params.maxaccel*self.tr), delta=(int(self.velx*self.tr),int(self.vely*self.tr)) )
             if delta is None:
                 return None
             dx,dy = delta
@@ -294,7 +296,7 @@ class Pass1():
             self.absx += dx
             self.absy += dy
             self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
-            self.body += "{0} {1} {2} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy)
+            self.body += "{0} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy)
         self.frame   = nextframe
         self.preview = nextpreview
         return diff_img
@@ -302,7 +304,8 @@ class Pass1():
 
 if __name__ == "__main__":
     pass1 = Pass1(argv=sys.argv)
-    pass1.before()
+    for num, den in pass1.before():
+        pass
     while True:
         ret = pass1.onestep()
         if ret is None:

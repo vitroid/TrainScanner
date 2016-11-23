@@ -125,18 +125,32 @@ class Stitcher(Canvas):
             Canvas.__init__(self,image=np.zeros((self.dimen[1],self.dimen[0],3),np.uint8), position=self.dimen[2:4]) #python2 style
 
     def before(self):
+        """
+        is a generator.
+        """
         locations = []
+        absx = 0
+        absy = 0
         tspos = open(self.params.logbase + ".tspos")
         for line in tspos.readlines():
             if len(line) > 0 and line[0] != '@':
                 cols = [int(x) for x in line.split()]
                 if len(cols) > 0:
+                    absx += cols[1]
+                    absy += cols[2]
+                    cols = [cols[0],absx,absy] + cols[1:]
+                    #print(cols)
                     cols[1:] = [int(x*self.params.scale) for x in cols[1:]]
                     locations.append(cols)
         self.locations = locations
         self.total_frames = len(locations)
         self.outfilename = self.params.logbase+".png"
         self.alphas = dict()
+        #initial seek
+        while self.currentFrame + 1 < self.locations[0][0]:
+            yield self.currentFrame, self.locations[0][0]
+            ret = self.cap.grab()
+            self.currentFrame += 1
 
     def getProgress(self):
         den = self.total_frames
@@ -154,16 +168,25 @@ class Stitcher(Canvas):
 
 
     def stitch(self):
-        self.before()
+        for num,den in self.before():
+            pass
         result = None
-        while result is None:
-            result = self.onestep()
+        for num,den in self.loop():
+            pass
+        #while result is None:
+        #    result = self.onestep()
         self.after()
                 
 
+    def loop(self):
+        while True:
+            result = self._onestep()
+            yield self.getProgress()
+            if result is not None:
+                break
 
 
-    def onestep(self):
+    def _onestep(self):
         ##if self.firstFrame:
         ##    #NOT RELIABLE
         ##    self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.locations[0][0]-##1)

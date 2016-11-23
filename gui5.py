@@ -247,7 +247,7 @@ class SettingsGUI(QWidget):
 
         # #####################################################################
         # #Example of a checkbox
-        # settings2_layout.addWidget(QLabel(self.tr('Limit maximum acceleration')), rows, 0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('Limit maximum acceleration')), rows, 0, Qt.AlignRight)
         # self.btn_accel = QCheckBox()
         # self.btn_accel.setCheckState(Qt.Checked)
         # settings2_layout.addWidget(self.btn_accel,rows, 1)
@@ -258,21 +258,20 @@ class SettingsGUI(QWidget):
 
         # #settings2_layout.addWidget(QLabel(self.tr('Permit camera waggle')), rows, 0, Qt.AlignRight)
         
-        # self.accel_slider_valuelabel = QLabel(str(self.accel))
-        # settings2_layout.addWidget(self.accel_slider_valuelabel, rows, 1)
+        self.accel_slider_valuelabel = QLabel(str(self.accel))
+        settings2_layout.addWidget(self.accel_slider_valuelabel, rows, 1)
         
-        # settings2_layout.addWidget(QLabel(self.tr('Smooth')), rows, 2)
-        # self.accel_slider = QSlider(Qt.Horizontal)  # スライダの向き
-        # self.accel_slider.setRange(1, 5)  # スライダの範囲
-        # self.accel_slider.setValue(1)  # 初期値
-        # #スライダの目盛りを両方に出す
-        # self.accel_slider.setTickPosition(QSlider.TicksBelow)
-        # self.connect(self.accel_slider, SIGNAL('valueChanged(int)'), self.accel_slider_on_draw)
-        # settings2_layout.addWidget(self.accel_slider, rows, 3)
-        # settings2_layout.addWidget(QLabel(self.tr('Jerky')), rows, 4)
-        # self.btn_accel.toggled.connect(self.btn_accel_toggle)
+        settings2_layout.addWidget(QLabel(self.tr('Tripod')), rows, 2)
+        self.accel_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.accel_slider.setRange(1, 15)  # スライダの範囲
+        self.accel_slider.setValue(1)  # 初期値
+        self.accel_slider.setTickPosition(QSlider.TicksBelow)
+        self.connect(self.accel_slider, SIGNAL('valueChanged(int)'), self.accel_slider_on_draw)
+        settings2_layout.addWidget(self.accel_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(self.tr('Handheld')), rows, 4)
+        #self.btn_accel.toggled.connect(self.btn_accel_toggle)
 
-        # rows += 1
+        rows += 1
         # #####################################################################
 
 
@@ -383,14 +382,17 @@ class SettingsGUI(QWidget):
 
         if self.editor is not None:
             self.editor.close()
-        self.filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        self.qstr_filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Movie files (*.mov *.mp4 *.mts *.tsconf)")
-        if self.filename == "": # or if the file cannot be opened,
+        if self.qstr_filename == "": # or if the file cannot be opened,
             return
         #self.le.setPixmap(QPixmap(filename))
         #Load every 30 frames here for preview.
-        self.filename = unicode(self.filename.toUtf8(), encoding=os_check())
-        print(self.filename)
+        #self.filename = unicode(self.filename.toUtf8(), encoding=os_check())
+        #print(unicode(self.filename))
+        #print(unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8'))
+        self.filename = unicode(self.qstr_filename.toUtf8(), encoding=os_check()).encode('utf-8')
+        #print(self.filename.toUtf8())
         #if the file is tsconf (TrainScanner settings)
         if self.filename.rfind(".tsconf") + 7 == len(self.filename):
             #read all initial values from the file.
@@ -439,7 +441,7 @@ class SettingsGUI(QWidget):
         #base = os.path.basename(self.filename)
         #self.filename = "sample3.mov"
         self.editor.show()
-        self.le.setText(self.filename)
+        self.le.setText(self.qstr_filename)
         
 
 
@@ -462,9 +464,9 @@ class SettingsGUI(QWidget):
         self.antishake_slider_valuelabel.setText("{0} ".format(self.antishake)+self.tr("pixels"))
 
 
-##    def accel_slider_on_draw(self):
-##        self.accel = self.accel_slider.value()
-##        self.accel_slider_valuelabel.setText(str(self.accel))
+    def accel_slider_on_draw(self):
+        self.accel = self.accel_slider.value()
+        self.accel_slider_valuelabel.setText(str(self.accel))
 
 
 ##    def identthres_slider_on_draw(self):
@@ -499,7 +501,7 @@ class SettingsGUI(QWidget):
                 pass1_options += ["--zero",]
             if self.btn_stall.isChecked():
                 pass1_options += ["--stall",]
-            pass1_options += ["--margin","1"]
+            pass1_options += ["--maxaccel","{0}".format(self.accel)]
             pass1_options += ["--log", logfilenamebase]
 
             #wrap the options to record in the tsconf file

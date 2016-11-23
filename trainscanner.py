@@ -184,7 +184,7 @@ def draw_guide(frame, pers, gauge=True):
         cv2.line(frame, (0,pers[0]*h/1000), (w,pers[1]*h/1000), (255, 0, 0), 1)
         cv2.line(frame, (0,pers[2]*h/1000), (w,pers[3]*h/1000), (255, 0, 0), 1)
 
-def motion(ref, img, focus=(333, 666, 333, 666), margin=0, delta=(0,0), antishake=2):
+def motion(ref, img, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), antishake=2):
     hi,wi = img.shape[0:2]
     wmin = wi*focus[0]/1000
     wmax = wi*focus[1]/1000
@@ -194,17 +194,17 @@ def motion(ref, img, focus=(333, 666, 333, 666), margin=0, delta=(0,0), antishak
     h,w = template.shape[0:2]
 
     # Apply template Matching
-    if margin == 0:
+    if maxaccel == 0:
         res = cv2.matchTemplate(ref,template,cv2.TM_SQDIFF_NORMED)
         #loc is given by x,y
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         return min_loc[0] - wmin, min_loc[1] - hmin
     else:
         #use delta here
-        roix0 = wmin + delta[0] - margin
-        roiy0 = hmin + delta[1] - margin
-        roix1 = wmax + delta[0] + margin
-        roiy1 = hmax + delta[1] + margin
+        roix0 = wmin + delta[0] - maxaccel
+        roiy0 = hmin + delta[1] - maxaccel
+        roix1 = wmax + delta[0] + maxaccel
+        roiy1 = hmax + delta[1] + maxaccel
         refh,refw = ref.shape[0:2]
         if roix0 < 0 or roix1 >= refw or roiy0 < 0 or roiy1 >= refh:
             #print(roix0,roix1,roiy0,roiy1,refw,refh)
@@ -366,7 +366,7 @@ if __name__ == "__main__":
     every = 1
     identity = 2.0
     assume = None
-    margin = 0 # pixels, work in progress.
+    maxaccel = 0 # pixels, work in progress.
     #It may be able to unify with antishake.
     focus = np.array((333, 666, 333, 666))
     while len(sys.argv) > 2:
@@ -390,8 +390,8 @@ if __name__ == "__main__":
             guide = True
         elif sys.argv[1] in ("-i", "--identity"):
             identity = float(sys.argv.pop(2))
-        elif sys.argv[1] in ("-m", "--margin"):
-            margin = int(sys.argv.pop(2))
+        elif sys.argv[1] in ("-m", "--maxaccel"):
+            maxaccel = int(sys.argv.pop(2))
         elif sys.argv[1] in ("-p", "--pers", "--perspective"):
             #followed by four numbers separated by comma.
             #left top, bottom, right top, bottom
@@ -497,8 +497,8 @@ if __name__ == "__main__":
         if debug:
             preview(nextframe, "Debug", focus=focus)
             
-        if margin > 0 and onWork:
-            dx0,dy0 = motion(frame, nextframe, focus=focus, margin=margin, delta=(lastdx,lastdy), antishake=antishake )
+        if maxaccel > 0 and onWork:
+            dx0,dy0 = motion(frame, nextframe, focus=focus, maxaccel=maxaccel, delta=(lastdx,lastdy), antishake=antishake )
         else:
             dx0,dy0 = motion(frame, nextframe, focus=focus)
             

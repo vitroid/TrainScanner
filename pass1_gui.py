@@ -21,6 +21,7 @@ class Worker(QObject):
 
     frameRendered = pyqtSignal(QImage)
     finished = pyqtSignal()
+    progress = pyqtSignal(int)
 
     def __init__(self, argv):
         super(Worker, self).__init__()
@@ -34,7 +35,11 @@ class Worker(QObject):
         if not self._isRunning:
             self._isRunning = True
 
-        self.pass1.before()
+        #self.pass1.before() is a generator.
+        for num,den in self.pass1.before():
+            if den:
+                self.progress.emit(num*100/den)
+        
         while self._isRunning == True:
             ret = self.pass1.onestep()
             if ret is None:
@@ -59,8 +64,11 @@ class MatcherUI(QDialog):
         self.btnStop = QPushButton('Stop')
         self.image_pane = QLabel()
 
+        self.progress = QProgressBar(self)
+        
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.btnStop)
+        self.layout.addWidget(self.progress)
         self.layout.addWidget(self.image_pane)
         self.setLayout(self.layout)
 
@@ -74,6 +82,7 @@ class MatcherUI(QDialog):
         
         self.worker.frameRendered.connect(self.updatePixmap)
         self.worker.finished.connect(self.finishIt)
+        self.worker.progress.connect(self.progress.setValue)
 
         self.terminate = terminate
         self.btnStop.clicked.connect(lambda: self.worker.stop())
