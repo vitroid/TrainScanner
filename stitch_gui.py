@@ -133,9 +133,9 @@ class StitcherUI(QDialog):
         width = int(width*preview_ratio)
 
         self.scrollArea = QScrollArea()
-        self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scrollArea.resize(500,height)
+        #self.scrollArea.setMaximumHeight(1000)
         self.largecanvas = ExtensibleCanvasWidget(width, height)
+        #print(width,height)
         self.worker.frameRendered.connect(self.largecanvas.updatePixmap)
         #Do not close the window when finished.
         #self.worker.finished.connect(self.finishIt)
@@ -144,6 +144,8 @@ class StitcherUI(QDialog):
         self.thread_invoker.emit()
 
         self.scrollArea.setWidget(self.largecanvas)
+        self.scrollArea.setMinimumHeight(500) #self.largecanvas.sizeHint().height())
+        self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.btnStop = QPushButton('Stop')
         self.btnStop.clicked.connect(lambda: self.worker.stop())
@@ -156,6 +158,7 @@ class StitcherUI(QDialog):
         self.layout.addWidget(self.btnStop)
         self.layout.addWidget(self.progress)
         self.layout.addWidget(self.scrollArea)
+        self.layout.addStretch(1)
         self.setLayout(self.layout)
         
 
@@ -183,6 +186,8 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     win = StitcherUI(sys.argv, True)
-    win.show()
+    win.setMaximumHeight(500)
+    win.showMaximized()
+    #win.show()
     win.raise_()
     sys.exit(app.exec_())

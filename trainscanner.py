@@ -45,6 +45,7 @@ def fit_to_square(image, size):
     return cv2.resize(image,(w,h),interpolation = cv2.INTER_CUBIC)
 
 
+
 class transformation():
     def __init__(self, angle=0, pers=None, crop=None):
         self.angle = -angle * math.pi / 180.0
@@ -130,8 +131,43 @@ class transformation():
         return rs,ws,cs
         
         
-    
+class VideoHandler(transformation):
+    """
+    not used.
+    """
+    def __init__(self, angle=0, pers=None, crop=None):
+        super(VideoHandler, self).__init__(self, angle, pers, crop)
+        self.lastframe = -1
 
+    def open(self, filename):
+        self.filename = filename
+        self.cap = cv2.VideoCapture(filename)
+    
+    def skip(self, N):
+        for i in range(N):
+            ret = self.cap.grap()
+            if not ret:
+                return False
+        self.lastframe += N
+        return True
+
+    def seek(self, N):
+        """
+        move to the Nth frame (0 is the head)
+        same meaning as skip; i.e. only works
+        """
+        assert self.lastframe < 0, "For now, seek only works from the head"
+        return self.skip(N)
+
+    def read_raw(self):
+        ret, self.frame = self.cap.read()
+        return frame
+
+    def read(self):
+        self.rawframe = self.read_raw()
+        self.rotated, self.warped, self.cropped = self.process_image(self.rawframe)
+        return self.rotated, self.warped, self.cropped
+        
 def draw_focus_area(f, focus, delta=0):
     h, w = f.shape[0:2]
     pos = [w*focus[0]//1000,w*focus[1]//1000,h*focus[2]//1000,h*focus[3]//1000]

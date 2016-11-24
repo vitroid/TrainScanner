@@ -2,26 +2,44 @@
 #-*- coding: utf-8 -*-
 
 #from __future__ import print_function, division
-import sys
+
+#Core of the GUI and image process
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-import os
-import subprocess
 import cv2
 import numpy as np
 import math
 import trainscanner
 from imageselector2 import ImageSelector2
 import time
-from pass1 import prepare_parser as pp1
-from stitch import prepare_parser as pp2
+
+#File handling
+import os
+import subprocess
+
+#sub dialog windows
 import pass1_gui    
 import stitch_gui
+
+#final image tranformation
 import film
 import helix
+import rect
+
+#options handler
+import sys
+from pass1 import prepare_parser as pp1
+from stitch import prepare_parser as pp2
 import argparse
 
+
+
+
 class AsyncImageLoader(QObject):
+    """
+    This works in the background as a separate thread
+    to load the thumbnails for the time line
+    """
     frameIncreased = pyqtSignal(list)
     
     def __init__(self, parent=None, filename="", size=0):
@@ -340,14 +358,13 @@ class SettingsGUI(QWidget):
         #https://www.tutorialspoint.com/pyqt/pyqt_qcheckbox_widget.htm
         self.btn_finish_stitch = QCheckBox(self.tr('Stitch to a long image strip'))
         self.btn_finish_stitch.setCheckState(Qt.Checked)
-        #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         finish_layout.addWidget(self.btn_finish_stitch)
         self.btn_finish_perf = QCheckBox(self.tr('Add the film perforations'))
-        #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         finish_layout.addWidget(self.btn_finish_perf)
         self.btn_finish_helix = QCheckBox(self.tr('Make a helical image'))
-        #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         finish_layout.addWidget(self.btn_finish_helix)
+        self.btn_finish_rect = QCheckBox(self.tr('Make a rectangular image'))
+        finish_layout.addWidget(self.btn_finish_rect)
         self.start_button = QPushButton(self.tr('Start'),self)
         self.connect(self.start_button,SIGNAL('clicked()'),self.start_process)
         finish_layout.addWidget(self.start_button)
@@ -434,12 +451,18 @@ class SettingsGUI(QWidget):
                 self.btn_finish_helix.setCheckState(Qt.Checked)
             else:
                 self.btn_finish_helix.setCheckState(Qt.Unchecked)
+            if p1["rect"]:
+                self.btn_finish_rect.setCheckState(Qt.Checked)
+            else:
+                self.btn_finish_rect.setCheckState(Qt.Unchecked)
             
         else:
             self.editor = EditorGUI(self, filename=self.filename)
         #dir = os.path.dirname(self.filename)
         #base = os.path.basename(self.filename)
         #self.filename = "sample3.mov"
+        self.editor.setMaximumHeight(500)
+        self.editor.setMaximumWidth(500)
         self.editor.show()
         self.le.setText(self.filename)
         
@@ -487,6 +510,8 @@ class SettingsGUI(QWidget):
                 stitch_options += ["film"]
             if self.btn_finish_helix.isChecked():
                 stitch_options += ["helix"]
+            if self.btn_finish_rect.isChecked():
+                stitch_options += ["rect"]
 
             common_options = []
             common_options += ["--perspective",] + [str(x) for x in self.editor.pers]
@@ -525,7 +550,9 @@ class SettingsGUI(QWidget):
             
             self.stitcher = stitch_gui.StitcherUI(argv, False)
             file_name = self.stitcher.st.outfilename
-            self.stitcher.show()
+            self.stitcher.setMaximumHeight(500)
+            self.stitcher.showMaximized()
+            #self.stitcher.show()
         else:
             #assume filename from the log.
             istream = open(logfilenamebase)
@@ -537,20 +564,17 @@ class SettingsGUI(QWidget):
                         firstframe = int(cols[0])
                         break
             file_name = self.filename+"+{0}.png".format(firstframe)
+            img = cv2.imread(file_name)
             if self.btn_finish_perf.isChecked():
-                img = cv2.imread(file_name)
                 img = film.filmify( img )
                 file_name += ".film.png"
                 cv2.imwrite(file_name, img)
-                if self.btn_finish_helix.isChecked():
-                    img = helix.helicify( img )
-                    file_name += ".helix.png"
-                    cv2.imwrite(file_name, img)
-            elif self.btn_finish_helix.isChecked():
-                img = cv2.imread(file_name)
+            if self.btn_finish_helix.isChecked():
                 img = helix.helicify( img )
-                file_name += ".helix.png"
-                cv2.imwrite(file_name, img)
+                cv2.imwrite(file_name + ".helix.png", img)
+            if self.btn_finish_rect.isChecked():
+                img = rect.rectify( img )
+                cv2.imwrite(file_name + ".rect.png", img)
         
 
     def closeEvent(self,event):

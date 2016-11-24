@@ -117,7 +117,7 @@ class Pass1():
     def __init__(self,argv):
         self.parser = prepare_parser()
         self.params, unknown = self.parser.parse_known_args(argv[1:])
-        print(vars(self.params))
+        #print(vars(self.params))
         
     def before(self):
         """
@@ -145,7 +145,7 @@ class Pass1():
                     self.head += "{0}\n".format(option)
                     for v in value:
                         self.head += "{0}\n".format(v)
-                elif option in ("--zero", "--stall", "--helix", "--film"):
+                elif option in ("--zero", "--stall", "--helix", "--film", "--rect"):
                     if value is True:
                         self.head += option+"\n"
                 else:

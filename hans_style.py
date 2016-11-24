@@ -2,18 +2,34 @@
 # -*- coding: utf-8 -*-
 import cv2
 import numpy as np
-from matplotlib import pyplot as plt
+import math
+#import argparse
 
 import sys
 
-if len(sys.argv) != 3:
+
+
+
+
+
+if len(sys.argv) <2:
     print "usage: {0} image rows".format(sys.argv[0])
     sys.exit(1)
 
 img = cv2.imread(sys.argv[1])
-rows = int(sys.argv[2])
-
 h, w = img.shape[0:2]
+
+if len(sys.argv) == 3:
+    rows = int(sys.argv[2])
+else:
+    rows = 1
+    hh = h
+    ww = w
+    while hh*2**0.5 < ww:
+        rows += 1
+        hh = h * rows
+        ww = w / rows
+
 neww = w/rows
 thumb = cv2.resize(img,(w/rows,h/rows), interpolation = cv2.INTER_CUBIC)
 thh, thw = thumb.shape[0:2]

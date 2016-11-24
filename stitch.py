@@ -10,6 +10,7 @@ import sys
 import argparse
 import film
 import helix
+import rect
 
 #Automatically extensible canvas.
 class Canvas():
@@ -87,6 +88,9 @@ def prepare_parser(parser=None):
     parser.add_argument('-H', '--helix', action='store_true',
                         dest='helix',
                         help="Make helical image.")
+    parser.add_argument('--rect', action='store_true',
+                        dest='rect',
+                        help="Make rectangular image.")
     parser.add_argument('-F', '--film', action='store_true',
                         dest='film',
                         help="Make film perforation.")
@@ -106,8 +110,8 @@ class Stitcher(Canvas):
                                      description='TrainScanner stitcher')
         self.parser  = prepare_parser(ap)
         self.params,unknown = self.parser.parse_known_args(argv[1:])
-        print(3,self.params,unknown)
-        print(vars(self.params))
+        #print(3,self.params,unknown)
+        #print(vars(self.params))
 
         self.cap = cv2.VideoCapture(self.params.filename)
         self.firstFrame = True
@@ -218,8 +222,10 @@ class Stitcher(Canvas):
             cv2.imwrite(file_name, img)
         if self.params.helix:
             img = helix.helicify( img )
-            file_name += ".helix.png"
-            cv2.imwrite(file_name, img)
+            cv2.imwrite(file_name + ".helix.png", img)
+        if self.params.rect:
+            img = rect.rectify( img )
+            cv2.imwrite(file_name + ".rect.png", img)
         
 
 if __name__ == "__main__":
