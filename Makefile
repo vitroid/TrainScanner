@@ -12,3 +12,7 @@ prepare_for_mac:
 	brew install python3
 	brew install opencv3 --with-ffmpeg --with-tbb --with-python3 --HEAD
 	brew link opencv3 --force
+
+#in reality there is no make on Windows by default.
+winexe:
+	pyinstaller.exe --noconfirm --onefile --windowed gui5.py
