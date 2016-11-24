@@ -982,6 +982,7 @@ def SystemLanguage():
         for l in output.split("\n")[1:len(output)-2]:
             lang = re.sub(r'[ "]+', '', l)
             loc.append(lang)
+        return loc[0]
         #print(loc)
     return loc
     
@@ -1002,7 +1003,7 @@ def main():
     translator = QTranslator(app)
     rpath = getattr(sys, '_MEIPASS', os.getcwd())
     loc = SystemLanguage()
-    if len(loc[0]) > 1 and loc[0][:2] == "ja":
+    if loc[:2] == "ja":
         translator.load(rpath+"/i18n/gui5_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
