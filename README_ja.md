@@ -104,21 +104,19 @@ TrainScannerでは，ビデオフレーム間の列車の移動距離を求め�
 
 ##Revision History
 
+* 2016-11-24 Version 0.4: Windowsでの動作とexeファイルの生成。
 * 2016-11-19 Version 0.2: 設定ファイルを引きつげるようにした．オプションの取り扱いを改善した．設定ファイルの出力のしかたを変更した．などなど．
 * 2016-11-11 GUI Version 0.1 is released.
 
 ##Memo/Reference
 
-*
-  http://stackoverflow.com/questions/21711594/pyqt4-on-mavericks-with-python-3
+* http://stackoverflow.com/questions/21711594/pyqt4-on-mavericks-with-python-3
   PyQt4 with python3
-*
-  https://hackerslog.net/posts/softwares/opencv/opencv-install-with-python-on-mac/
+
+* https://hackerslog.net/posts/softwares/opencv/opencv-install-with-python-on-mac/
   Python3 with OpenCV3; downloading HEAD of openCV3 takes VERY long time.
 * http://qiita.com/sugurunatsuno/items/ce3c0d486bdc93688192
   Windows/Python3/OpenCV3/PyQt4/Anaconda
-  
-
 * failed to build exe on Windows?
   http://stackoverflow.com/questions/37815371/pyinstaller-failed-to-execute-script-pyi-rth-pkgres-and-missing-packages
 
