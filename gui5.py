@@ -857,26 +857,26 @@ class EditorGUI(QWidget):
             if bottom > self.preview_size:
                 bottom = self.preview_size
             #and also assume that the cropped image is centered and sometimes shrinked.
-            top    -= self.preview_size/2
-            bottom -= self.preview_size/2
-            left   -= self.preview_size/2
-            right  -= self.preview_size/2
+            top    -= self.preview_size//2
+            bottom -= self.preview_size//2
+            left   -= self.preview_size//2
+            right  -= self.preview_size//2
             #expected image size in the window
             height, width = cropped.shape[0:2]
             if height > width:
                 if height > self.preview_size:
-                    width = width * self.preview_size / height
+                    width = width * self.preview_size // height
                     height = self.preview_size
             else:
                 if width > self.preview_size:
-                    height = height * self.preview_size / width
+                    height = height * self.preview_size // width
                     width  = self.preview_size
             #indicate the region size relative to the image size
             #print(left,right,top,bottom)
-            top    = top    * 1000 / height + 500
-            bottom = bottom * 1000 / height + 500
-            left   = left   * 1000 / width + 500
-            right  = right  * 1000 / width + 500
+            top    = top    * 1000 // height + 500
+            bottom = bottom * 1000 // height + 500
+            left   = left   * 1000 // width + 500
+            right  = right  * 1000 // width + 500
             #print(left,right,top,bottom)
             if top < 0:
                 top = 0
@@ -917,8 +917,8 @@ class EditorGUI(QWidget):
         widget.slitpos = self.slitpos
         w = pixmap.width()
         h = pixmap.height()
-        x = ( self.preview_size - w ) / 2
-        y = ( self.preview_size - h ) / 2
+        x = ( self.preview_size - w ) // 2
+        y = ( self.preview_size - h ) // 2
         widget.geometry = x,y,w,h
 
         
