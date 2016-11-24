@@ -984,6 +984,12 @@ def SystemLanguage():
             loc.append(lang)
         return loc[0]
         #print(loc)
+    elif ostype == "Windows":
+        import ctypes
+        import locale
+        windll = ctypes.windll.kernel32
+        loc = locale.windows_locale[ windll.GetUserDefaultUILanguage() ]
+        return loc
     return loc
     
 #for pyinstaller
