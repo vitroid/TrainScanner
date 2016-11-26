@@ -676,6 +676,8 @@ class EditorGUI(QWidget):
         self.croptop_slider.setRange(0, 1000)  # スライダの範囲
         self.croptop_slider.setValue(1000)  # 初期値
         self.connect(self.croptop_slider, SIGNAL('valueChanged(int)'), self.croptop_slider_on_draw)
+        self.croptop_slider.setMinimumHeight(240)
+        #print(self.croptop_slider.size())
         crop_layout.addWidget(self.croptop_slider)
         crop_layout.setAlignment(self.croptop_slider, Qt.AlignTop)
 
@@ -683,6 +685,7 @@ class EditorGUI(QWidget):
         self.cropbottom_slider.setRange(0, 1000)  # スライダの範囲
         self.cropbottom_slider.setValue(0)  # 初期値 499 is top
         self.connect(self.cropbottom_slider, SIGNAL('valueChanged(int)'), self.cropbottom_slider_on_draw)
+        self.cropbottom_slider.setMinimumHeight(240)
         crop_layout.addWidget(self.cropbottom_slider)
         crop_layout.setAlignment(self.cropbottom_slider, Qt.AlignBottom)
 
@@ -695,6 +698,7 @@ class EditorGUI(QWidget):
         #sizepolicy.setVerticalPolicy(QSizePolicy.Maximum)
         #self.sliderTL.setSizePolicy(sizepolicy)
         self.connect(self.sliderTL, SIGNAL('valueChanged(int)'), self.sliderTL_on_draw)
+        self.sliderTL.setMinimumHeight(240)
         pers_left_layout.addWidget(self.sliderTL)
         pers_left_layout.setAlignment(self.sliderTL, Qt.AlignTop)
 
@@ -702,6 +706,7 @@ class EditorGUI(QWidget):
         self.sliderBL.setRange(0, 1000)  # スライダの範囲
         self.sliderBL.setValue(0)  # 初期値 499 is top
         self.connect(self.sliderBL, SIGNAL('valueChanged(int)'), self.sliderBL_on_draw)
+        self.sliderBL.setMinimumHeight(240)
         pers_left_layout.addWidget(self.sliderBL)
         pers_left_layout.setAlignment(self.sliderBL, Qt.AlignBottom)
         
@@ -710,6 +715,7 @@ class EditorGUI(QWidget):
         self.sliderTR.setRange(0, 1000)  # スライダの範囲
         self.sliderTR.setValue(1000)  # 初期値
         self.connect(self.sliderTR, SIGNAL('valueChanged(int)'), self.sliderTR_on_draw)
+        self.sliderTR.setMinimumHeight(240)
         pers_right_layout.addWidget(self.sliderTR)
         pers_right_layout.setAlignment(self.sliderTR, Qt.AlignTop)
 
@@ -717,6 +723,7 @@ class EditorGUI(QWidget):
         self.sliderBR.setRange(0, 1000)  # スライダの範囲
         self.sliderBR.setValue(0)  # 初期値 499 is top
         self.connect(self.sliderBR, SIGNAL('valueChanged(int)'), self.sliderBR_on_draw)
+        self.sliderBR.setMinimumHeight(240)
         pers_right_layout.addWidget(self.sliderBR)
         pers_right_layout.setAlignment(self.sliderBR, Qt.AlignBottom)
         
