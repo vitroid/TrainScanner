@@ -1,5 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+from __future__ import print_function, division
 import cv2
 import numpy as np
 import math

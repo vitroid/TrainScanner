@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 #Modified from Mandelbrot.py
 #http://ftp.ics.uci.edu/pub/centos0/ics-custom-build/BUILD/PyQt-x11-gpl-4.7.2/examples/threads/mandelbrot.py
 
 #This is a skeleton for a real time canvas. It is not sure it is extensible.
 
-#from __future__ import print_function, division
+from __future__ import print_function, division
 from PyQt4.QtCore  import *
 from PyQt4.QtGui import *
 

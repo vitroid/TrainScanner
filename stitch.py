@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#from __future__ import print_function, division
+from __future__ import print_function, division #, unicode_literal
 import cv2
 import numpy as np
 import math
@@ -17,11 +17,17 @@ class Canvas():
     def __init__(self, image=None, position=None):
         self.image  = image
         self.origin = position
+        #if self.image is not None:
+        #    print("Initial canvas is given", image.shape, position)
+        self.first = True
     def abs_merge(self, add_image, x, y, alpha=None ):
         if self.image is None:
             self.image  = add_image.copy()
             self.origin = x, y
             return
+        if self.first:
+            self.first = False
+            #print(add_image.shape, x,y)
         absx, absy = self.origin   #absolute coordinate of the top left of the canvas
         cxmin = absx
         cymin = absy
@@ -61,6 +67,10 @@ def prepare_parser(parser=None):
                         default=250,
                         dest="slitpos",
                         help="Slit position (0=center, 500=on the edge forward).")
+    parser.add_argument('-L', '--length', type=int, metavar='x',
+                        default=0,
+                        dest="length",
+                        help="Maximum image length of the product.")
     parser.add_argument('-y', '--scale', type=float,
                         default=1.0,
                         dest="scale", metavar="x",
@@ -126,6 +136,12 @@ class Stitcher(Canvas):
             Canvas.__init__(self)
             self.dimen = None
         else:
+            if self.params.scale == 1 and self.params.length > 0:
+                #product length is specified.
+                #scale is overridden
+                self.params.scale = self.params.length / self.params.canvas[0]
+                if self.params.scale > 1:
+                    self.params.scale = 1  #do not allow stretching
             self.dimen = [int(x*self.params.scale) for x in self.params.canvas]
             Canvas.__init__(self,image=np.zeros((self.dimen[1],self.dimen[0],3),np.uint8), position=self.dimen[2:4]) #python2 style
 

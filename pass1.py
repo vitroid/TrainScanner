@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#from __future__ import print_function, division
+from __future__ import print_function, division
 
 import cv2
 import numpy as np
@@ -11,6 +11,8 @@ import sys
 import re
 import argparse
 import itertools
+
+
 
 def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
     affine = np.matrix(((1.0,0.0,dx),(0.0,1.0,dy)))
@@ -58,6 +60,10 @@ def prepare_parser():
                         default=0,
                         dest="skip",
                         help="Skip first N frames.")
+    parser.add_argument('-E', '--estimate', type=int, metavar='N',
+                        default=10,
+                        dest="estimate",
+                        help="Use first N frames for velocity estimation.")
     parser.add_argument('-p', '--pers', '--perspective',
                         type=int,
                         nargs=4, default=None,
@@ -157,7 +163,8 @@ class Pass1():
         self.cap    = cv2.VideoCapture(self.params.filename)
         self.body   = ""
 
-        self.nframes  = 0  #1 is the first frame
+        self.nframes = 0  #1 is the first frame
+        self.cache   = [] #save only "active" frames
 
         #This does not work with some kind of MOV. (really?)
         #self.cap.set(cv2.CAP_PROP_POS_FRAMES, skip)
@@ -187,15 +194,15 @@ class Pass1():
         
         self.absx,self.absy = 0, 0
         self.velx, self.vely = 0.0, 0.0
-        self.tr = 0
+        self.interval = 0
         if self.params.stall:
-            #prediction must be on by default.
-            self.predict = True
-            self.tr = 1
+            #estimateion must be on by default.
+            self.estimate = True
+            self.interval = 1
         else:
-            #we cannot predict the run-in velocity
-            #so the prediction is off by default.
-            self.predict = False
+            #we cannot estimate the run-in velocity
+            #so the estimateion is off by default.
+            self.estimate = False
         self.precount = 0
         self.preview_size = 500
         self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
@@ -215,6 +222,52 @@ class Pass1():
         ostream.write(self.body)
         ostream.close()
 
+    def backward_match(self,frame):
+        """
+        using cached images,
+        "postdict" the displacements
+        """
+        a = frame
+        an = self.nframes
+        ax = self.absx
+        ay = self.absy
+        newbody = []
+        while len(self.cache):
+            b = self.cache[-1][3]
+            bn = self.cache[-1][0]
+            #print(an,bn,self.params.focus, self.params.maxaccel,self.velx, self.vely)
+            d = trainscanner.motion(b, a, focus=self.params.focus, maxaccel=int(self.params.maxaccel*(an-bn)), delta=(int(self.velx*(an-bn)), int(self.vely*(an-bn))))
+            if d is None:
+                dx = 0
+                dy = 0
+            else:
+                dx,dy = d
+            if self.params.zero:
+                dy = 0
+            if abs(dx) < self.params.antishake and abs(dy) < self.params.antishake:
+                #if the displacement is small
+                #inherit the last value
+                dx = self.velx
+                dy = self.vely
+            else:
+                self.velx = dx // (an-bn)
+                self.vely = dy // (an-bn)
+            newbody = [[bn, dx, dy]] + newbody
+            ax -= dx
+            ay -= dy
+            self.canvas = canvas_size(self.canvas, a, ax, ay)
+            print(bn,dx,dy,self.cache[-1][1],self.cache[-1][2])
+            a = b
+            an = bn
+            self.cache.pop(-1)
+        #trick; by the backward matching, the first frame may not be located at the origin
+        #So the first frame is specified by the abs coord.
+        newbody = [[bn, ax, ay]] + newbody
+        s = ""
+        for b in newbody:
+            s += "{0} {1} {2}\n".format(*b)
+        return s
+                  
     def onestep(self):
         ret = True
         ##### Pick up every x frame
@@ -249,10 +302,10 @@ class Pass1():
         #This mode is activated after the 10th frames.
 
         #Now I do care only magrin case.
-        if self.params.maxaccel > 0 and self.predict:
+        if self.params.maxaccel > 0 and self.estimate:
             #do not apply maxaccel for the first 10 frames
             #because the velocity uncertainty.
-            delta = trainscanner.motion(self.frame, nextframe, focus=self.params.focus, maxaccel=int(self.params.maxaccel*self.tr), delta=(int(self.velx*self.tr),int(self.vely*self.tr)) )
+            delta = trainscanner.motion(self.frame, nextframe, focus=self.params.focus, maxaccel=int(self.params.maxaccel*self.interval), delta=(int(self.velx*self.interval),int(self.vely*self.interval)) )
             if delta is None:
                 return None
             dx,dy = delta
@@ -261,17 +314,14 @@ class Pass1():
             
         ##### Suppress drifting.
         if self.params.zero:
-            if abs(dx) < abs(dy):
-                dx = 0
-            else:
-                dy = 0
+            dy = 0
         diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus)
         ##### if the motion is very small
-        if self.predict and (abs(dx) < self.params.antishake and abs(dy) < self.params.antishake):
+        if self.estimate and (abs(dx) < self.params.antishake and abs(dy) < self.params.antishake):
             ##### accumulate the motion
             ##### wait until motion becomes enough.
-            if self.tr <= self.params.trailing:
-                self.tr += 1
+            if self.interval <= self.params.trailing:
+                self.interval += 1
                 sys.stderr.write("({0} {1} {2})\n".format(self.nframes,dx,dy))
                 ####Do not update the original frame and preview.
                 ####That is, accumulate the changes.
@@ -280,17 +330,21 @@ class Pass1():
             else:
                 #end of work
                 return None
-        if self.predict:
-            self.velx = dx // self.tr
-            self.vely = dy // self.tr
+        if self.estimate:
+            self.velx = dx // self.interval
+            self.vely = dy // self.interval
         elif (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
             self.precount += 1
-            if self.precount == 5:
-                self.predict = True
+            if self.precount == self.params.estimate:
+                self.estimate = True
                 self.velx = dx
                 self.vely = dy
-            
-        self.tr = 1
+                self.body = self.backward_match(nextframe)
+        self.interval = 1
+        if nextframe is not None:
+            self.cache.append([self.nframes, dx, dy, nextframe])
+        if len(self.cache) > self.params.estimate + 5:
+            self.cache.pop(0)
         sys.stderr.write(" {0} {1} {2} {4} {5} #{3}\n".format(self.nframes,dx,dy,np.amax(diff), self.velx, self.vely))
         if (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
             self.absx += dx

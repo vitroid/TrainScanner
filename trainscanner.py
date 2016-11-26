@@ -154,7 +154,7 @@ class VideoHandler(transformation):
     def seek(self, N):
         """
         move to the Nth frame (0 is the head)
-        same meaning as skip; i.e. only works
+        same meaning as skip
         """
         assert self.lastframe < 0, "For now, seek only works from the head"
         return self.skip(N)

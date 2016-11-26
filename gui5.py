@@ -1,7 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #-*- coding: utf-8 -*-
+#It actually runs with python3 but pynstaller with python3 does not.
 
-#from __future__ import print_function, division
+from __future__ import print_function, division
 
 #Core of the GUI and image process
 from PyQt4.QtCore import *
@@ -21,10 +22,6 @@ import subprocess
 import pass1_gui    
 import stitch_gui
 
-#final image tranformation
-import film
-import helix
-import rect
 
 #options handler
 import sys
@@ -59,6 +56,7 @@ class AsyncImageLoader(QObject):
         self.isRunning = False
         #trash images
         self.snapshots = []
+        #print("Thumbs trashed.")
 
 
     def task(self):
@@ -168,6 +166,7 @@ class SettingsGUI(QWidget):
         self.trailing = 10
         self.editor = None
         self.antishake = 5
+        self.estimate = 10
         self.slitwidth = 50
         self.identity = 2.0
         self.accel    = 1
@@ -209,7 +208,6 @@ class SettingsGUI(QWidget):
         self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.slitwidth_slider.setRange(5, 300)  # スライダの範囲
         self.slitwidth_slider.setValue(self.slitwidth)  # 初期値
-        #スライダの目盛りを両方に出す
         self.slitwidth_slider.setTickPosition(QSlider.TicksBelow)
         self.connect(self.slitwidth_slider, SIGNAL('valueChanged(int)'), self.slitwidth_slider_on_draw)
         settings2_layout.addWidget(self.slitwidth_slider, rows, 3)
@@ -240,6 +238,26 @@ class SettingsGUI(QWidget):
         rows += 1
         #####################################################################
 
+        #Example of a slider with a label ###################################
+        #the slider is in a Hbox
+
+        settings2_layout.addWidget(QLabel(self.tr('Number of frames to estimate the velocity')), rows, 0, Qt.AlignRight)
+        
+        self.estimate_slider_valuelabel = QLabel("{0} ".format(self.estimate)+self.tr("frames"))
+        settings2_layout.addWidget(self.estimate_slider_valuelabel, rows, 1, Qt.AlignCenter)
+        
+        settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2, Qt.AlignRight)
+        self.estimate_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.estimate_slider.setRange(5, 50)  # スライダの範囲
+        self.estimate_slider.setValue(10)  # 初期値
+        #スライダの目盛りを両方に出す
+        self.estimate_slider.setTickPosition(QSlider.TicksBelow)
+        self.connect(self.estimate_slider, SIGNAL('valueChanged(int)'), self.estimate_slider_on_draw)
+        settings2_layout.addWidget(self.estimate_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(self.tr('Long')), rows, 4)
+
+        rows += 1
+        #####################################################################
 
         #####################################################################
         #Example of a checkbox
@@ -353,18 +371,25 @@ class SettingsGUI(QWidget):
         left_layout.addWidget(gbox_settings)
 
         #Left panel, lower pane: finish
+        
         finish_layout_gbox = QGroupBox(self.tr('Finish'))
         finish_layout = QVBoxLayout()
+
+        length_layout = QHBoxLayout()
+        length_layout.addWidget(QLabel(self.tr('Set the upper bound of the product image width')))
+        self.btn_length = QCheckBox()
+        length_layout.addWidget(self.btn_length)
+        spin = QSpinBox()
+        spin.setMinimum(100)
+        spin.setMaximum(500000)
+        spin.setValue(10000)
+        spin.setMinimumWidth(50)
+        self.spin_length = spin
+        length_layout.addWidget(spin)
+        length_layout.addWidget(QLabel(self.tr('pixels')))
+
+        finish_layout.addLayout(length_layout)
         #https://www.tutorialspoint.com/pyqt/pyqt_qcheckbox_widget.htm
-        self.btn_finish_stitch = QCheckBox(self.tr('Stitch to a long image strip'))
-        self.btn_finish_stitch.setCheckState(Qt.Checked)
-        finish_layout.addWidget(self.btn_finish_stitch)
-        self.btn_finish_perf = QCheckBox(self.tr('Add the film perforations'))
-        finish_layout.addWidget(self.btn_finish_perf)
-        self.btn_finish_helix = QCheckBox(self.tr('Make a helical image'))
-        finish_layout.addWidget(self.btn_finish_helix)
-        self.btn_finish_rect = QCheckBox(self.tr('Make a rectangular image'))
-        finish_layout.addWidget(self.btn_finish_rect)
         self.start_button = QPushButton(self.tr('Start'),self)
         self.connect(self.start_button,SIGNAL('clicked()'),self.start_process)
         finish_layout.addWidget(self.start_button)
@@ -403,14 +428,11 @@ class SettingsGUI(QWidget):
             "","Movie files (*.mov *.mp4 *.mts *.tsconf)")
         if self.filename == "": # or if the file cannot be opened,
             return
-        #self.le.setPixmap(QPixmap(filename))
-        #Load every 30 frames here for preview.
-        #self.filename = unicode(self.filename.toUtf8(), encoding=os_check())
-        #print(unicode(self.filename))
-        #print(unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8'))
-        #for py2 self.filename = unicode(self.qstr_filename.toUtf8(), encoding=os_check()).encode('utf-8')
-        #print(self.filename.toUtf8())
-        #if the file is tsconf (TrainScanner settings)
+        #for py2
+        if type(self.filename) is not str:
+            self.filename = unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8')
+        #for py3 self.filename is a str
+        print(type(self.filename))
         if self.filename.rfind(".tsconf") + 7 == len(self.filename):
             #read all initial values from the file.
             ap = argparse.ArgumentParser(fromfile_prefix_chars='@',
@@ -434,6 +456,7 @@ class SettingsGUI(QWidget):
             self.editor = EditorGUI(self, params=p1)
             self.slitwidth_slider.setValue(int(p1["slitwidth"]*100))
             self.antishake_slider.setValue(p1["antishake"])
+            self.estimate_slider.setValue(p1["estimate"])
             if p1["zero"]:
                 self.btn_zerodrift.setCheckState(Qt.Checked)
             else:
@@ -443,18 +466,6 @@ class SettingsGUI(QWidget):
             else:
                 self.btn_stall.setCheckState(Qt.Unchecked)
             self.trailing_slider.setValue(p1["trailing"])
-            if p1["film"]:
-                self.btn_finish_perf.setCheckState(Qt.Checked)
-            else:
-                self.btn_finish_perf.setCheckState(Qt.Unchecked)
-            if p1["helix"]:
-                self.btn_finish_helix.setCheckState(Qt.Checked)
-            else:
-                self.btn_finish_helix.setCheckState(Qt.Unchecked)
-            if p1["rect"]:
-                self.btn_finish_rect.setCheckState(Qt.Checked)
-            else:
-                self.btn_finish_rect.setCheckState(Qt.Unchecked)
             
         else:
             self.editor = EditorGUI(self, filename=self.filename)
@@ -487,6 +498,11 @@ class SettingsGUI(QWidget):
         self.antishake_slider_valuelabel.setText("{0} ".format(self.antishake)+self.tr("pixels"))
 
 
+    def estimate_slider_on_draw(self):
+        self.estimate = self.estimate_slider.value()
+        self.estimate_slider_valuelabel.setText("{0} ".format(self.estimate)+self.tr("frames"))
+
+
     def accel_slider_on_draw(self):
         self.accel = self.accel_slider.value()
         self.accel_slider_valuelabel.setText(str(self.accel))
@@ -502,79 +518,53 @@ class SettingsGUI(QWidget):
             return
         now = int(time.time()) % 100000
         logfilenamebase = self.filename+".{0}".format(now)
-        if self.btn_finish_stitch.isChecked():
-            stitch_options = []
-            stitch_options += ["slit={0}".format(self.editor.slitpos)]
-            stitch_options += ["width={0}".format(self.slitwidth/100.0)]
-            if self.btn_finish_perf.isChecked():
-                stitch_options += ["film"]
-            if self.btn_finish_helix.isChecked():
-                stitch_options += ["helix"]
-            if self.btn_finish_rect.isChecked():
-                stitch_options += ["rect"]
+        stitch_options = []
+        stitch_options += ["slit={0}".format(self.editor.slitpos)]
+        stitch_options += ["width={0}".format(self.slitwidth/100.0)]
+        if self.btn_length.isChecked():
+            stitch_options += ["length={0}".format(self.spin_length.value())]
 
-            common_options = []
-            common_options += ["--perspective",] + [str(x) for x in self.editor.pers]
-            common_options += ["--rotate", "{0}".format(self.editor.angle_degree)]
-            common_options += ["--crop",] + [str(x) for x in (self.editor.croptop,self.editor.cropbottom)]
-            pass1_options = []
-            pass1_options += ["--trail", "{0}".format(self.trailing)]
-            pass1_options += ["--antishake", "{0}".format(self.antishake)]
-            pass1_options += ["--skip", "{0}".format(self.editor.imageselector2.slider.value()*10)]
-            pass1_options += ["--focus",] + [str(x) for x in self.editor.focus]
-            if self.btn_zerodrift.isChecked():
-                pass1_options += ["--zero",]
-            if self.btn_stall.isChecked():
-                pass1_options += ["--stall",]
-            pass1_options += ["--maxaccel","{0}".format(self.accel)]
-            pass1_options += ["--log", logfilenamebase]
+        common_options = []
+        common_options += ["--perspective",] + [str(x) for x in self.editor.pers]
+        common_options += ["--rotate", "{0}".format(self.editor.angle_degree)]
+        common_options += ["--crop",] + [str(x) for x in (self.editor.croptop,self.editor.cropbottom)]
+        pass1_options = []
+        pass1_options += ["--trail", "{0}".format(self.trailing)]
+        pass1_options += ["--antishake", "{0}".format(self.antishake)]
+        pass1_options += ["--estimate", "{0}".format(self.estimate)]
+        pass1_options += ["--skip", "{0}".format(self.editor.imageselector2.slider.value()*10)]
+        pass1_options += ["--focus",] + [str(x) for x in self.editor.focus]
+        if self.btn_zerodrift.isChecked():
+            pass1_options += ["--zero",]
+        if self.btn_stall.isChecked():
+            pass1_options += ["--stall",]
+        pass1_options += ["--maxaccel","{0}".format(self.accel)]
+        pass1_options += ["--log", logfilenamebase]
 
-            #wrap the options to record in the tsconf file
-            #THIS IS WEIRD. FIND BETTER WAY.
-            #LOG FILE MADE BY PASS1_GUI IS DIFFERENT FROM THAT BY GUI5.PY..
-            #IT IS ALSO WEIRD.
-            #PASS1 must write the options and settings in the tsconf by itself.
-            argv = ["pass1", ] + common_options + pass1_options
-            for op in stitch_options:
-                argv += ["-2", op]
-            argv += [self.filename,]
-            print(argv)
+        #wrap the options to record in the tsconf file
+        #THIS IS WEIRD. FIND BETTER WAY.
+        #LOG FILE MADE BY PASS1_GUI IS DIFFERENT FROM THAT BY GUI5.PY..
+        #IT IS ALSO WEIRD.
+        #PASS1 must write the options and settings in the tsconf by itself.
+        argv = ["pass1", ] + common_options + pass1_options
+        for op in stitch_options:
+            argv += ["-2", op]
+        argv += [self.filename,]
+        #print(argv)
         
-            self.matcher = pass1_gui.MatcherUI(argv, False)  #do not terminate
-            self.matcher.exec_()
-            if self.matcher.terminated:
-                return
+        self.matcher = pass1_gui.MatcherUI(argv, False)  #do not terminate
+        self.matcher.exec_()
+        if self.matcher.terminated:
+            return
 
-            argv = ["stitch"]
-            argv += [ "@"+logfilenamebase+".tsconf",]
+        argv = ["stitch"]
+        argv += [ "@"+logfilenamebase+".tsconf",]
             
-            self.stitcher = stitch_gui.StitcherUI(argv, False)
-            file_name = self.stitcher.st.outfilename
-            self.stitcher.setMaximumHeight(500)
-            self.stitcher.showMaximized()
-            #self.stitcher.show()
-        else:
-            #assume filename from the log.
-            istream = open(logfilenamebase)
-            line = istream.readline()
-            for line in istream.readlines():
-                if len(line) > 0 and line[0] not in ('@', '#'):
-                    cols = [int(x) for x in line.split()]
-                    if len(cols) > 0:
-                        firstframe = int(cols[0])
-                        break
-            file_name = self.filename+"+{0}.png".format(firstframe)
-            img = cv2.imread(file_name)
-            if self.btn_finish_perf.isChecked():
-                img = film.filmify( img )
-                file_name += ".film.png"
-                cv2.imwrite(file_name, img)
-            if self.btn_finish_helix.isChecked():
-                img = helix.helicify( img )
-                cv2.imwrite(file_name + ".helix.png", img)
-            if self.btn_finish_rect.isChecked():
-                img = rect.rectify( img )
-                cv2.imwrite(file_name + ".rect.png", img)
+        self.stitcher = stitch_gui.StitcherUI(argv, False)
+        file_name = self.stitcher.st.outfilename
+        self.stitcher.setMaximumHeight(500)
+        self.stitcher.showMaximized()
+        #self.stitcher.show()
         
 
     def closeEvent(self,event):
