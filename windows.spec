@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['gui5.py'],
+a = Analysis(['trainscanner_gui.py'],
              pathex=['C:\\Users\\riron\\Documents\\GitHub\\TrainScanner'],
              binaries=None,
              datas=None,

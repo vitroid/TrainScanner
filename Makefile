@@ -2,7 +2,7 @@ all:
 
 #for mac and windows
 macapp:
-	#pyinstaller --windowed --noconfirm -i trainscanner.icns --name TrainScanner gui5.py
+	#pyinstaller --windowed --noconfirm -i trainscanner.icns --name TrainScanner trainscanner_gui.py
 	pyinstaller --noconfirm macos.spec
 	pyinstaller --noconfirm converter_gui.macos.spec
 #icons are generated at /Users/matto/github/TrainScanner/trainscanner.icns

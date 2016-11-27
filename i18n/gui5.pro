@@ -1,4 +1,4 @@
 TRANSLATIONS = gui5_ja.ts
-SOURCES      = ../gui5.py
+SOURCES      = ../trainscanner_gui.py
 
 
