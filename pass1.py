@@ -13,6 +13,73 @@ import argparse
 import itertools
 
 
+def draw_focus_area(f, focus, delta=0):
+    h, w = f.shape[0:2]
+    pos = [w*focus[0]//1000,w*focus[1]//1000,h*focus[2]//1000,h*focus[3]//1000]
+    cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
+    if delta != 0:
+        pos = [w*focus[0]//1000+delta,w*focus[1]//1000+delta,h*focus[2]//1000,h*focus[3]//1000]
+        cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (255, 255, 0), 1)
+        
+
+
+def draw_slit_position(f, slitpos, dx):
+    h, w = f.shape[0:2]
+    if dx > 0:
+        x1 = w//2 + slitpos*w//1000
+        x2 = x1 - dx
+    else:
+        x1 = w//2 - slitpos*w//1000
+        x2 = x1 - dx
+    cv2.line(f, (x1,0),(x1,h), (0,255,0), 1)
+    cv2.line(f, (x2,0),(x2,h), (0,255,0), 1)
+
+
+
+def motion(ref, img, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), antishake=2):
+    hi,wi = img.shape[0:2]
+    wmin = wi*focus[0]//1000
+    wmax = wi*focus[1]//1000
+    hmin = hi*focus[2]//1000
+    hmax = hi*focus[3]//1000
+    template = img[hmin:hmax,wmin:wmax,:]
+    h,w = template.shape[0:2]
+
+    # Apply template Matching
+    if maxaccel == 0:
+        res = cv2.matchTemplate(ref,template,cv2.TM_SQDIFF_NORMED)
+        #loc is given by x,y
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        return min_loc[0] - wmin, min_loc[1] - hmin
+    else:
+        #use delta here
+        roix0 = wmin + delta[0] - maxaccel
+        roiy0 = hmin + delta[1] - maxaccel
+        roix1 = wmax + delta[0] + maxaccel
+        roiy1 = hmax + delta[1] + maxaccel
+        refh,refw = ref.shape[0:2]
+        if roix0 < 0 or roix1 >= refw or roiy0 < 0 or roiy1 >= refh:
+            print(roix0,roix1,roiy0,roiy1,refw,refh)
+            return None
+        crop = ref[roiy0:roiy1, roix0:roix1, :]
+        res = cv2.matchTemplate(crop,template,cv2.TM_SQDIFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        #loc is given by x,y
+
+        #Test: isn't it just a background?
+        roix02 = wmin - antishake
+        roiy02 = hmin - antishake
+        roix12 = wmax + antishake
+        roiy12 = hmax + antishake
+        crop = ref[roiy02:roiy12, roix02:roix12, :]
+        res = cv2.matchTemplate(crop,template,cv2.TM_SQDIFF_NORMED)
+        min_val2, max_val2, min_loc2, max_loc2 = cv2.minMaxLoc(res)
+        #loc is given by x,y
+        if min_val <= min_val2:
+            return (min_loc[0] + roix0 - wmin, min_loc[1] + roiy0 - hmin)
+        else:
+            return (min_loc2[0] + roix02 - wmin, min_loc2[1] + roiy02 - hmin)
+
 
 def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
     affine = np.matrix(((1.0,0.0,dx),(0.0,1.0,dy)))
@@ -20,9 +87,9 @@ def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
     frame1 = cv2.warpAffine(frame1, affine, (w,h))
     diff = 255 - cv2.absdiff(frame1,frame2)
     if focus is not None:
-        trainscanner.draw_focus_area(diff, focus, delta=dx)
+        draw_focus_area(diff, focus, delta=dx)
     if slitpos is not None:
-        trainscanner.draw_slit_position(diff, slitpos, dx)
+        draw_slit_position(diff, slitpos, dx)
     return diff
 
 
@@ -236,7 +303,7 @@ class Pass1():
             b = self.cache[-1][3]
             bn = self.cache[-1][0]
             #print(an,bn,self.params.focus, self.params.maxaccel,self.velx, self.vely)
-            d = trainscanner.motion(b, a, focus=self.params.focus, maxaccel=int(self.params.maxaccel*(an-bn)), delta=(int(self.velx*(an-bn)), int(self.vely*(an-bn))))
+            d = motion(b, a, focus=self.params.focus, maxaccel=int(self.params.maxaccel*(an-bn)), delta=(int(self.velx*(an-bn)), int(self.vely*(an-bn))))
             if d is None:
                 dx = 0
                 dy = 0
@@ -275,11 +342,13 @@ class Pass1():
             ret = self.cap.grab()
             self.nframes += 1
             if not ret:
+                print("Video ended (1).")
                 return None
         ret, nextframe = self.cap.read()
         self.nframes += 1
         ##### return None if the frame is empty
         if not ret:
+            print("Video ended (2).")
             return None
         ##### compare with the previous raw frame
         diff = cv2.absdiff(nextframe,self.rawframe)
@@ -305,12 +374,13 @@ class Pass1():
         if self.params.maxaccel > 0 and self.estimate:
             #do not apply maxaccel for the first 10 frames
             #because the velocity uncertainty.
-            delta = trainscanner.motion(self.frame, nextframe, focus=self.params.focus, maxaccel=int(self.params.maxaccel*self.interval), delta=(int(self.velx*self.interval),int(self.vely*self.interval)) )
+            delta = motion(self.frame, nextframe, focus=self.params.focus, maxaccel=int(self.params.maxaccel*self.interval), delta=(int(self.velx*self.interval),int(self.vely*self.interval)) )
             if delta is None:
+                print("Matching failed (probabily the motion detection window goes out of the image).")
                 return None
             dx,dy = delta
         else:
-            dx,dy = trainscanner.motion(self.frame, nextframe, focus=self.params.focus)
+            dx,dy = motion(self.frame, nextframe, focus=self.params.focus)
             
         ##### Suppress drifting.
         if self.params.zero:
@@ -322,7 +392,7 @@ class Pass1():
             ##### wait until motion becomes enough.
             if self.interval <= self.params.trailing:
                 self.interval += 1
-                sys.stderr.write("({0} {1} {2})\n".format(self.nframes,dx,dy))
+                sys.stderr.write("({0} {1} {2} +{3}/{4})\n".format(self.nframes,dx,dy,self.interval, self.params.trailing))
                 ####Do not update the original frame and preview.
                 ####That is, accumulate the changes.
                 ####tr is the number of accumulation.

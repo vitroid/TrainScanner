@@ -12,6 +12,29 @@ import film
 import helix
 import rect
 
+
+
+
+def make_vert_alpha( alphas, displace, img_width, img_height, slit=0, width=1.0 ):
+    """
+    Make an orthogonal mask
+    slit position is -500 to 500
+    slit width=1 is standard, width<1 is narrow (sharp) and width>1 is diffuse alpha
+    """
+    if (displace, width, slit) in alphas:
+        return alphas[(displace, width, slit)]
+    if displace == 0:
+        return np.zeros((img_height,img_width,3))+1
+    if displace > 0:
+        centerx = img_width/2 - slit*img_width/1000
+    else:
+        centerx = img_width/2 + slit*img_width/1000
+    alpha = np.fromfunction(lambda y, x, v: (x-centerx)/(displace*width), (img_height, img_width, 3))
+    np.clip(alpha,0,1,out=alpha)  # float 0..1 values
+    #alpha += 1
+    alphas[(displace, width, slit)] = alpha
+    return alpha
+
 #Automatically extensible canvas.
 class Canvas():
     def __init__(self, image=None, position=None):
@@ -183,7 +206,7 @@ class Stitcher(Canvas):
             self.abs_merge(cropped, absx, absy)
             self.firstFrame = False
         else:
-            alpha = trainscanner.make_vert_alpha( self.alphas, int(idx), cropped.shape[1], cropped.shape[0], slit=self.params.slitpos, width=self.params.slitwidth )
+            alpha = make_vert_alpha( self.alphas, int(idx), cropped.shape[1], cropped.shape[0], slit=self.params.slitpos, width=self.params.slitwidth )
             self.abs_merge(cropped, absx, absy, alpha=alpha)
 
 
