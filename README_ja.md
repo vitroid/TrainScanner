@@ -1,7 +1,7 @@
 ![Banner](https://github.com/vitroid/TrainScanner/blob/master/images_ja/banner.helix.jpg?raw=true)
 #TrainScannerの使い方
 ##インストール
-[DropBox](https://www.dropbox.com/sh/3a1p84nqxz1b7b3/AACdmHd9jVsqVgU9Nj2TZ2oYa?dl=0)にてアプリを配布しています．Mac app is available at [DropBox](https://www.dropbox.com/sh/3a1p84nqxz1b7b3/AACdmHd9jVsqVgU9Nj2TZ2oYa?dl=0).
+[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc).
 
 当面，Mac用を配布します．TrainScannerはPythonで書かれているので，Windows/Linuxにも容易に移植できるはずですが，開発者の手が回っていません．協力を募集しています．
 
@@ -106,7 +106,7 @@ TrainScannerでは，ビデオフレーム間の列車の移動距離を求め�
 
 ##Windowsでの使用
 
-[DropBox](https://www.dropbox.com/sh/3a1p84nqxz1b7b3/AACdmHd9jVsqVgU9Nj2TZ2oYa?dl=0)にてWindows用のアプリも配布しています。ただし、動作するのかどうかわかりません。Windowsユーザーの方の協力を期待しています。
+[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてWindows用のアプリも配布しています。ただし、動作するのかどうかわかりません。Windowsユーザーの方の協力を期待しています。
 
 ##Revision History
 
