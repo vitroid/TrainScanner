@@ -1,4 +1,4 @@
-![Banner](https://github.com/vitroid/TrainScanner/blob/master/images_ja/banner.helix.jpg?raw=true)
+![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 #TrainScannerの使い方
 ##インストール
 [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc).
@@ -17,35 +17,35 @@ Pythonの実行環境をもっている人は、[github](https://github.com/vitr
 ##TrainScannerで開く
 1. まず、「ムービーを開く」を押してムービーファイルを開いて下さい。主要なフォーマットであればそのまま開けますが、開けない場合は、QuickTimeやffmpegなどを利用してフォーマットを変換してから再挑戦して下さい。(以前作った時にできた`.tsconf`ファイルを読みこむこともできます)
 
-![settings](https://github.com/vitroid/TrainScanner/blob/master/images_ja/settings.png?raw=true)
+![settings](https://farm6.staticflickr.com/5756/30971812510_6aeffec942_o_d.png)
 
 1. ファイルが無事に開くと、大きなダイアログ画面が表示されます。一番上が頭出しのためのスナップショット表示窓、左が列車の歪みを修正するための窓、そして右が動きを検出する枠を指定するための窓です。この順番で作業します。
 
 1. 縦位置で撮影した場合や、カメラが傾いている(あるいはローリングシャッターで画像が傾いている)場合には、左窓下のボタンで画像を回転して、列車の窓枠が垂直になるようにして下さい。(水平は別の方法でも調節できます。)
 
-![edit2a](https://github.com/vitroid/TrainScanner/blob/master/images_ja/editor1b.png?raw=true)
+![edit2a](https://www.flickr.com/photos/149573560@N03/30971812020/sizes/l/)
 
 1. まず、一番上の窓で、スライダーを使って、列車が視野に入りかける瞬間を指定して下さい。下の左右の窓には、指定されたフレームが表示されます。
  
-![edit1b](https://github.com/vitroid/TrainScanner/blob/master/images_ja/editor1c.png?raw=true)
+![edit1b](https://farm6.staticflickr.com/5599/31196800422_85fe03874b_o_d.png)
 
 1. 左窓の四隅にあるスライダーを使って、画面内の赤い線が列車に平行になるように調節して下さい。右の窓に表示される列車が、長方形になるまで調整します。この作業は省略しても構いません。
 
-![edit2b](https://github.com/vitroid/TrainScanner/blob/master/images_ja/editor2a.png?raw=true)
+![edit2b](https://farm6.staticflickr.com/5641/30533356873_04b912f6f0_o_d.png)
 
 1. 次に右のパネルに進みます。空や地面はあらかじめ右側のスライダーで削っておくと、あとの処理が速くなります。
 
-![edit3a](https://github.com/vitroid/TrainScanner/blob/master/images_ja/editor3a.png?raw=true)
+![edit3a](https://farm6.staticflickr.com/5324/30971812350_cbde46e80c_o_d.png)
 
 1. 列車の動きを検知する枠(変位検知窓)を指定します。初期設定では視野の上下左右1/3の中央部分が指定されていますが、うまく動きを検知できない場合は、枠を指定しなおして下さい。
 
-![edit3b](https://github.com/vitroid/TrainScanner/blob/master/images_ja/editor3b.png?raw=true)
+![edit3b](https://farm6.staticflickr.com/5509/31196800822_f4fe5920f6_o_d.png)
 
 上の例では、やや斜めから撮影されて遠近がついていた車体に、左窓で赤い線を列車に沿わせることで、右窓では車体のパースペクティブが補正されているのがわかります。
 
 1. 赤い縦線の位置が、スリットの位置です。つまり、この赤い線に沿った細長い写真の短冊を並べることで、長い列車の写真ができます。2本の線は、右向きの列車と左向きの列車の場合のスリット位置を表しています。赤い線の位置は、右窓下のスライダーで動かせます。背景にあわせて、スリットの位置を決めて下さい。スリットの位置は、緑の変位検知枠よりも前方(右向きに進む列車なら右側)のほうが良いです。
 
-![edit3c](https://github.com/vitroid/TrainScanner/blob/master/images_ja/editor3c.png?raw=true)
+![edit3c](https://farm6.staticflickr.com/5631/30533357123_76b9d372e4_o_d.png)
 
 ##TrainScannerでつなぐ
 ここまで終わったら、ためしにつないでみましょう。
@@ -191,4 +191,5 @@ TrainScannerは、スリットスキャンに画像処理技術を加え、列�
   Windows/Python3/OpenCV3/PyQt4/Anaconda
 * failed to build exe on Windows?
   http://stackoverflow.com/questions/37815371/pyinstaller-failed-to-execute-script-pyi-rth-pkgres-and-missing-packages
+* Flickr account for TrainScanner development: [TrainScanner](https://www.flickr.com/photos/149573560@N03)
 
