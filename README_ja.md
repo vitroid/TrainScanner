@@ -7,6 +7,7 @@
 [DropBox](https://www.dropbox.com/sh/3a1p84nqxz1b7b3/AACdmHd9jVsqVgU9Nj2TZ2oYa?dl=0)にてアプリを配布しています．Mac app is available at [DropBox](https://www.dropbox.com/sh/3a1p84nqxz1b7b3/AACdmHd9jVsqVgU9Nj2TZ2oYa?dl=0).
 
 当面，Mac用を配布します．TrainScannerはPythonで書かれているので，Windows/Linuxにも容易に移植できるはずですが，開発者の手が回っていません．協力を募集しています．
+
 ##撮影方法
 列車をビデオカメラで側面から撮影します。
 
@@ -97,6 +98,10 @@ TrainScannerでは，ビデオフレーム間の列車の移動距離を求め�
 * 特徴点で比較すると，ときどき照合の失敗が起こります．特に，上に書いたように，列車の表面に影が写りこんでいたり，窓や斜体が反射する場合には，失敗する可能性が高まります．
 * 列車はほぼ一定速度で走っていて，加速や減速もほとんどないので，次のフレームでの移動が極めて正確に予測でき，その結果照合する範囲もぎりぎりまで狭められます．このため，単純な照合を行っても，処理時間はごくわずかですみます．照合はあらかじめ指定された枠の中だけで行うので，写真が大きくても処理は軽いです．
 
+##Windowsでの使用
+
+まだexeファイルを作れていません。 [このサイト](http://qiita.com/sugurunatsuno/items/ce3c0d486bdc93688192)を参考に、Anaconda, OpenCV, PyQt4をインストールして、gui5.pyを直接起動して下さい。私はWindowsには疎いので、協力して下さる方を募ります。
+
 ##Revision History
 
 * 2016-11-19 Version 0.2: 設定ファイルを引きつげるようにした．オプションの取り扱いを改善した．設定ファイルの出力のしかたを変更した．などなど．
@@ -109,5 +114,11 @@ TrainScannerでは，ビデオフレーム間の列車の移動距離を求め�
   PyQt4 with python3
 *
   https://hackerslog.net/posts/softwares/opencv/opencv-install-with-python-on-mac/
-  Python3 with OpenCV3
+  Python3 with OpenCV3; downloading HEAD of openCV3 takes VERY long time.
+* http://qiita.com/sugurunatsuno/items/ce3c0d486bdc93688192
+  Windows/Python3/OpenCV3/PyQt4/Anaconda
+  
+
+* failed to build exe on Windows?
+  http://stackoverflow.com/questions/37815371/pyinstaller-failed-to-execute-script-pyi-rth-pkgres-and-missing-packages
 

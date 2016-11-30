@@ -5,7 +5,7 @@ block_cipher = None
 
 a = Analysis(['gui5.py'],
              pathex=['/Users/matto/github/TrainScanner'],
-             binaries=None,
+             binaries=[('/usr/local/Cellar/opencv3/HEAD-88ef8c9_4/lib/libopencv_imgcodecs.3.1.0.dylib', 'libopencv_imgcodecs.3.1.0.dylib')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],

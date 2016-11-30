@@ -112,6 +112,7 @@ class Stitcher(Canvas):
         self.params,unknown = self.parser.parse_known_args(argv[1:])
         #print(3,self.params,unknown)
         #print(vars(self.params))
+        self.outfilename = self.params.logbase+".png"
 
         self.cap = cv2.VideoCapture(self.params.filename)
         self.firstFrame = True
@@ -148,7 +149,6 @@ class Stitcher(Canvas):
                     locations.append(cols)
         self.locations = locations
         self.total_frames = len(locations)
-        self.outfilename = self.params.logbase+".png"
         self.alphas = dict()
         #initial seek
         while self.currentFrame + 1 < self.locations[0][0]:
