@@ -11,7 +11,8 @@ macdebug:
 	pyinstaller --noconfirm --debug --console converter_gui.macos.spec
 maczip:
 	cd dist; zip -r trainscanner.x.y.macos.zip TrainScanner.app TS_converter.app; md5 trainscanner.x.y.macos.zip | tee trainscanner.x.y.macos.zip.md5
-
+patch_for_mac:
+	patch /usr/local/lib/python3.5/site-packages/PyInstaller/depend/bindepend.py < bindepend.diff
 prepare_for_mac:
 	brew tap homebrew/boneyard #for old PyQt4
 	brew install opencv3 --with-ffmpeg --with-tbb --with-python3 --HEAD
