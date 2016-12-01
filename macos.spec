@@ -5,7 +5,7 @@ block_cipher = None
 
 a = Analysis(['trainscanner_gui.py'],
              pathex=['/Users/matto/github/TrainScanner'],
-             binaries=[('/usr/local/lib/libopencv_videoio.3.1.dylib','libopencv_videoio.3.1.dylib')],
+             binaries=None, #[('/usr/local/lib/libopencv_videoio.3.1.dylib','libopencv_videoio.3.1.dylib')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
