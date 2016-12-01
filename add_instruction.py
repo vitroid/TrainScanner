@@ -1,9 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import cv2
 import numpy as np
 import math
-
 import sys
 
 def roundbox(img,p1,p2,r,color):

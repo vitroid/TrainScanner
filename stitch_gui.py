@@ -1,13 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-#Modified from Mandelbrot.py
-#http://ftp.ics.uci.edu/pub/centos0/ics-custom-build/BUILD/PyQt-x11-gpl-4.7.2/examples/threads/mandelbrot.py
-
-#This is a skeleton for a real time canvas. It is not sure it is extensible.
-
-from __future__ import print_function, division
-from PyQt4.QtCore  import *
-from PyQt4.QtGui import *
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea
+from PyQt5.QtGui     import QImage, QPixmap, QPainter
+from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint
 
 import stitch
 import math

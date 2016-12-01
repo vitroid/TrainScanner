@@ -1,12 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #-*- coding: utf-8 -*-
-#It actually runs with python3 but pynstaller with python3 does not.
-
-from __future__ import print_function, division
 
 #Core of the GUI and image process
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
+from PyQt5.QtGui     import QImage, QPixmap, QPainter
+from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator
+
 import cv2
 import numpy as np
 import math
@@ -209,7 +208,7 @@ class SettingsGUI(QWidget):
         self.slitwidth_slider.setRange(5, 300)  # スライダの範囲
         self.slitwidth_slider.setValue(self.slitwidth)  # 初期値
         self.slitwidth_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.slitwidth_slider, SIGNAL('valueChanged(int)'), self.slitwidth_slider_on_draw)
+        self.slitwidth_slider.valueChanged.connect(self.slitwidth_slider_on_draw)
         settings2_layout.addWidget(self.slitwidth_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Diffuse')), rows, 4)
 
@@ -231,7 +230,7 @@ class SettingsGUI(QWidget):
         self.antishake_slider.setValue(5)  # 初期値
         #スライダの目盛りを両方に出す
         self.antishake_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.antishake_slider, SIGNAL('valueChanged(int)'), self.antishake_slider_on_draw)
+        self.antishake_slider.valueChanged.connect(self.antishake_slider_on_draw)
         settings2_layout.addWidget(self.antishake_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Large')), rows, 4)
 
@@ -252,7 +251,7 @@ class SettingsGUI(QWidget):
         self.estimate_slider.setValue(10)  # 初期値
         #スライダの目盛りを両方に出す
         self.estimate_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.estimate_slider, SIGNAL('valueChanged(int)'), self.estimate_slider_on_draw)
+        self.estimate_slider.valueChanged.connect(self.estimate_slider_on_draw)
         settings2_layout.addWidget(self.estimate_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Long')), rows, 4)
 
@@ -302,7 +301,7 @@ class SettingsGUI(QWidget):
         self.accel_slider.setRange(1, 15)  # スライダの範囲
         self.accel_slider.setValue(1)  # 初期値
         self.accel_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.accel_slider, SIGNAL('valueChanged(int)'), self.accel_slider_on_draw)
+        self.accel_slider.valueChanged.connect(self.accel_slider_on_draw)
         settings2_layout.addWidget(self.accel_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Handheld')), rows, 4)
         #self.btn_accel.toggled.connect(self.btn_accel_toggle)
@@ -358,7 +357,7 @@ class SettingsGUI(QWidget):
         self.trailing_slider.setValue(10)  # 初期値
         #スライダの目盛りを両方に出す
         self.trailing_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.trailing_slider, SIGNAL('valueChanged(int)'), self.trailing_slider_on_draw)
+        self.trailing_slider.valueChanged.connect(self.trailing_slider_on_draw)
         settings2_layout.addWidget(self.trailing_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Long')), rows, 4)
 
@@ -391,7 +390,7 @@ class SettingsGUI(QWidget):
         finish_layout.addLayout(length_layout)
         #https://www.tutorialspoint.com/pyqt/pyqt_qcheckbox_widget.htm
         self.start_button = QPushButton(self.tr('Start'),self)
-        self.connect(self.start_button,SIGNAL('clicked()'),self.start_process)
+        self.start_button.clicked.connect(self.start_process)
         finish_layout.addWidget(self.start_button)
 
        
@@ -424,13 +423,13 @@ class SettingsGUI(QWidget):
 
         if self.editor is not None:
             self.editor.close()
-        self.filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Movie files (*.mov *.mp4 *.mts *.tsconf)")
         if self.filename == "": # or if the file cannot be opened,
             return
         #for py2
-        if type(self.filename) is not str:
-            self.filename = unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8')
+        #if type(self.filename) is not str:
+        #    self.filename = unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8')
         #for py3 self.filename is a str
         print(type(self.filename))
         if self.filename.rfind(".tsconf") + 7 == len(self.filename):
@@ -616,7 +615,7 @@ class EditorGUI(QWidget):
         #self.setAttribute(Qt.WA_DeleteOnClose)
         layout = self.make_layout()
         self.imageselector2 = ImageSelector2()
-        self.imageselector2.connect(self.imageselector2.slider, SIGNAL('valueChanged(int)'), self.frameChanged)
+        self.imageselector2.slider.valueChanged.connect(self.frameChanged)
         imageselector_layout = QHBoxLayout()
         imageselector_layout.addWidget(self.imageselector2)
         imageselector_gbox = QGroupBox(self.tr('1. Seek the first video frame'))
@@ -675,7 +674,7 @@ class EditorGUI(QWidget):
         self.croptop_slider = QSlider(Qt.Vertical)  # スライダの向き
         self.croptop_slider.setRange(0, 1000)  # スライダの範囲
         self.croptop_slider.setValue(1000)  # 初期値
-        self.connect(self.croptop_slider, SIGNAL('valueChanged(int)'), self.croptop_slider_on_draw)
+        self.croptop_slider.valueChanged.connect(self.croptop_slider_on_draw)
         self.croptop_slider.setMinimumHeight(240)
         #print(self.croptop_slider.size())
         crop_layout.addWidget(self.croptop_slider)
@@ -684,7 +683,7 @@ class EditorGUI(QWidget):
         self.cropbottom_slider = QSlider(Qt.Vertical)  # スライダの向き
         self.cropbottom_slider.setRange(0, 1000)  # スライダの範囲
         self.cropbottom_slider.setValue(0)  # 初期値 499 is top
-        self.connect(self.cropbottom_slider, SIGNAL('valueChanged(int)'), self.cropbottom_slider_on_draw)
+        self.cropbottom_slider.valueChanged.connect(self.cropbottom_slider_on_draw)
         self.cropbottom_slider.setMinimumHeight(240)
         crop_layout.addWidget(self.cropbottom_slider)
         crop_layout.setAlignment(self.cropbottom_slider, Qt.AlignBottom)
@@ -697,7 +696,7 @@ class EditorGUI(QWidget):
         #sizepolicy = QSizePolicy()
         #sizepolicy.setVerticalPolicy(QSizePolicy.Maximum)
         #self.sliderTL.setSizePolicy(sizepolicy)
-        self.connect(self.sliderTL, SIGNAL('valueChanged(int)'), self.sliderTL_on_draw)
+        self.sliderTL.valueChanged.connect(self.sliderTL_on_draw)
         self.sliderTL.setMinimumHeight(240)
         pers_left_layout.addWidget(self.sliderTL)
         pers_left_layout.setAlignment(self.sliderTL, Qt.AlignTop)
@@ -705,7 +704,7 @@ class EditorGUI(QWidget):
         self.sliderBL = QSlider(Qt.Vertical)  # スライダの向き
         self.sliderBL.setRange(0, 1000)  # スライダの範囲
         self.sliderBL.setValue(0)  # 初期値 499 is top
-        self.connect(self.sliderBL, SIGNAL('valueChanged(int)'), self.sliderBL_on_draw)
+        self.sliderBL.valueChanged.connect(self.sliderBL_on_draw)
         self.sliderBL.setMinimumHeight(240)
         pers_left_layout.addWidget(self.sliderBL)
         pers_left_layout.setAlignment(self.sliderBL, Qt.AlignBottom)
@@ -714,7 +713,7 @@ class EditorGUI(QWidget):
         self.sliderTR = QSlider(Qt.Vertical)  # スライダの向き
         self.sliderTR.setRange(0, 1000)  # スライダの範囲
         self.sliderTR.setValue(1000)  # 初期値
-        self.connect(self.sliderTR, SIGNAL('valueChanged(int)'), self.sliderTR_on_draw)
+        self.sliderTR.valueChanged.connect(self.sliderTR_on_draw)
         self.sliderTR.setMinimumHeight(240)
         pers_right_layout.addWidget(self.sliderTR)
         pers_right_layout.setAlignment(self.sliderTR, Qt.AlignTop)
@@ -722,7 +721,7 @@ class EditorGUI(QWidget):
         self.sliderBR = QSlider(Qt.Vertical)  # スライダの向き
         self.sliderBR.setRange(0, 1000)  # スライダの範囲
         self.sliderBR.setValue(0)  # 初期値 499 is top
-        self.connect(self.sliderBR, SIGNAL('valueChanged(int)'), self.sliderBR_on_draw)
+        self.sliderBR.valueChanged.connect(self.sliderBR_on_draw)
         self.sliderBR.setMinimumHeight(240)
         pers_right_layout.addWidget(self.sliderBR)
         pers_right_layout.setAlignment(self.sliderBR, Qt.AlignBottom)
@@ -763,7 +762,7 @@ class EditorGUI(QWidget):
         self.slit_slider.setValue(self.slitpos)  # 初期値
         #スライダの目盛りを両方に出す
         self.slit_slider.setTickPosition(QSlider.TicksBelow)
-        self.connect(self.slit_slider, SIGNAL('valueChanged(int)'), self.slit_slider_on_draw)
+        self.slit_slider.valueChanged.connect(self.slit_slider_on_draw)
         slit_slider_layout = QHBoxLayout()
         slit_slider_layout.addWidget(slit_slider_label)
         slit_slider_layout.addWidget(self.slit_slider)

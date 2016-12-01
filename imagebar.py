@@ -1,14 +1,15 @@
-#http://stackoverflow.com/questions/24106903/resizing-qpixmap-while-maintaining-aspect-ratio
+#!/usr/bin/env python3
 
-from __future__ import print_function, division
-from PyQt4 import QtGui, QtCore
+from PyQt5.QtWidgets import QLabel, QApplication, QFrame
+from PyQt5.QtGui     import QPainter
+from PyQt5.QtCore    import QPoint
+
 import sys
-from PyQt4.QtCore import Qt
 
-class ImageBar(QtGui.QLabel):
+class ImageBar(QLabel):
     def __init__(self):
         super(ImageBar, self).__init__()
-        self.setFrameStyle(QtGui.QFrame.StyledPanel)
+        self.setFrameStyle(QFrame.StyledPanel)
         self.thumbs = []
         self.setFixedHeight(100)
         self.transformer=lambda x:x  #no conversion
@@ -24,7 +25,7 @@ class ImageBar(QtGui.QLabel):
         """
         set the pixmap here.
         """
-        painter = QtGui.QPainter(self)
+        painter = QPainter(self)
         if len(self.thumbs) == 0:
             return
         first = self.transformer(self.thumbs[0])
@@ -34,7 +35,7 @@ class ImageBar(QtGui.QLabel):
         nframes = pw//w + 1
         for i in range(nframes):
             f = i*len(self.thumbs)//nframes
-            point = QtCore.QPoint(i*w,0)
+            point = QPoint(i*w,0)
             painter.drawImage(point, self.transformer(self.thumbs[f]))
 
     def setThumbs(self,thumbs):
@@ -52,13 +53,13 @@ def cv2toQImage(cv2image):
     tmp = cv2image[:,:,0].copy()
     cv2image[:,:,0] = cv2image[:,:,2]
     cv2image[:,:,2] = tmp
-    return QtGui.QImage(cv2image.data, width, height, width*3, QtGui.QImage.Format_RGB888)
+    return QImage(cv2image.data, width, height, width*3, QImage.Format_RGB888)
 
         
 
 def main():
     import sys
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     window = ImageBar()
     window.resize(300,100)
     window.show()

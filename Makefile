@@ -13,12 +13,18 @@ maczip:
 	cd dist; zip -r trainscanner.x.y.macos.zip TrainScanner.app TS_converter.app; md5 trainscanner.x.y.macos.zip | tee trainscanner.x.y.macos.zip.md5
 
 prepare_for_mac:
-	-brew install python3
+	brew tap homebrew/boneyard #for old PyQt4
 	brew install opencv3 --with-ffmpeg --with-tbb --with-python3 --HEAD
 	brew link opencv3 --force
 	pip2 uninstall setuptools
 	pip2 install setuptools   #!!! it avoided the errors in pyinstaller
 	pip2 install pyinstaller
+prepare_for_mac_p3:
+	brew install pyqt5  # wants python3
+	pip3 install pyinstaller
+	brew install opencv3 --with-ffmpeg --with-tbb --with-python3 --HEAD
+	brew link opencv3 --force
+
 #in reality there is no make on Windows by default.
 winexe:
 	pyinstaller.exe --noconfirm --onefile --windowed windows.spec

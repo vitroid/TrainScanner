@@ -1,11 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-from __future__ import print_function, division
-
 #Core of the GUI and image process
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QPushButton, QCheckBox, QFileDialog
+from PyQt5.QtCore    import QTranslator
 import cv2
 import numpy as np
 import math
@@ -43,7 +41,7 @@ class SettingsGUI(QWidget):
         self.btn_finish_rect = QCheckBox(self.tr('Make a rectangular image'))
         finish_layout.addWidget(self.btn_finish_rect)
         self.start_button = QPushButton(self.tr('Start'),self)
-        self.connect(self.start_button,SIGNAL('clicked()'),self.start_process)
+        self.start_button.clicked.connect(self.start_process)
         finish_layout.addWidget(self.start_button)
 
         self.setLayout(finish_layout)
@@ -62,12 +60,13 @@ class SettingsGUI(QWidget):
                 code = 'utf-8'
                 return code
 
-        self.filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Image files (*.png *.tif *.jpg *.jpeg *.gif)")
         if self.filename == "": # or if the file cannot be opened,
             return
-        if type(self.filename) is not str:
-            self.filename = unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8')
+        #if type(self.filename) is not str:
+        #    print(type(self.filename))
+        #    self.filename = unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8')
 
 
 

@@ -1,12 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from __future__ import print_function, division
-
-import time, sys
-from PyQt4.QtCore  import *
-from PyQt4.QtGui import *
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout
+from PyQt5.QtGui     import QImage, QPixmap
+from PyQt5.QtCore    import QObject, pyqtSignal, QThread
 import pass1
 import sys
+import time
 import numpy as np
 
 def cv2toQImage(cv2image):
@@ -23,8 +22,8 @@ def cv2toQImage(cv2image):
 class Worker(QObject):
 
     frameRendered = pyqtSignal(QImage)
-    finished = pyqtSignal()
-    progress = pyqtSignal(int)
+    finished      = pyqtSignal()
+    progress      = pyqtSignal(int)
 
     def __init__(self, argv):
         super(Worker, self).__init__()
