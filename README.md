@@ -1,7 +1,8 @@
 #TrainScanner tutorial
-##Installation
-Mac app is available at [DropBox](https://www.dropbox.com/sh/3a1p84nqxz1b7b3/AACdmHd9jVsqVgU9Nj2TZ2oYa?dl=0).
 
+This document is outdated. [README_ja.md](https://github.com/vitroid/TrainScanner/blob/master/README_ja.md) is more frequently updated.
+
+##Installation
 TrainScanner is written in pure python, so it would be easy to migrate in Windows/Linux, but I have no time and equipments for that. Your help is appreciated.
 ##How to capture the video
 Capture the whole train from the side with a video camera.
