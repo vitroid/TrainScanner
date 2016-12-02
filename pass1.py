@@ -260,14 +260,14 @@ class Pass1():
         
         self.absx,self.absy = 0, 0
         self.velx, self.vely = 0.0, 0.0
-        self.interval = 1
+        self.match_fail = 0
         if self.params.stall:
             #estimation must be on by default.
-            self.guess_motion = True
+            self.guess_mode = True
         else:
             #we cannot estimate the run-in velocity
             #so the estimateion is off by default.
-            self.guess_motion = False
+            self.guess_mode = False
         self.precount = 0
         self.preview_size = 500
         self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
@@ -287,7 +287,7 @@ class Pass1():
         ostream.write(self.body)
         ostream.close()
 
-    def backward_match(self):
+    def backward_match(self, velx,vely):
         """
         using cached images,
         "postdict" the displacements
@@ -307,7 +307,7 @@ class Pass1():
             b = self.cache[next][1]  #image
             bn = self.cache[next][0] #frame #
             #print(an,bn,self.params.focus, self.params.maxaccel,self.velx, self.vely)
-            d = motion(b, a, focus=self.params.focus, maxaccel=int(self.params.maxaccel*(an-bn)), delta=(int(self.velx*(an-bn)), int(self.vely*(an-bn))))
+            d = motion(b, a, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(velx, vely))
             if d is None:
                 dx = 0
                 dy = 0
@@ -315,19 +315,14 @@ class Pass1():
                 dx,dy = d
             if self.params.zero:
                 dy = 0
-            if abs(dx) < self.params.antishake and abs(dy) < self.params.antishake:
-                #if the displacement is small
-                #inherit the last value
-                dx = self.velx
-                dy = self.vely
-            else:
-                self.velx = dx // (an-bn)
-                self.vely = dy // (an-bn)
-            newbody = [[bn, dx, dy]] + newbody
-            ax -= dx
-            ay -= dy
+            if abs(dx) > self.params.antishake or abs(dy) > self.params.antishake:
+                velx = dx
+                vely = dy
+            newbody = [[bn, velx, vely]] + newbody
+            ax -= velx
+            ay -= vely
             self.canvas = canvas_size(self.canvas, a, ax, ay)
-            print(bn,dx,dy)
+            print(bn,velx, vely)
             a = b
             an = bn
         #trick; by the backward matching, the first frame may not be located at the origin
@@ -376,10 +371,10 @@ class Pass1():
         #This mode is activated after the 10th frames.
 
         #Now I do care only magrin case.
-        if self.guess_motion:
+        if self.guess_mode:
             #do not apply maxaccel for the first 10 frames
             #because the velocity uncertainty.
-            delta = motion(self.frame, nextframe, focus=self.params.focus, maxaccel=int(self.params.maxaccel*self.interval), delta=(int(self.velx*self.interval),int(self.vely*self.interval)) )
+            delta = motion(self.frame, nextframe, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(self.velx,self.vely))
             if delta is None:
                 print("Matching failed (probabily the motion detection window goes out of the image).")
                 return None
@@ -402,42 +397,47 @@ class Pass1():
             self.cache.pop(0)
         diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus)
         ##### if the motion is very small
-        if self.guess_motion and (abs(dx) < self.params.antishake and abs(dy) < self.params.antishake):
-            ##### accumulate the motion
-            ##### wait until motion becomes enough.
-            if self.interval <= self.params.trailing:
-                self.interval += 1
-                sys.stderr.write("({0} {1} {2} +{3}/{4})\n".format(self.nframes,dx,dy,self.interval, self.params.trailing))
-                ####Do not update the original frame and preview.
-                ####That is, accumulate the changes.
-                ####tr is the number of accumulation.
-                return diff_img
-            else:
-                #end of work
-                #Add trailing frames to the log file here.
-                return None
-        if (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
-            self.precount += 1 #number of frames since the first motion is detected.
-            #if the displacement is large,
-            if self.guess_motion == False:
+        if not self.guess_mode:
+            if (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
+                self.precount += 1 #number of frames since the first motion is detected.
                 ddx = max(self.deltax) - min(self.deltax)
                 ddy = max(self.deltay) - min(self.deltay)
                 #if the displacements are almost constant in the last 3 frames,
                 if ddx < self.params.antishake and ddy < self.params.antishake:
-                    self.guess_motion = True
+                    self.guess_mode = True
+                    self.body = self.backward_match(dx,dy)
                     self.velx = dx
                     self.vely = dy
-                    self.body = self.backward_match()
-        if self.guess_motion:
-            self.velx = dx // self.interval
-            self.vely = dy // self.interval
-        self.interval = 1
-        sys.stderr.write(" {0} {1} {2} {4} {5} #{3}\n".format(self.nframes,dx,dy,np.amax(diff), self.velx, self.vely))
-        if (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
-            self.absx += dx
-            self.absy += dy
-            self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
-            self.body += "{0} {3} {4}\n".format(self.nframes,self.absx,self.absy,dx,dy)
+                    self.match_fail = 0
+            if not self.guess_mode:
+                sys.stderr.write("({0} {1} {2})\n".format(self.nframes,dx,dy))
+                self.frame   = nextframe
+                self.preview = nextpreview
+                return diff_img
+        if (abs(dx) < self.params.antishake and abs(dy) < self.params.antishake):
+            ##### accumulate the motion
+            ##### wait until motion becomes enough.
+            self.match_fail += 1
+            if self.match_fail <= self.params.trailing:
+                sys.stderr.write("({0} {1} {2} +{3}/{4})\n".format(self.nframes,dx,dy,self.match_fail, self.params.trailing))
+                # do not update the velx and vely
+                #but update the frame and preview
+                #self.frame   = nextframe
+                #self.preview = nextpreview
+                #return diff_img
+            else:
+                #end of work
+                #Add trailing frames to the log file here.
+                return None
+        else:
+            self.velx = dx
+            self.vely = dy
+            self.match_fail = 0
+        sys.stderr.write(" {0} {2} {3} #{1}\n".format(self.nframes,np.amax(diff), self.velx, self.vely))
+        self.absx += self.velx
+        self.absy += self.vely
+        self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
+        self.body += "{0} {3} {4}\n".format(self.nframes,self.absx,self.absy,self.velx,self.vely)
         self.frame   = nextframe
         self.preview = nextpreview
         return diff_img
