@@ -1,4 +1,5 @@
-all:
+all: macapp-personally
+	echo Done.
 
 #for mac and windows
 macapp:
@@ -12,6 +13,7 @@ macapp-personally: prepare_for_mac_py3
 	pip3 install py2app
 	-rm -rf build dist
 	python3 trainscanner_gui-setup.py py2app -A      #alias mode. It is not portable
+	python3 converter_gui-setup.py py2app -A      #alias mode. It is not portable
 #patch will be made:
 #/usr/local/lib/python3.5/site-packages/py2app/build_app.py: copy_dylib
 #                if os.path.exists(link_dest) and not os.path.isdir(link_dest):

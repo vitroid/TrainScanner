@@ -8,7 +8,7 @@ Usage:
 from setuptools import setup
 import os
 
-APP = ['trainscanner_gui.py']
+APP = ['converter_gui.py']
 cwd = os.getcwd()
 DATA_FILES = [('i18n',[cwd+'/i18n/trainscanner_ja.qm'])]
 #OPTIONS = {'argv_emulation': True}
@@ -19,7 +19,7 @@ OPTIONS = {
 
 setup(
     app=APP,
-    name="TrainScanner",
+    name="TrainConverter",
     data_files=DATA_FILES,
     options={'py2app': OPTIONS},
     setup_requires=['py2app'],

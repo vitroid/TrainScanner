@@ -1,11 +1,19 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 #TrainScannerの使い方
-##インストール
-[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc).
+##アプリのインストール
+[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc). でも，たぶんまだ動きません．(大変苦労しています)
 
-当面，Mac用を配布します．TrainScannerはPythonで書かれているので，Windows/Linuxにも容易に移植できるはずですが，開発者の手が回っていません．協力を募集しています．
+Windowsの実行ファイルも同じ場所に置いてありますが，こちらも開発機以外で動くのかどうか確認できていません．また，Windowsの実行ファイルは，すこしあと回しになっています．
 
-Pythonの実行環境をもっている人は、[github](https://github.com/vitroid/TrainScanner)からソースをダウンロードし、`trainscanner_gui.py`を実行して下さい。
+###ソースからのインストール
+ソースは[github](https://github.com/vitroid/TrainScanner)で配布しています．zipファイルをダウンロードして展開して下さい．
+
+MacでHomeBrewが使える人は，makeしてみて下さい．(HomeBrewそのものを入れる方法は[ここ](http://vdeep.net/intr-homebrew)を参照して下さい．) Python3やらPyQt5が自動的にインストールされるので，それが困る人は注意して下さい．distフォルダの中に，`TrainScanner.app`が作られます．ただし，この実行ファイルは，OpenCV3などのライブラリにリンクしているので，ほかのMacではたぶん動きません．
+
+TrainScannerはPythonで書かれているので，Windows/Linuxでも動くはずですが，開発者の手が回っていません．協力を募集しています．
+
+###ソースから直接実行
+PyQt5，OpenCV3，Python3のインストールをしてから，[github](https://github.com/vitroid/TrainScanner)からソースをダウンロードし、`trainscanner_gui.py`を実行して下さい。
 
 ##撮影方法
 列車をビデオカメラで側面から撮影します。
@@ -70,7 +78,7 @@ Pythonの実行環境をもっている人は、[github](https://github.com/vitr
 
 列車の写真は非常に長くなるので，印刷には一工夫必要です．
 
-* 同梱の`converter_gui.py` (アプリケーション名は`TS_converter.app`)を使うと、横長の写真をA4ランドスケープにちょうどおさまるように，写真の大きさを自動調整してくれます．A4用紙なら、シール紙やマグネット紙など，いろんな素材が選べるので，いろいろ用途を考えてみて下さい．
+* 同梱の`converter_gui.py` (アプリケーション名は`TrainConverter.app`)を使うと、横長の写真をA4ランドスケープにちょうどおさまるように，写真の大きさを自動調整してくれます．A4用紙なら、シール紙やマグネット紙など，いろんな素材が選べるので，いろいろ用途を考えてみて下さい．
 * インクジェットプリンタのなかには，ロール紙に対応しているものがありましたが、今はないようです。今回試しに買ってみたPM-105の場合、1.1 mまでならなんとか印刷できますが、それ以上長い用紙を設定(エプソンのドライバーは紙の大きさを自由に設定できます)しても、プリンタが暴走するばかりで印刷できませんでした。残念です。今は、ポスタープリンタでも手に入れない限り、ロール紙には印刷できないのでしょうか。
 * ロール紙を現在のプリンタで使う場合に、いろんな問題が生じます。
     * 印刷が終わると、紙の終わりまで紙送りをする機能が搭載されていますが、ロール紙にはおわりがないので、印刷が終わるとはてしなく紙を送ってしまいます。プリンタのセンサーをだませば良いのですが、センサーはヘッドのレールの下の狭いスペースにあり、改造は難しそうです。印刷が終わるタイミングをみはからって、紙をはさみで切るか、あらかじめ1 mの短冊を作っておくしかありません。

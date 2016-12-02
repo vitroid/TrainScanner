@@ -1006,7 +1006,7 @@ def main():
     rpath = getattr(sys, '_MEIPASS', os.getcwd())
     loc = SystemLanguage()
     if loc[:2] == "ja":
-        translator.load(rpath+"/i18n/gui5_ja")
+        translator.load(rpath+"/i18n/trainscanner_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()
