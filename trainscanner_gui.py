@@ -4,7 +4,7 @@
 #Core of the GUI and image process
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
 from PyQt5.QtGui     import QImage, QPixmap, QPainter
-from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator
+from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator, QRect, QSize
 
 import cv2
 import numpy as np

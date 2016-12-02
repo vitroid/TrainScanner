@@ -230,7 +230,8 @@ class Pass1():
 
         self.nframes = 0  #1 is the first frame
         self.cache   = [] #save only "active" frames
-
+        self.deltax  = [] #store displacements
+        self.deltay  = [] #store displacements
         #This does not work with some kind of MOV. (really?)
         #self.cap.set(cv2.CAP_PROP_POS_FRAMES, skip)
         #self.nframes = skip
@@ -259,15 +260,14 @@ class Pass1():
         
         self.absx,self.absy = 0, 0
         self.velx, self.vely = 0.0, 0.0
-        self.interval = 0
+        self.interval = 1
         if self.params.stall:
-            #estimateion must be on by default.
-            self.estimate = True
-            self.interval = 1
+            #estimation must be on by default.
+            self.guess_motion = True
         else:
             #we cannot estimate the run-in velocity
             #so the estimateion is off by default.
-            self.estimate = False
+            self.guess_motion = False
         self.precount = 0
         self.preview_size = 500
         self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
@@ -287,19 +287,25 @@ class Pass1():
         ostream.write(self.body)
         ostream.close()
 
-    def backward_match(self,frame):
+    def backward_match(self):
         """
         using cached images,
         "postdict" the displacements
+        Do not break the cache. It will be used again.
         """
-        a = frame
-        an = self.nframes
+        a = self.cache[-1][1]   #image
+        an = self.cache[-1][0]  #frame #
+        bn = -1 
         ax = self.absx
         ay = self.absy
+        cursor = len(self.cache) - 1
         newbody = []
-        while len(self.cache):
-            b = self.cache[-1][3]
-            bn = self.cache[-1][0]
+        for i in range(self.precount + self.params.trailing):
+            next = len(self.cache) - 2 - i
+            if next < 0:
+                break
+            b = self.cache[next][1]  #image
+            bn = self.cache[next][0] #frame #
             #print(an,bn,self.params.focus, self.params.maxaccel,self.velx, self.vely)
             d = motion(b, a, focus=self.params.focus, maxaccel=int(self.params.maxaccel*(an-bn)), delta=(int(self.velx*(an-bn)), int(self.vely*(an-bn))))
             if d is None:
@@ -321,12 +327,13 @@ class Pass1():
             ax -= dx
             ay -= dy
             self.canvas = canvas_size(self.canvas, a, ax, ay)
-            print(bn,dx,dy,self.cache[-1][1],self.cache[-1][2])
+            print(bn,dx,dy)
             a = b
             an = bn
-            self.cache.pop(-1)
         #trick; by the backward matching, the first frame may not be located at the origin
         #So the first frame is specified by the abs coord.
+        if bn < 0:
+            return ""
         newbody = [[bn, ax, ay]] + newbody
         s = ""
         for b in newbody:
@@ -369,7 +376,7 @@ class Pass1():
         #This mode is activated after the 10th frames.
 
         #Now I do care only magrin case.
-        if self.params.maxaccel > 0 and self.estimate:
+        if self.guess_motion:
             #do not apply maxaccel for the first 10 frames
             #because the velocity uncertainty.
             delta = motion(self.frame, nextframe, focus=self.params.focus, maxaccel=int(self.params.maxaccel*self.interval), delta=(int(self.velx*self.interval),int(self.vely*self.interval)) )
@@ -383,9 +390,19 @@ class Pass1():
         ##### Suppress drifting.
         if self.params.zero:
             dy = 0
+        #record anyway.
+        self.deltax.append(dx)
+        self.deltay.append(dy)
+        if len(self.deltax) > 3:  #keep only 3 frames
+            self.deltax.pop(0)
+            self.deltay.pop(0)
+        if nextframe is not None:
+            self.cache.append([self.nframes, nextframe])
+        if len(self.cache) > 100: #always keep 100 frames in cache
+            self.cache.pop(0)
         diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus)
         ##### if the motion is very small
-        if self.estimate and (abs(dx) < self.params.antishake and abs(dy) < self.params.antishake):
+        if self.guess_motion and (abs(dx) < self.params.antishake and abs(dy) < self.params.antishake):
             ##### accumulate the motion
             ##### wait until motion becomes enough.
             if self.interval <= self.params.trailing:
@@ -397,22 +414,24 @@ class Pass1():
                 return diff_img
             else:
                 #end of work
+                #Add trailing frames to the log file here.
                 return None
-        if self.estimate:
+        if (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
+            self.precount += 1 #number of frames since the first motion is detected.
+            #if the displacement is large,
+            if self.guess_motion == False:
+                ddx = max(self.deltax) - min(self.deltax)
+                ddy = max(self.deltay) - min(self.deltay)
+                #if the displacements are almost constant in the last 3 frames,
+                if ddx < self.params.antishake and ddy < self.params.antishake:
+                    self.guess_motion = True
+                    self.velx = dx
+                    self.vely = dy
+                    self.body = self.backward_match()
+        if self.guess_motion:
             self.velx = dx // self.interval
             self.vely = dy // self.interval
-        elif (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
-            self.precount += 1
-            if self.precount == self.params.estimate:
-                self.estimate = True
-                self.velx = dx
-                self.vely = dy
-                self.body = self.backward_match(nextframe)
         self.interval = 1
-        if nextframe is not None:
-            self.cache.append([self.nframes, dx, dy, nextframe])
-        if len(self.cache) > self.params.estimate + 5:
-            self.cache.pop(0)
         sys.stderr.write(" {0} {1} {2} {4} {5} #{3}\n".format(self.nframes,dx,dy,np.amax(diff), self.velx, self.vely))
         if (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
             self.absx += dx
