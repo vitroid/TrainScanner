@@ -105,14 +105,14 @@ def prepare_parser(parser=None):
                         nargs=2, default=[0,1000],
                         dest="crop", metavar="t,b",
                         help="Crop the image (top and bottom).")
-    parser.add_argument('-p', '--pers', '--perspective',
+    parser.add_argument('-p', '--perspective',
                         type=int,
                         nargs=4, default=None,
-                        dest="pers",
+                        dest="perspective",
                         help="Specity perspective warp.")
     parser.add_argument('-r', '--rotate', type=int,
                         default=0,
-                        dest="angle",
+                        dest="rotate",
                         help="Image rotation.")
     parser.add_argument('-l', '--log', type=str,
                         dest='logbase', default=None,
@@ -152,7 +152,7 @@ class Stitcher(Canvas):
 
         self.R = None
         self.M = None
-        self.transform = trainscanner.transformation(self.params.angle, self.params.pers, self.params.crop)
+        self.transform = trainscanner.transformation(self.params.rotate, self.params.perspective, self.params.crop)
         # initialization of the super class
         if self.params.canvas is None:
             Canvas.__init__(self)

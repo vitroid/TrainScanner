@@ -129,10 +129,10 @@ def prepare_parser():
                         default=10,
                         dest="estimate",
                         help="Use first N frames for velocity estimation.")
-    parser.add_argument('-p', '--pers', '--perspective',
+    parser.add_argument('-p', '--perspective',  #do not allow "--pers"
                         type=int,
                         nargs=4, default=None,
-                        dest="pers",
+                        dest="perspective",
                         help="Specity perspective warp.")
     parser.add_argument('-f', '--focus', type=int,
                         nargs=4, default=[333,666,333,666],
@@ -148,7 +148,7 @@ def prepare_parser():
                         help="Trailing frames after the train runs away.")
     parser.add_argument('-r', '--rotate', type=int,
                         default=0,
-                        dest="angle",
+                        dest="rotate",
                         help="Image rotation.")
     parser.add_argument('-e', '--every', type=int,
                         default=1,
@@ -252,7 +252,7 @@ class Pass1():
         self.nframes += 1    #first frame is 1
         self.rawframe = frame
         
-        self.transform = trainscanner.transformation(angle=self.params.angle, pers=self.params.pers, crop=self.params.crop)
+        self.transform = trainscanner.transformation(angle=self.params.rotate, pers=self.params.perspective, crop=self.params.crop)
         rotated, warped, cropped = self.transform.process_first_image(self.rawframe)
         self.frame = cropped
         #Prepare a scalable canvas with the origin.
@@ -276,6 +276,8 @@ class Pass1():
 
         
     def after(self):
+        if self.canvas is None:
+            return
         self.head += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
         if self.params.log is None:
             ostream = sys.stdout
@@ -388,7 +390,7 @@ class Pass1():
         #record anyway.
         self.deltax.append(dx)
         self.deltay.append(dy)
-        if len(self.deltax) > 3:  #keep only 3 frames
+        if len(self.deltax) > 5:  #keep only 5 frames
             self.deltax.pop(0)
             self.deltay.pop(0)
         if nextframe is not None:

@@ -81,7 +81,7 @@ class AsyncImageLoader(QObject):
 class DrawableLabel(QLabel):
     def __init__(self, parent=None):
         super(QLabel, self).__init__(parent)
-        self.pers = (0,0,1000,1000)
+        self.perspective = (0,0,1000,1000)
         self.geometry = (0,0,1000,1000)
 
     def paintEvent(self, event):
@@ -91,8 +91,8 @@ class DrawableLabel(QLabel):
         #painter.setBrush(Qt.yellow)
         #painter.drawRect(10, 10, 100, 100)
         x,y,w,h = self.geometry
-        painter.drawLine(x,y+self.pers[0]*h//1000,x+w,y+self.pers[1]*h//1000)
-        painter.drawLine(x,y+self.pers[2]*h//1000,x+w,y+self.pers[3]*h//1000)
+        painter.drawLine(x,y+self.perspective[0]*h//1000,x+w,y+self.perspective[1]*h//1000)
+        painter.drawLine(x,y+self.perspective[2]*h//1000,x+w,y+self.perspective[3]*h//1000)
 
 
 def draw_slitpos(f, slitpos):
@@ -431,20 +431,23 @@ class SettingsGUI(QWidget):
         #if type(self.filename) is not str:
         #    self.filename = unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8')
         #for py3 self.filename is a str
-        print(type(self.filename))
+        #print(type(self.filename))
         if self.filename.rfind(".tsconf") + 7 == len(self.filename):
             #read all initial values from the file.
             ap = argparse.ArgumentParser(fromfile_prefix_chars='@',
                                         description='TrainScanner')
-            parser = pp2(ap)
-            params,unknown = parser.parse_known_args(["@"+self.filename])
+            parser_stitch = pp2(ap)
+            tsconf = self.filename
+            params,unknown = parser_stitch.parse_known_args(["@"+tsconf])
             print(3,params,unknown)
             unknown += [params.filename] #supply filename for pass1 parser
             #print(params.filename,"<<<")
             self.filename = params.filename
-            parser2 = pp1()
-            params2,unknown2 = parser2.parse_known_args(unknown)
-            print(3,params2,unknown2)
+            parser_pass1 = pp1()
+            #params2,unknown2 = parser_pass1.parse_known_args(unknown)
+            params2,unknown2 = parser_pass1.parse_known_args(["@"+tsconf])
+            print(4,params2,unknown2)
+            #Only non-default values should overwrite the pp2 result.
             p1 = vars(params)
             p2 = vars(params2)
             for key in p2:
@@ -524,7 +527,7 @@ class SettingsGUI(QWidget):
             stitch_options += ["length={0}".format(self.spin_length.value())]
 
         common_options = []
-        common_options += ["--perspective",] + [str(x) for x in self.editor.pers]
+        common_options += ["--perspective",] + [str(x) for x in self.editor.perspective]
         common_options += ["--rotate", "{0}".format(self.editor.angle_degree)]
         common_options += ["--crop",] + [str(x) for x in (self.editor.croptop,self.editor.cropbottom)]
         pass1_options = []
@@ -555,7 +558,6 @@ class SettingsGUI(QWidget):
         self.matcher.exec_()
         if self.matcher.terminated:
             return
-
         argv = ["stitch"]
         argv += [ "@"+logfilenamebase+".tsconf",]
             
@@ -579,16 +581,17 @@ class EditorGUI(QWidget):
         
         # options
         #self.skip       = 0
-        self.pers = [0,0,1000,1000]
+        self.perspective = [0,0,1000,1000]
         self.angle_degree    = 0
         self.focus = [333,666,333,666]
         self.croptop = 0
         self.cropbottom = 1000
         self.slitpos = 250
         if params is not None:
-            self.angle_degree = params["angle"]
-            if params["pers"] is not None:
-                self.pers     = params["pers"]
+            print(params)
+            self.angle_degree = params["rotate"]
+            if params["perspective"] is not None:
+                self.perspective     = params["perspective"]
             self.focus        = params["focus"]
             self.slitpos      = params["slitpos"]
             self.croptop, self.cropbottom = params["crop"]
@@ -689,7 +692,7 @@ class EditorGUI(QWidget):
         crop_layout.setAlignment(self.cropbottom_slider, Qt.AlignBottom)
 
         
-        pers_left_layout = QVBoxLayout()
+        perspective_left_layout = QVBoxLayout()
         self.sliderTL = QSlider(Qt.Vertical)  # スライダの向き
         self.sliderTL.setRange(0, 1000)  # スライダの範囲
         self.sliderTL.setValue(1000)  # 初期値
@@ -698,33 +701,33 @@ class EditorGUI(QWidget):
         #self.sliderTL.setSizePolicy(sizepolicy)
         self.sliderTL.valueChanged.connect(self.sliderTL_on_draw)
         self.sliderTL.setMinimumHeight(240)
-        pers_left_layout.addWidget(self.sliderTL)
-        pers_left_layout.setAlignment(self.sliderTL, Qt.AlignTop)
+        perspective_left_layout.addWidget(self.sliderTL)
+        perspective_left_layout.setAlignment(self.sliderTL, Qt.AlignTop)
 
         self.sliderBL = QSlider(Qt.Vertical)  # スライダの向き
         self.sliderBL.setRange(0, 1000)  # スライダの範囲
         self.sliderBL.setValue(0)  # 初期値 499 is top
         self.sliderBL.valueChanged.connect(self.sliderBL_on_draw)
         self.sliderBL.setMinimumHeight(240)
-        pers_left_layout.addWidget(self.sliderBL)
-        pers_left_layout.setAlignment(self.sliderBL, Qt.AlignBottom)
+        perspective_left_layout.addWidget(self.sliderBL)
+        perspective_left_layout.setAlignment(self.sliderBL, Qt.AlignBottom)
         
-        pers_right_layout = QVBoxLayout()
+        perspective_right_layout = QVBoxLayout()
         self.sliderTR = QSlider(Qt.Vertical)  # スライダの向き
         self.sliderTR.setRange(0, 1000)  # スライダの範囲
         self.sliderTR.setValue(1000)  # 初期値
         self.sliderTR.valueChanged.connect(self.sliderTR_on_draw)
         self.sliderTR.setMinimumHeight(240)
-        pers_right_layout.addWidget(self.sliderTR)
-        pers_right_layout.setAlignment(self.sliderTR, Qt.AlignTop)
+        perspective_right_layout.addWidget(self.sliderTR)
+        perspective_right_layout.setAlignment(self.sliderTR, Qt.AlignTop)
 
         self.sliderBR = QSlider(Qt.Vertical)  # スライダの向き
         self.sliderBR.setRange(0, 1000)  # スライダの範囲
         self.sliderBR.setValue(0)  # 初期値 499 is top
         self.sliderBR.valueChanged.connect(self.sliderBR_on_draw)
         self.sliderBR.setMinimumHeight(240)
-        pers_right_layout.addWidget(self.sliderBR)
-        pers_right_layout.setAlignment(self.sliderBR, Qt.AlignBottom)
+        perspective_right_layout.addWidget(self.sliderBR)
+        perspective_right_layout.setAlignment(self.sliderBR, Qt.AlignBottom)
         
         
         
@@ -772,9 +775,9 @@ class EditorGUI(QWidget):
         
         #combine panels
         topleft_layout = QHBoxLayout()
-        topleft_layout.addLayout(pers_left_layout)
+        topleft_layout.addLayout(perspective_left_layout)
         topleft_layout.addLayout(raw_image_layout)
-        topleft_layout.addLayout(pers_right_layout)
+        topleft_layout.addLayout(perspective_right_layout)
         left_layout = QVBoxLayout()
         left_layout.addLayout(topleft_layout)
         left_layout.addLayout(rotation_layout)
@@ -827,22 +830,22 @@ class EditorGUI(QWidget):
         self.show_snapshots()
 
     def sliderTL_on_draw(self):
-        self.pers[0] = 1000 - self.sliderTL.value()
+        self.perspective[0] = 1000 - self.sliderTL.value()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def sliderBL_on_draw(self):
-        self.pers[2] = 1000 - self.sliderBL.value()
+        self.perspective[2] = 1000 - self.sliderBL.value()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def sliderTR_on_draw(self):
-        self.pers[1] = 1000 - self.sliderTR.value()
+        self.perspective[1] = 1000 - self.sliderTR.value()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def sliderBR_on_draw(self):
-        self.pers[3] = 1000 - self.sliderBR.value()
+        self.perspective[3] = 1000 - self.sliderBR.value()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
@@ -861,7 +864,7 @@ class EditorGUI(QWidget):
         if self.frame < 0:
             return
         image = self.asyncimageloader.snapshots[self.frame]
-        self.transform = trainscanner.transformation(self.angle_degree, self.pers, [self.croptop, self.cropbottom])
+        self.transform = trainscanner.transformation(self.angle_degree, self.perspective, [self.croptop, self.cropbottom])
         rotated, warped, cropped = self.transform.process_first_image(image)
         self.put_cv2_image(rotated, self.raw_image_pane)
         if region is not None:
@@ -932,7 +935,7 @@ class EditorGUI(QWidget):
                 pixmap = pixmap.scaledToWidth(self.preview_size)
         widget.setPixmap(pixmap)
         #give hints to DrawableLabel() and MyLabel()
-        widget.pers = self.pers
+        widget.perspective = self.perspective
         widget.focus = self.focus
         widget.slitpos = self.slitpos
         w = pixmap.width()
