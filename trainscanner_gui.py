@@ -169,6 +169,7 @@ class SettingsGUI(QWidget):
         self.slitwidth = 50
         self.identity = 2.0
         self.accel    = 1
+
         #private
         # layout
         layout = QHBoxLayout()
@@ -571,6 +572,9 @@ class SettingsGUI(QWidget):
     def closeEvent(self,event):
         if self.editor is not None:
             self.editor.close()
+
+    #def focusInEvent(self, event):
+    #    #clear precede input
 
 #https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class EditorGUI(QWidget):
