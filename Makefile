@@ -43,4 +43,5 @@ prepare_for_mac_py3:
 #Windows Exe
 #Note: windows does not have make command. 
 winexe:
+	pip install pyqt5
 	pyinstaller.exe --noconfirm --onefile --windowed windows.spec

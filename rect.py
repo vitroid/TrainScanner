@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import math
 import sys
-
+import argparse
 
 
 def rectify(img, rows=None, gap=3 ): #gap in percent
@@ -33,15 +33,34 @@ def rectify(img, rows=None, gap=3 ): #gap in percent
         canvas[i*hg:i*hg+h, 0:, :] = img[:,i*ww:we,:]
     return canvas
 
-if __name__ == "__main__":
-    if len(sys.argv) <2:
-        print("usage: {0} image rows".format(sys.argv[0]))
-        sys.exit(1)
 
-    img = cv2.imread(sys.argv[1])
-    if len(sys.argv)==3:
-        canvas = rectify(img, int(sys.argv[2]))
+def prepare_parser():
+    parser = argparse.ArgumentParser(description='Helicify', fromfile_prefix_chars='@',)
+    parser.add_argument('-g', '--gap', type=int, metavar='x',
+                        default=0,
+                        dest="gap",
+                        help="Add gaps of x % between the rows.")
+    parser.add_argument('-r', '--rows', type=int, metavar='x',
+                        default=None,
+                        dest="rows",
+                        help="Number of rows.")
+    parser.add_argument('-o', '--output', type=str, metavar='outfilename',
+                        default="",
+                        dest="output",
+                        help="Output file name.")
+    parser.add_argument('filename', type=str,
+                        help="Image file name.")
+    return parser
+
+
+if __name__ == "__main__":
+    parser = prepare_parser()
+    params = parser.parse_args(sys.argv[1:])
+    print(params.filename)
+    img = cv2.imread(params.filename)
+    canvas = rectify(img, params.rows, gap=params.gap)
+    if params.output == "":
+        cv2.imwrite("{0}.rect.jpg".format(params.filename), canvas)
     else:
-        canvas = rectify(img)
-    cv2.imwrite("{0}.rect.jpg".format(sys.argv[1]), canvas)
+        cv2.imwrite(params.output, canvas2)
     
