@@ -43,5 +43,9 @@ prepare_for_mac_py3:
 #Windows Exe
 #Note: windows does not have make command. 
 winexe:
-	pip install pyqt5
+	#install anaconda from https://www.continuum.io/
+	#install wheel of opencv from http://www.lfd.uci.edu/%7Egohlke/pythonlibs/
+	easy_install -U pip
+	pip install --upgrade setuptools
+	pip install pyinstaller
 	pyinstaller.exe --noconfirm --onefile --windowed windows.spec
