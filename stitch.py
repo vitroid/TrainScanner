@@ -10,11 +10,49 @@ import argparse
 import film
 import helix
 import rect
+#real	0m39.344s
+#user	0m43.773s
+#sys	0m11.850s
 
 
 
+class AlphaMask():
+    alphas = dict()
+    def __init__(self, img_width, img_height, slit=0, width=1.0):
+        self.img_width  = img_width
+        self.img_height = img_height
+        self.width      = width
+        self.slitpos    = slit*img_width//1000
 
-def make_vert_alpha( alphas, displace, img_width, img_height, slit=0, width=1.0 ):
+    def make_linear_alpha( self, displace ):
+        """
+        Make an orthogonal mask of only one line.
+        slit position is -500 to 500
+        slit width=1 is standard, width<1 is narrow (sharp) and width>1 is diffuse alpha
+        """
+        if displace in self.alphas:
+            return self.alphas[displace]
+        if displace == 0:
+            self.alphas[0.0] = np.ones((self.img_width,3))
+            self.alphas[0]   = alphas[0.0]
+            return self.alphas[0]
+        slitwidth = int(displace*self.width)
+        alpha = np.zeros((self.img_width,3))
+        if displace > 0:
+            slitin = self.img_width//2 - self.slitpos
+            slitout = slitin + slitwidth
+            alpha[slitout:, :] = 1.0
+            alpha[slitin:slitout, :] = np.fromfunction(lambda x,v: x / slitwidth, (slitwidth, 3))
+        else:
+            slitin = self.img_width//2 + self.slitpos
+            slitout = slitin - slitwidth
+            alpha[:slitout,:] = 1.0
+            alpha[slitout:slitin, :] = np.fromfunction(lambda x,v: (slitin-x)/ slitwidth, (slitwidth, 3))
+        self.alphas[displace] = alpha
+        return alpha
+
+
+def make_vert_alpha0( alphas, displace, img_width, img_height, slit=0, width=1.0 ):
     """
     Make an orthogonal mask
     slit position is -500 to 500
@@ -33,6 +71,7 @@ def make_vert_alpha( alphas, displace, img_width, img_height, slit=0, width=1.0 
     #alpha += 1
     alphas[(displace, width, slit)] = alpha
     return alpha
+
 
 #Automatically extensible canvas.
 class Canvas():
@@ -72,7 +111,7 @@ class Canvas():
         if alpha is None:
             newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = add_image[:,:,:]
         else:
-            newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = add_image[:,:,:]*alpha[:,:,:] + newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:]*(1-alpha[:,:,:])
+            newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = add_image[:,:,:]*alpha[:,:] + newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:]*(1-alpha[:,:])
         self.image  = newcanvas
         self.origin = (xmin,ymin)
         
@@ -187,7 +226,7 @@ class Stitcher(Canvas):
                     locations.append(cols)
         self.locations = locations
         self.total_frames = len(locations)
-        self.alphas = dict()
+        #self.alphas = dict()
         #initial seek
         while self.currentFrame + 1 < self.locations[0][0]:
             yield self.currentFrame, self.locations[0][0]
@@ -203,9 +242,13 @@ class Stitcher(Canvas):
         rotated,warped,cropped = self.transform.process_image(frame)
         if self.firstFrame:
             self.abs_merge(cropped, absx, absy)
+            self.mask = AlphaMask(cropped.shape[1],
+                                  cropped.shape[0],
+                                  slit=self.params.slitpos,
+                                  width=self.params.slitwidth)
             self.firstFrame = False
         else:
-            alpha = make_vert_alpha( self.alphas, int(idx), cropped.shape[1], cropped.shape[0], slit=self.params.slitpos, width=self.params.slitwidth )
+            alpha = self.mask.make_linear_alpha( int(idx) )
             self.abs_merge(cropped, absx, absy, alpha=alpha)
 
 
