@@ -835,21 +835,33 @@ class EditorGUI(QWidget):
 
     def sliderTL_on_draw(self):
         self.perspective[0] = 1000 - self.sliderTL.value()
+        if self.perspective[2] - self.perspective[0] < 2:
+            self.perspective[0] = self.perspective[2] - 2
+            self.sliderTL.setValue(1000 - self.perspective[0])
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def sliderBL_on_draw(self):
         self.perspective[2] = 1000 - self.sliderBL.value()
+        if self.perspective[2] - self.perspective[0] < 2:
+            self.perspective[2] = self.perspective[0] + 2
+            self.sliderBL.setValue(1000 - self.perspective[2])
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def sliderTR_on_draw(self):
         self.perspective[1] = 1000 - self.sliderTR.value()
+        if self.perspective[3] - self.perspective[1] < 2:
+            self.perspective[1] = self.perspective[3] - 2
+            self.sliderTR.setValue(1000 - self.perspective[1])
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def sliderBR_on_draw(self):
         self.perspective[3] = 1000 - self.sliderBR.value()
+        if self.perspective[3] - self.perspective[1] < 2:
+            self.perspective[3] = self.perspective[1] + 2
+            self.sliderBR.setValue(1000 - self.perspective[3])
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
@@ -955,11 +967,17 @@ class EditorGUI(QWidget):
 
     def croptop_slider_on_draw(self):
         self.croptop = 1000 - self.croptop_slider.value()
+        if self.cropbottom - self.croptop < 2:
+            self.croptop = self.cropbottom - 2
+            self.croptop_slider.setValue(1000 - self.croptop)
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def cropbottom_slider_on_draw(self):
         self.cropbottom = 1000 - self.cropbottom_slider.value()
+        if self.cropbottom - self.croptop < 2:
+            self.cropbottom = self.croptop + 2
+            self.cropbottom_slider.setValue(1000 - self.cropbottom)
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
@@ -1005,9 +1023,25 @@ def resource_path(relative):
         relative
     )
 
-import pkgutil
+#import pkgutil
+
+## def pyqt_set_trace():
+##     '''Set a tracepoint in the Python debugger that works with Qt'''
+##     from PyQt5.QtCore import pyqtRemoveInputHook
+##     import pdb
+##     import sys
+##     pyqtRemoveInputHook()
+##     # set up the debugger
+##     debugger = pdb.Pdb()
+##     debugger.reset()
+##     # custom next to get outside of function scope
+##     debugger.do_next(None) # run the next command
+##     users_frame = sys._getframe().f_back # frame where the user invoked `pyqt_set_trace()`
+##     debugger.interaction(users_frame, None)
+
 
 def main():
+    #pyqt_set_trace()
     app = QApplication(sys.argv)
     translator = QTranslator(app)
     rpath = getattr(sys, '_MEIPASS', os.getcwd())
