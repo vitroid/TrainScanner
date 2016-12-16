@@ -34,18 +34,18 @@ def draw_slit_position(f, slitpos, dx):
 
 
 
-def motion(ref, img, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), antishake=2):
-    hi,wi = img.shape[0:2]
+def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), antishake=2):
+    hi,wi = ref.shape[0:2]
     wmin = wi*focus[0]//1000
     wmax = wi*focus[1]//1000
     hmin = hi*focus[2]//1000
     hmax = hi*focus[3]//1000
-    template = img[hmin:hmax,wmin:wmax,:]
+    template = ref[hmin:hmax,wmin:wmax,:]
     h,w = template.shape[0:2]
 
     # Apply template Matching
     if maxaccel == 0:
-        res = cv2.matchTemplate(ref,template,cv2.TM_SQDIFF_NORMED)
+        res = cv2.matchTemplate(image,template,cv2.TM_SQDIFF_NORMED)
         #loc is given by x,y
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         return min_loc[0] - wmin, min_loc[1] - hmin
@@ -55,11 +55,13 @@ def motion(ref, img, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), antish
         roiy0 = hmin + delta[1] - maxaccel
         roix1 = wmax + delta[0] + maxaccel
         roiy1 = hmax + delta[1] + maxaccel
-        refh,refw = ref.shape[0:2]
-        if roix0 < 0 or roix1 >= refw or roiy0 < 0 or roiy1 >= refh:
-            print(roix0,roix1,roiy0,roiy1,refw,refh)
-            return None
-        crop = ref[roiy0:roiy1, roix0:roix1, :]
+        affine = np.matrix(((1.0,0.0,-roix0),(0.0,1.0,-roiy0)))
+        crop = cv2.warpAffine(image, affine, (roix1-roix0,roiy1-roiy0))
+        #imageh,imagew = image.shape[0:2]
+        #if roix0 < 0 or roix1 >= imagew or roiy0 < 0 or roiy1 >= imageh:
+        #    print(roix0,roix1,roiy0,roiy1,imagew,imageh)
+        #    return None
+        #crop = image[roiy0:roiy1, roix0:roix1, :]
         res = cv2.matchTemplate(crop,template,cv2.TM_SQDIFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         #loc is given by x,y
@@ -69,7 +71,7 @@ def motion(ref, img, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), antish
         roiy02 = hmin - antishake
         roix12 = wmax + antishake
         roiy12 = hmax + antishake
-        crop = ref[roiy02:roiy12, roix02:roix12, :]
+        crop = image[roiy02:roiy12, roix02:roix12, :]
         res = cv2.matchTemplate(crop,template,cv2.TM_SQDIFF_NORMED)
         min_val2, max_val2, min_loc2, max_loc2 = cv2.minMaxLoc(res)
         #loc is given by x,y

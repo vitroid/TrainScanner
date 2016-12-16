@@ -425,7 +425,7 @@ class SettingsGUI(QWidget):
         if self.editor is not None:
             self.editor.close()
         self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
-            "","Movie files (*.mov *.mp4 *.mts *.tsconf)")
+            "","Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)")
         if self.filename == "": # or if the file cannot be opened,
             return
         #for py2

@@ -36,7 +36,7 @@ class AlphaMask():
             self.alphas[0.0] = np.ones((self.img_width,3))
             self.alphas[0]   = alphas[0.0]
             return self.alphas[0]
-        slitwidth = int(displace*self.width)
+        slitwidth = abs(int(displace*self.width))
         alpha = np.zeros((self.img_width,3))
         if displace > 0:
             slitin = self.img_width//2 - self.slitpos
@@ -47,7 +47,8 @@ class AlphaMask():
             slitin = self.img_width//2 + self.slitpos
             slitout = slitin - slitwidth
             alpha[:slitout,:] = 1.0
-            alpha[slitout:slitin, :] = np.fromfunction(lambda x,v: (slitin-x)/ slitwidth, (slitwidth, 3))
+            print(slitin,slitout,slitwidth)
+            alpha[slitout:slitin, :] = np.fromfunction(lambda x,v: (slitwidth-x)/ slitwidth, (slitwidth, 3))
         self.alphas[displace] = alpha
         return alpha
 
