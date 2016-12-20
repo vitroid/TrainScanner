@@ -33,8 +33,7 @@ class Renderer(QObject):
         if not self._isRunning:
             self._isRunning = True
 
-        for num,den in self.st.before():
-            self.progress.emit(num*100//den)
+        self.st.before()
         for num,den in self.st.loop():
             if not self._isRunning:
                 break

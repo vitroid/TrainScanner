@@ -10,6 +10,7 @@ import argparse
 import film
 import helix
 import rect
+import videosequence as vs
 #real	0m39.344s
 #user	0m43.773s
 #sys	0m11.850s
@@ -186,9 +187,8 @@ class Stitcher(Canvas):
         #print(vars(self.params))
         self.outfilename = self.params.logbase+".png"
 
-        self.cap = cv2.VideoCapture(self.params.filename)
+        self.frames = vs.VideoSequence(self.params.filename)
         self.firstFrame = True
-        self.currentFrame = 0 #1 is the first frame
 
         self.R = None
         self.M = None
@@ -209,7 +209,7 @@ class Stitcher(Canvas):
 
     def before(self):
         """
-        is a generator.
+        is not a generator.
         """
         locations = []
         absx = 0
@@ -227,12 +227,6 @@ class Stitcher(Canvas):
                     locations.append(cols)
         self.locations = locations
         self.total_frames = len(locations)
-        #self.alphas = dict()
-        #initial seek
-        while self.currentFrame + 1 < self.locations[0][0]:
-            yield self.currentFrame, self.locations[0][0]
-            ret = self.cap.grab()
-            self.currentFrame += 1
 
     def getProgress(self):
         den = self.total_frames
@@ -254,8 +248,7 @@ class Stitcher(Canvas):
 
 
     def stitch(self):
-        for num,den in self.before():
-            pass
+        self.before()
         result = None
         for num,den in self.loop():
             pass
@@ -273,24 +266,14 @@ class Stitcher(Canvas):
 
 
     def _onestep(self):
-        ##if self.firstFrame:
-        ##    #NOT RELIABLE
-        ##    self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.locations[0][0]-##1)
-        ##    self.currentFrame = self.locations[0][0]
-        ##else:
-        while self.currentFrame + 1 < self.locations[0][0]:
-            ret = self.cap.grab()
-            if not ret:
-                return self.image
-            self.currentFrame += 1
-        ret,frame = self.cap.read()
-        self.currentFrame += 1
-        if not ret:
-            return self.image
+        #backward compatibility; frame number starts from 1 in text data 
+        currentFrame = self.locations[0][0] - 1
+        frame = cv2.cvtColor(np.array(self.frames[currentFrame]), cv2.COLOR_RGB2BGR)
         frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)
         self.add_image(frame, *self.locations[0][1:])
         self.locations.pop(0)
         if len(self.locations) == 0:
+            self.frames.close()
             return self.image
         return None  #not end
 

@@ -9,7 +9,7 @@ import sys
 import re
 import argparse
 import itertools
-
+import videosequence as vs
 
 def draw_focus_area(f, focus, delta=0):
     h, w = f.shape[0:2]
@@ -195,7 +195,6 @@ class Pass1():
     def before(self):
         """
         prepare for the loop
-        note that it is a generator.
         """
         ####prepare tsconf file#############################
         self.head   = ""
@@ -227,11 +226,10 @@ class Pass1():
         #end of the header
 
         #############Open the video file #############################
-        self.cap    = cv2.VideoCapture(self.params.filename)
+        self.frames = vs.VideoSequence(self.params.filename)
         self.body   = ""
 
-        self.nframes = 0  #1 is the first frame
-        self.cache   = [] #save only "active" frames
+        self.cache   = [] #save only "active" frame numbers
         self.deltax  = [] #store displacements
         self.deltay  = [] #store displacements
         #This does not work with some kind of MOV. (really?)
@@ -239,20 +237,10 @@ class Pass1():
         #self.nframes = skip
         #ret, frame = self.cap.read()
         #if not ret:
-        self.nframes = 0
         #print("skip:",skip)
     
-        for i in range(self.params.skip):  #skip frames
-            ret = self.cap.grab()
-            if not ret:
-                break
-            self.nframes += 1
-            yield self.nframes, self.params.skip #report progress
-        ret, frame = self.cap.read()
-        if not ret:
-            sys.exit(0)
-        self.nframes += 1    #first frame is 1
-        self.rawframe = frame
+        self.current = self.params.skip
+        self.rawframe = cv2.cvtColor(np.array(self.frames[self.current]), cv2.COLOR_RGB2BGR)
         
         self.transform = trainscanner.transformation(angle=self.params.rotate, pers=self.params.perspective, crop=self.params.crop)
         rotated, warped, cropped = self.transform.process_first_image(self.rawframe)
@@ -274,7 +262,6 @@ class Pass1():
         self.preview_size = 500
         self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
         self.preview_ratio = self.preview.shape[0] / self.frame.shape[0]
-        yield self.nframes, self.params.skip
 
         
     def after(self):
@@ -297,8 +284,10 @@ class Pass1():
         "postdict" the displacements
         Do not break the cache. It will be used again.
         """
-        a = self.cache[-1][1]   #image
-        an = self.cache[-1][0]  #frame #
+        an = self.cache[-1]  #frame #
+        frame  = cv2.cvtColor(np.array(self.frames[an]), cv2.COLOR_RGB2BGR)
+        rotated, warped, cropped = self.transform.process_next_image(frame)
+        a = cropped
         bn = -1 
         ax = self.absx
         ay = self.absy
@@ -308,9 +297,10 @@ class Pass1():
             next = len(self.cache) - 2 - i
             if next < 0:
                 break
-            b = self.cache[next][1]  #image
-            bn = self.cache[next][0] #frame #
-            #print(an,bn,self.params.focus, self.params.maxaccel,self.velx, self.vely)
+            bn = self.cache[next] #frame #
+            frame  = cv2.cvtColor(np.array(self.frames[bn]), cv2.COLOR_RGB2BGR)
+            rotated, warped, cropped = self.transform.process_next_image(frame)
+            b = cropped
             d = motion(b, a, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(velx, vely))
             if d is None:
                 dx = 0
@@ -322,38 +312,33 @@ class Pass1():
             if abs(dx) > self.params.antishake or abs(dy) > self.params.antishake:
                 velx = dx
                 vely = dy
-            newbody = [[bn, velx, vely]] + newbody
+            #backward compatibility; frame number starts from 1 in output data
+            newbody = [[bn+1, velx, vely]] + newbody
             ax -= velx
             ay -= vely
             self.canvas = canvas_size(self.canvas, a, ax, ay)
-            print(bn,velx, vely)
+            print(bn+1,velx, vely)
             a = b
             an = bn
         #trick; by the backward matching, the first frame may not be located at the origin
         #So the first frame is specified by the abs coord.
         if bn < 0:
             return ""
-        newbody = [[bn, ax, ay]] + newbody
+        #backward compatibility; frame number starts from 1 in output data
+        newbody = [[bn+1, ax, ay]] + newbody
         s = ""
         for b in newbody:
             s += "{0} {1} {2}\n".format(*b)
         return s
                   
     def onestep(self):
-        ret = True
+        ret = None
         ##### Pick up every x frame
-        for i in range(self.params.every-1):
-            ret = self.cap.grab()
-            self.nframes += 1
-            if not ret:
-                print("Video ended (1).")
-                return None
-        ret, nextframe = self.cap.read()
-        self.nframes += 1
-        ##### return None if the frame is empty
-        if not ret:
-            print("Video ended (2).")
+        self.current += self.params.every
+        if self.current >= len(self.frames):
+            self.frames.close()
             return None
+        nextframe = cv2.cvtColor(np.array(self.frames[self.current]), cv2.COLOR_RGB2BGR)
         ##### compare with the previous raw frame
         diff = cv2.absdiff(nextframe,self.rawframe)
         ##### preserve the raw frame for next comparison.
@@ -396,9 +381,7 @@ class Pass1():
             self.deltax.pop(0)
             self.deltay.pop(0)
         if nextframe is not None:
-            self.cache.append([self.nframes, nextframe])
-        if len(self.cache) > 100: #always keep 100 frames in cache
-            self.cache.pop(0)
+            self.cache.append(self.current)
         diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus)
         ##### if the motion is very small
         if not self.guess_mode:
@@ -414,7 +397,8 @@ class Pass1():
                     self.vely = dy
                     self.match_fail = 0
             if not self.guess_mode:
-                sys.stderr.write("({0} {1} {2})\n".format(self.nframes,dx,dy))
+                #+1 for compatibility (the first frame is 1)
+                sys.stderr.write("({0} {1} {2})\n".format(self.current+1,dx,dy))
                 self.frame   = nextframe
                 self.preview = nextpreview
                 return diff_img
@@ -423,7 +407,7 @@ class Pass1():
             ##### wait until motion becomes enough.
             self.match_fail += 1
             if self.match_fail <= self.params.trailing:
-                sys.stderr.write("({0} {1} {2} +{3}/{4})\n".format(self.nframes,dx,dy,self.match_fail, self.params.trailing))
+                sys.stderr.write("({0} {1} {2} +{3}/{4})\n".format(self.current+1,dx,dy,self.match_fail, self.params.trailing))
                 # do not update the velx and vely
                 #but update the frame and preview
                 #self.frame   = nextframe
@@ -437,11 +421,11 @@ class Pass1():
             self.velx = dx
             self.vely = dy
             self.match_fail = 0
-        sys.stderr.write(" {0} {2} {3} #{1}\n".format(self.nframes,np.amax(diff), self.velx, self.vely))
+        sys.stderr.write(" {0} {2} {3} #{1}\n".format(self.current+1,np.amax(diff), self.velx, self.vely))
         self.absx += self.velx
         self.absy += self.vely
         self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
-        self.body += "{0} {3} {4}\n".format(self.nframes,self.absx,self.absy,self.velx,self.vely)
+        self.body += "{0} {3} {4}\n".format(self.current+1,self.absx,self.absy,self.velx,self.vely)
         self.frame   = nextframe
         self.preview = nextpreview
         return diff_img
@@ -449,8 +433,7 @@ class Pass1():
 
 if __name__ == "__main__":
     pass1 = Pass1(argv=sys.argv)
-    for num, den in pass1.before():
-        pass
+    pass1.before()
     while True:
         ret = pass1.onestep()
         if ret is None:

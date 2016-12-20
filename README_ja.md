@@ -212,4 +212,6 @@ TrainScannerは、スリットスキャンに画像処理技術を加え、列�
 * [Windows/Python3/OpenCV3/PyQt4/Anaconda](http://qiita.com/sugurunatsuno/items/ce3c0d486bdc93688192)
 * [failed to build exe on Windows?](http://stackoverflow.com/questions/37815371/pyinstaller-failed-to-execute-script-pyi-rth-pkgres-and-missing-packages)
 * Flickr account for TrainScanner development: [TrainScanner](https://www.flickr.com/photos/149573560@N03)
-
+* [VideoSequence](https://pypi.python.org/pypi/videosequence/)を使うと、
+  ビデオのseekができるらしい。 rew install gst-plugins-good gst-python pygobject3 --with-python3 gst-libav
+* [qrangeslider](https://pypi.python.org/pypi/qrangeslider/)で、2つのスライダーを一体にする。

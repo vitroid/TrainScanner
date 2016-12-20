@@ -8,6 +8,7 @@ from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslato
 
 import cv2
 import numpy as np
+import videosequence as vs
 import math
 import trainscanner
 from imageselector2 import ImageSelector2
@@ -44,8 +45,8 @@ class AsyncImageLoader(QObject):
 
         #capture the first frame ASAP to avoid "no frame" errors.
         self.size = size
-        self.cap = cv2.VideoCapture(filename)
-        ret, frame = self.cap.read()
+        self.frames = vs.VideoSequence(filename)
+        frame = cv2.cvtColor(np.array(self.frames[0]), cv2.COLOR_RGB2BGR)
         if self.size:
             frame = trainscanner.fit_to_square(frame, self.size)
         self.snapshots = [frame]
@@ -61,20 +62,16 @@ class AsyncImageLoader(QObject):
     def task(self):
         if not self.isRunning:
             self.isRunning = True
-            
-        while self.isRunning:
-            ret, frame = self.cap.read()
-            if not ret:
+
+        for i in range(10,len(self.frames),10):
+            if not self.isRunning:
                 break
+            frame = cv2.cvtColor(np.array(self.frames[i]), cv2.COLOR_RGB2BGR)
             if self.size:
                 frame = trainscanner.fit_to_square(frame, self.size)
             self.snapshots.append(frame)
             self.frameIncreased.emit(self.snapshots)
-            for i in range(9):
-                ret = self.cap.grab()
-                if not ret:
-                    break
-
+        self.frames.close()
         #print("Finished")
 
 

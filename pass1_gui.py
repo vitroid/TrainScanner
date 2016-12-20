@@ -38,10 +38,11 @@ class Worker(QObject):
             self._isRunning = True
 
         #self.pass1.before() is a generator.
-        for num,den in self.pass1.before():
-            if den:
-                self.progress.emit(num*100//den)
-        
+        #for num,den in self.pass1.before():
+        #    if den:
+        #        self.progress.emit(num*100//den)
+        self.pass1.before()
+                
         while self._isRunning == True:
             ret = self.pass1.onestep()
             if ret is None:
