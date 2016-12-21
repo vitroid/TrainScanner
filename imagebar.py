@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from PyQt5.QtWidgets import QLabel, QApplication, QFrame
-from PyQt5.QtGui     import QPainter
+from PyQt5.QtGui     import QPainter, QImage
 from PyQt5.QtCore    import QPoint
 
 import sys
@@ -65,7 +65,7 @@ def main():
     window.show()
 
     import cv2
-    cap      = cv2.VideoCapture("sample2.mov")
+    cap      = cv2.VideoCapture("examples/sample2.mov")
     ret = True
     thumbs = []
     while True:
