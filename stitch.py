@@ -212,6 +212,7 @@ class Stitcher(Canvas):
         is a generator.
         """
         locations = []
+        shifts    = dict()
         absx = 0
         absy = 0
         tspos = open(self.params.logbase + ".tspos")
@@ -219,13 +220,16 @@ class Stitcher(Canvas):
             if len(line) > 0 and line[0] != '@':
                 cols = [int(x) for x in line.split()]
                 if len(cols) > 0:
+                    if len(cols) == 5:
+                        shifts[cols[0]] = cols[3:5]
                     absx += cols[1]
                     absy += cols[2]
-                    cols = [cols[0],absx,absy] + cols[1:]
+                    cols = [cols[0],absx,absy] + cols[1:3]
                     #print(cols)
                     cols[1:] = [int(x*self.params.scale) for x in cols[1:]]
                     locations.append(cols)
         self.locations = locations
+        self.shifts    = shifts
         self.total_frames = len(locations)
         #self.alphas = dict()
         #initial seek
@@ -287,6 +291,11 @@ class Stitcher(Canvas):
         self.currentFrame += 1
         if not ret:
             return self.image
+        if self.currentFrame in self.shifts:
+            shiftx,shifty = self.shifts[self.currentFrame]
+            ih,iw = frame.shape[:2]
+            affine = np.matrix(((1.0,0.0,shiftx),(0.0,1.0,shifty)))
+            cv2.warpAffine(frame, affine, (iw,ih), frame)
         frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)
         self.add_image(frame, *self.locations[0][1:])
         self.locations.pop(0)

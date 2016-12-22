@@ -81,13 +81,15 @@ def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), anti
             return (min_loc2[0] + roix02 - wmin, min_loc2[1] + roiy02 - hmin)
 
 
-def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
+def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None, focus2=None):
     affine = np.matrix(((1.0,0.0,dx),(0.0,1.0,dy)))
     h,w = frame1.shape[0:2]
     frame1 = cv2.warpAffine(frame1, affine, (w,h))
     diff = 255 - cv2.absdiff(frame1,frame2)
     if focus is not None:
         draw_focus_area(diff, focus, delta=dx)
+    if focus2 is not None:
+        draw_focus_area(diff, focus2)
     if slitpos is not None:
         draw_slit_position(diff, slitpos, dx)
     return diff
@@ -144,6 +146,10 @@ def prepare_parser():
                         nargs=4, default=None,
                         dest="shakereduction", 
                         help="Shake reduction area relative to the image size.")
+    parser.add_argument('--shakemag', type=int,
+                        default=5,
+                        dest="shakemag", metavar="N",
+                        help="Shake magniture, i.e. interframe displacement of the background in pixels.")
     parser.add_argument('-a', '--antishake', type=int,
                         default=5, metavar="x",
                         dest="antishake",
@@ -174,7 +180,7 @@ def prepare_parser():
     parser.add_argument('-m', '--maxaccel', type=int,
                         default=1,
                         dest="maxaccel", metavar="N",
-                        help="Interframe acceleration in pixels.")
+                        help="Interframe acceleration of the train in pixels.")
     parser.add_argument('-2', '--option2', type=str,
                         action='append',
                         dest="option2",
@@ -261,6 +267,22 @@ class Pass1():
         #SHAKE REDUCTION SHOULD BE IMPLEMENTED HERE.
         # (before transformation)
         #
+        if self.params.shakereduction is not None:
+            #crop the template from the first frame
+            hi,wi = frame.shape[0:2]
+            focus = self.params.shakereduction
+            wmin = wi*focus[0]//1000
+            wmax = wi*focus[1]//1000
+            hmin = hi*focus[2]//1000
+            hmax = hi*focus[3]//1000
+            self.bgtemplate = frame[hmin:hmax,wmin:wmax,:].copy()
+            self.bgtempx = wmin
+            self.bgtempy = hmin
+            #the location where the bgtemplate is matched in the current frame.  This is the first frame so is a perfect match.
+            self.matchx = wmin
+            self.matchy = hmin
+            self.shakedict = dict()
+            
         self.transform = trainscanner.transformation(angle=self.params.rotate, pers=self.params.perspective, crop=self.params.crop)
         rotated, warped, cropped = self.transform.process_first_image(self.rawframe)
         self.frame = cropped
@@ -343,7 +365,11 @@ class Pass1():
         newbody = [[bn, ax, ay]] + newbody
         s = ""
         for b in newbody:
-            s += "{0} {1} {2}\n".format(*b)
+            if self.params.shakereduction is not None:
+                shiftx,shifty = self.shakedict[b[0]]
+                s += "{0} {1} {2} {3} {4}\n".format(*b,shiftx,shifty)
+            else:
+                s += "{0} {1} {2}\n".format(*b)
         return s
                   
     def onestep(self):
@@ -361,6 +387,34 @@ class Pass1():
         if not ret:
             print("Video ended (2).")
             return None
+        ##### Shake reduction before the picture identity check
+        if self.params.shakereduction is not None:
+            #crop the image around the last match
+            th,tw = self.bgtemplate.shape[:2]
+            ih,iw = nextframe.shape[:2]
+            xmin = self.matchx      - self.params.shakemag
+            xmax = self.matchx + tw + self.params.shakemag
+            ymin = self.matchy      - self.params.shakemag
+            ymax = self.matchy + th + self.params.shakemag
+            if xmin < 0: xmin = 0
+            if iw < xmax: xmax = iw
+            if ymin < 0: ymin = 0
+            if ih < ymax: ymax = ih
+            res = cv2.matchTemplate(nextframe[ymin:ymax, xmin:xmax, :], self.bgtemplate,cv2.TM_SQDIFF_NORMED)
+            #loc is given by x,y
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+            xloc = min_loc[0] + xmin
+            yloc = min_loc[1] + ymin
+            shiftx = self.bgtempx - xloc
+            shifty = self.bgtempy - yloc
+            self.shakedict[self.nframes] = (shiftx,shifty)
+            #print("[{0} {1}]".format(dx,dy))
+            affine = np.matrix(((1.0,0.0,shiftx),(0.0,1.0,shifty)))
+            cv2.warpAffine(nextframe, affine, (iw,ih), nextframe)
+            self.matchx = xloc
+            self.matchy = yloc
+            cv2.imshow("template", self.bgtemplate)
+            
         ##### compare with the previous raw frame
         diff = cv2.absdiff(nextframe,self.rawframe)
         ##### preserve the raw frame for next comparison.
@@ -406,7 +460,9 @@ class Pass1():
             self.cache.append([self.nframes, nextframe])
         if len(self.cache) > 100: #always keep 100 frames in cache
             self.cache.pop(0)
-        diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus)
+        zr = np.zeros_like(nextpreview)
+        diff_img = diffImage(zr,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus,focus2=self.params.shakereduction)
+        #diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus,focus2=self.params.shakereduction)
         ##### if the motion is very small
         if not self.guess_mode:
             if (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
@@ -448,7 +504,10 @@ class Pass1():
         self.absx += self.velx
         self.absy += self.vely
         self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
-        self.body += "{0} {3} {4}\n".format(self.nframes,self.absx,self.absy,self.velx,self.vely)
+        if self.params.shakereduction is not None:
+            self.body += "{0} {1} {2} {3} {4}\n".format(self.nframes,self.velx,self.vely,shiftx,shifty)
+        else:
+            self.body += "{0} {1} {2}\n".format(self.nframes,self.velx,self.vely)
         self.frame   = nextframe
         self.preview = nextpreview
         return diff_img
@@ -464,6 +523,6 @@ if __name__ == "__main__":
             break
         if ret is not True: #True means skipping
             cv2.imshow("pass1", ret)
-            cv2.waitKey(1)
+            cv2.waitKey(0)
             
     pass1.after()

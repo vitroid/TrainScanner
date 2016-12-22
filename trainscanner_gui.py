@@ -601,6 +601,10 @@ class SettingsGUI(QWidget):
             pass1_options += ["--stall",]
         pass1_options += ["--maxaccel","{0}".format(self.accel)]
         pass1_options += ["--log", logfilenamebase]
+        if self.editor.focus2 is not None:
+            f2 = self.editor.focus2
+            if f2[0] < f2[1] and f2[2] < f2[3]:
+                pass1_options += ["--shakereduction",] + [str(x) for x in f2]
 
         #wrap the options to record in the tsconf file
         #THIS IS WEIRD. FIND BETTER WAY.
