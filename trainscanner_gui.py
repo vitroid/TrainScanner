@@ -30,6 +30,31 @@ import argparse
 
 
 
+def rectify(x,x0,x1):
+    if x < x0:
+        return x0
+    elif x > x1:
+        return x1
+    return x
+
+def Pixel2Relative(region, width, height,  preview_size):
+    top, left, bottom, right = region.top(), region.left(), region.bottom(), region.right()
+    #and also assume that the cropped image is centered and sometimes shrinked.
+    top    -= preview_size//2
+    bottom -= preview_size//2
+    left   -= preview_size//2
+    right  -= preview_size//2
+    #expected image size in the window
+    #indicate the region size relative to the image size
+    #print(left,right,top,bottom)
+    top    = top    * 1000 // height + 500
+    bottom = bottom * 1000 // height + 500
+    left   = left   * 1000 // width + 500
+    right  = right  * 1000 // width + 500
+    #print(left,right,top,bottom)
+    return rectify(left,0,1000),rectify(right,0,1000),rectify(top,0,1000),rectify(bottom,0,1000)
+
+
 
 class AsyncImageLoader(QObject):
     """
@@ -102,16 +127,21 @@ def draw_slitpos(f, slitpos):
     cv2.line(f, (slitpos1,0),(slitpos1,h), (0, 0, 255), 1)
     cv2.line(f, (slitpos2,0),(slitpos2,h), (0, 0, 255), 1)
 
-class MyLabel(QLabel):
+class MyPanelWithRubberBands(QLabel):
 
-    def __init__(self, parent = None, func=None):
+    def __init__(self, parent = None, func=None, func2=None):
 
         self.func = func
+        self.func2 = func2
         QLabel.__init__(self, parent)
+        #Motion detection window
         self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
+        #Shake reduction window
+        self.rubberBand2 = QRubberBand(QRubberBand.Rectangle, self)
         self.origin = QPoint()
         self.slitpos = 250
         self.focus = (333,666,333,666)  #xs,xe,ys,ye
+        self.focus2 = None
         self.geometry = (0,0,1000,1000) #x,y,w,h
 
     def paintEvent(self, event):
@@ -132,29 +162,52 @@ class MyLabel(QLabel):
                          x+w//2+self.slitpos*w//1000,  y+h//2-d)
         painter.drawLine(x+w//2+self.slitpos*w//1000+d,y+h//2,
                          x+w//2+self.slitpos*w//1000,  y+h//2+d)
-        painter.setPen(Qt.green)
-        painter.drawRect(x+w*self.focus[0]//1000,y+h*self.focus[2]//1000,w*(self.focus[1]-self.focus[0])//1000,h*(self.focus[3]-self.focus[2])//1000)
+        if self.focus is not None:
+            painter.setPen(Qt.green)
+            painter.drawRect(x+w*self.focus[0]//1000,y+h*self.focus[2]//1000,w*(self.focus[1]-self.focus[0])//1000,h*(self.focus[3]-self.focus[2])//1000)
+        if self.focus2 is not None:
+            painter.setPen(Qt.blue)
+            painter.drawRect(x+w*self.focus2[0]//1000,y+h*self.focus2[2]//1000,w*(self.focus2[1]-self.focus2[0])//1000,h*(self.focus2[3]-self.focus2[2])//1000)
         
     def mousePressEvent(self, event):
     
         if event.button() == Qt.LeftButton:
-        
-            self.origin = QPoint(event.pos())
-            self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-            self.rubberBand.show()
+            modifiers = QApplication.keyboardModifiers()
+            if modifiers == Qt.ShiftModifier:
+                print('Shift+Click')
+                self.origin = QPoint(event.pos())
+                self.rubberBand2.setGeometry(QRect(self.origin, QSize()))
+                self.rubberBand2.show()
+                self.activeRubber=2
+            else:
+                self.origin = QPoint(event.pos())
+                self.rubberBand.setGeometry(QRect(self.origin, QSize()))
+                self.rubberBand.show()
+                self.activeRubber=1
+        else:
+            self.activeRubber = 0
     
     def mouseMoveEvent(self, event):
     
         if not self.origin.isNull():
-            self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
+            if self.activeRubber == 1:
+                self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
+            elif self.activeRubber == 2:
+                self.rubberBand2.setGeometry(QRect(self.origin, event.pos()).normalized())
     
     def mouseReleaseEvent(self, event):
     
         if event.button() == Qt.LeftButton:
-            self.rubberBand.hide()
-            self.region = QRect(self.origin, event.pos()).normalized()
-            if self.func is not None:
-                self.func(self.region)
+            if self.activeRubber == 1:
+                self.rubberBand.hide()
+                region = QRect(self.origin, event.pos()).normalized()
+                if self.func is not None:
+                    self.func(region)
+            elif self.activeRubber == 2:
+                self.rubberBand2.hide()
+                region = QRect(self.origin, event.pos()).normalized()
+                if self.func2 is not None:
+                    self.func2(region)
 
 #https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class SettingsGUI(QWidget):
@@ -517,7 +570,12 @@ class SettingsGUI(QWidget):
 
 
     def start_process(self):
+        #reject any weird condition
         if self.editor is None:
+            return
+        if self.editor.focus[1] <= self.editor.focus[0]:
+            return
+        if self.editor.focus[3] <= self.editor.focus[2]:
             return
         now = int(time.time()) % 100000
         logfilenamebase = self.filename+".{0}".format(now)
@@ -588,6 +646,7 @@ class EditorGUI(QWidget):
         self.perspective = [0,0,1000,1000]
         self.angle_degree    = 0
         self.focus = [333,666,333,666]
+        self.focus2 = None
         self.croptop = 0
         self.cropbottom = 1000
         self.slitpos = 250
@@ -749,7 +808,7 @@ class EditorGUI(QWidget):
         processed_edit_gbox = QGroupBox(self.tr('3. Motion Detection and Slit'))
         box = QVBoxLayout()
         processed_image_layout = QVBoxLayout()
-        self.processed_pane = MyLabel(func=self.show_snapshots)
+        self.processed_pane = MyPanelWithRubberBands(func=self.update_focus, func2=self.update_focus2)
         self.processed_pane.setAlignment(Qt.AlignCenter)
         self.processed_pane.setFixedWidth(self.preview_size)
         self.processed_pane.setFixedHeight(self.preview_size)
@@ -866,14 +925,21 @@ class EditorGUI(QWidget):
         self.show_snapshots()
 
     def cv2toQImage(self,cv2image):
-        tmp = cv2image[:,:,0].copy()
-        cv2image[:,:,0] = cv2image[:,:,2]
-        cv2image[:,:,2] = tmp
+        tmp = cv2image[:,:,::-1].copy()
         height,width = cv2image.shape[:2]
-        return QImage(cv2image.data, width, height, width*3, QImage.Format_RGB888)
+        return QImage(tmp.data, width, height, width*3, QImage.Format_RGB888)
         
+    def update_focus(self, region):
+        self.focus = Pixel2Relative(region, self.preview_width, self.preview_height, self.preview_size)
+        self.put_cv2_image(self.processed_image, self.processed_pane)
+        print(self.focus)
 
-    def show_snapshots(self, region=None):
+    def update_focus2(self, region):
+        self.focus2 = Pixel2Relative(region, self.preview_width, self.preview_height, self.preview_size)
+        self.put_cv2_image(self.processed_image, self.processed_pane)
+
+        
+    def show_snapshots(self):
         """
         put the snapshots in the preview panes
         """
@@ -883,59 +949,19 @@ class EditorGUI(QWidget):
         self.transform = trainscanner.transformation(self.angle_degree, self.perspective, [self.croptop, self.cropbottom])
         rotated, warped, cropped = self.transform.process_first_image(image)
         self.put_cv2_image(rotated, self.raw_image_pane)
-        if region is not None:
-            print(region)
-            #assume the QLabel size is square preview_size x preview_size
-            top, left, bottom, right = region.top(), region.left(), region.bottom(), region.right()
-            if top < 0:
-                top = 0
-            if left < 0:
-                left = 0
-            if right > self.preview_size:
-                right = self.preview_size
-            if bottom > self.preview_size:
-                bottom = self.preview_size
-            #and also assume that the cropped image is centered and sometimes shrinked.
-            top    -= self.preview_size//2
-            bottom -= self.preview_size//2
-            left   -= self.preview_size//2
-            right  -= self.preview_size//2
-            #expected image size in the window
-            height, width = cropped.shape[0:2]
-            if height > width:
-                if height > self.preview_size:
-                    width = width * self.preview_size // height
-                    height = self.preview_size
-            else:
-                if width > self.preview_size:
-                    height = height * self.preview_size // width
-                    width  = self.preview_size
-            #indicate the region size relative to the image size
-            #print(left,right,top,bottom)
-            top    = top    * 1000 // height + 500
-            bottom = bottom * 1000 // height + 500
-            left   = left   * 1000 // width + 500
-            right  = right  * 1000 // width + 500
-            #print(left,right,top,bottom)
-            if top < 0:
-                top = 0
-            if top > 1000:
-                top = 1000
-            if bottom < 0:
-                bottom = 0
-            if bottom > 1000:
-                bottom = 1000
-            if left < 0:
-                left = 0
-            if left > 1000:
-                left = 1000
-            if right < 0:
-                right = 0
-            if right > 1000:
-                right = 1000
-            self.focus = left,right,top,bottom
-            #print(self.focus)
-            
+        height,width = cropped.shape[:2]
+        if height > width:
+            if height > self.preview_size:
+                width = width * self.preview_size // height
+                height = self.preview_size
+        else:
+            if width > self.preview_size:
+                height = height * self.preview_size // width
+                width  = self.preview_size
+        #They are reused in update_focus()
+        self.preview_width = width
+        self.preview_height = height
+        self.processed_image = cropped
         self.put_cv2_image(cropped, self.processed_pane)
         
 
@@ -950,9 +976,10 @@ class EditorGUI(QWidget):
             if width > self.preview_size:
                 pixmap = pixmap.scaledToWidth(self.preview_size)
         widget.setPixmap(pixmap)
-        #give hints to DrawableLabel() and MyLabel()
+        #give hints to DrawableLabel() and MyPanelWithRubberBands()
         widget.perspective = self.perspective
         widget.focus = self.focus
+        widget.focus2 = self.focus2
         widget.slitpos = self.slitpos
         w = pixmap.width()
         h = pixmap.height()

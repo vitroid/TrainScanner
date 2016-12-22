@@ -140,6 +140,10 @@ def prepare_parser():
                         nargs=4, default=[333,666,333,666],
                         dest="focus", 
                         help="Motion detection area relative to the image size.")
+    parser.add_argument('--shakereduction', type=int,
+                        nargs=4, default=None,
+                        dest="shakereduction", 
+                        help="Shake reduction area relative to the image size.")
     parser.add_argument('-a', '--antishake', type=int,
                         default=5, metavar="x",
                         dest="antishake",
@@ -214,7 +218,7 @@ class Pass1():
                     else:
                         self.head += "--{0}\n".format(v)
             else:
-                if option in ("--perspective", "--focus", "--crop", ):  #multiple values
+                if option in ("--perspective", "--focus", "--crop", "--shakereduction" ):  #multiple values
                     self.head += "{0}\n".format(option)
                     for v in value:
                         self.head += "{0}\n".format(v)
@@ -253,7 +257,10 @@ class Pass1():
             sys.exit(0)
         self.nframes += 1    #first frame is 1
         self.rawframe = frame
-        
+        #
+        #SHAKE REDUCTION SHOULD BE IMPLEMENTED HERE.
+        # (before transformation)
+        #
         self.transform = trainscanner.transformation(angle=self.params.rotate, pers=self.params.perspective, crop=self.params.crop)
         rotated, warped, cropped = self.transform.process_first_image(self.rawframe)
         self.frame = cropped
