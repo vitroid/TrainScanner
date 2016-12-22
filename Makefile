@@ -49,3 +49,9 @@ winexe:
 	pip install --upgrade setuptools
 	pip install pyinstaller
 	pyinstaller.exe --noconfirm --onefile --windowed windows.spec
+
+
+#brew install pygobject3 --with-python3
+#brew install gst-python
+#brew install gst-libav
+#brew install gst-plugins-good  --with-jpeg

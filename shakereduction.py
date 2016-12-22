@@ -53,8 +53,8 @@ class ShakeReduction():
         h,w = self.frame.shape[0:2]
         self.out   =  cv2.VideoWriter(self.params.filename+".sr.m4v",cv2.VideoWriter_fourcc('m','p','4','v'), 30, (w,h))
         self.out.write(self.frame)
-        cv2.imshow("first", self.frame)
-        cv2.waitKey(1)
+        #cv2.imshow("first", self.frame)
+        #cv2.waitKey(1)
         self.dx = 0
         self.dy = 0
     def onestep(self):
@@ -67,9 +67,11 @@ class ShakeReduction():
         affine = np.matrix(((1.0,0.0,-self.dx),(0.0,1.0,-self.dy)))
         h,w = self.frame.shape[0:2]
         cv2.warpAffine(newframe, affine, (w,h), newframe)
-        pass1.draw_focus_area(newframe, self.params.focus)
         self.out.write(newframe)
-        cv2.imshow("shakeR", newframe)
+        ratio = 700/max(w,h)
+        scaled = cv2.resize(newframe, None, fx=ratio, fy=ratio)
+        pass1.draw_focus_area(scaled, self.params.focus)
+        cv2.imshow("shakeR", scaled)
         cv2.waitKey(1)
         return True
 
