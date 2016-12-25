@@ -123,10 +123,14 @@ def prepare_parser():
     parser.add_argument('-z', '--zero', action='store_true',
                         dest='zero',
                         help="Suppress drift.")
-    parser.add_argument('-S', '--skip', type=int, metavar='N',
+    parser.add_argument('-S', '--skip', '--start', type=int, metavar='N',
                         default=0,
                         dest="skip",
                         help="Skip first N frames.")
+    parser.add_argument('-L', '--last', type=int, metavar='N',
+                        default=0,
+                        dest="last",
+                        help="Specify the last frame.")
     parser.add_argument('-E', '--estimate', type=int, metavar='N',
                         default=10,
                         dest="estimate",
@@ -342,6 +346,8 @@ class Pass1():
     def onestep(self):
         ret = True
         ##### Pick up every x frame
+        if self.params.skip < self.params.last < self.nframes + self.params.every:
+            return None
         for i in range(self.params.every-1):
             ret = self.cap.grab()
             self.nframes += 1

@@ -4,6 +4,7 @@
 from PyQt4.QtGui     import * # QPainter
 from PyQt4.QtCore    import * # Qt, pyqtSignal
 from imagebar import ImageBar
+import qrangeslider as rs
 
 class ImageSelector2(QWidget):
     resized = pyqtSignal(int)
@@ -11,7 +12,8 @@ class ImageSelector2(QWidget):
         super(ImageSelector2, self).__init__()
         layout = QVBoxLayout()
         self.imagebar = ImageBar()  #Difference from IS1
-        self.slider   = QSlider(Qt.Horizontal)
+        self.slider   = rs.QRangeSlider()
+        self.slider.setRange(0,0)
         layout.addWidget(self.imagebar)
         layout.addWidget(self.slider)
         layout.setSpacing(0)
@@ -21,12 +23,19 @@ class ImageSelector2(QWidget):
     def setThumbs(self, thumbs):
         #move the slide bar and trim indicator
         lastlen = len(self.imagebar.thumbs)
-        lastslid = self.slider.value()
+        lasthead = self.slider.start()
+        lasttail = self.slider.end()
 
-
-        self.imagebar.setThumbs(thumbs)
-        self.slider.setRange(0,len(thumbs)-1)
-        self.slider.setValue(lastslid)
+        self.imagebar.setThumbs(thumbs.copy())
+        #print("LEN",lastlen,len(thumbs),self.slider.max())
+        if lastlen == len(thumbs):
+            return
+        self.slider.setMax(len(thumbs)-1)
+        self.slider.setStart(lasthead)
+        if lastlen -1 <= lasttail:
+            self.slider.setEnd(len(thumbs)-1)
+        else:
+            self.slider.setEnd(lasttail)
         
 
 
@@ -61,7 +70,7 @@ def main():
             break
         h,w = frame.shape[0:2]
         thumbh = 100
-        thumbw = w*thumbh/h
+        thumbw = w*thumbh//h
         thumb = cv2.resize(frame,(thumbw,thumbh),interpolation = cv2.INTER_CUBIC)
         thumbs.append(cv2toQImage(thumb))
         for i in range(9):

@@ -65,7 +65,7 @@ def main():
     window.show()
 
     import cv2
-    cap      = cv2.VideoCapture("sample2.mov")
+    cap      = cv2.VideoCapture("examples/sample2.mov")
     ret = True
     thumbs = []
     while True:
