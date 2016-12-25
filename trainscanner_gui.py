@@ -2,9 +2,9 @@
 #-*- coding: utf-8 -*-
 
 #Core of the GUI and image process
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
-from PyQt5.QtGui     import QImage, QPixmap, QPainter
-from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator, QRect, QSize
+#from PyQt5.QtWidgets import * #QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
+from PyQt4.QtGui     import QImage, QPixmap, QPainter, QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
+from PyQt4.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator, QRect, QSize
 
 import cv2
 import numpy as np
@@ -424,8 +424,12 @@ class SettingsGUI(QWidget):
 
         if self.editor is not None:
             self.editor.close()
-        self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        #for Qt4
+        self.filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)")
+        #for Qt5
+        #self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        #    "","Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)")
         if self.filename == "": # or if the file cannot be opened,
             return
         #for py2
@@ -535,7 +539,8 @@ class SettingsGUI(QWidget):
         pass1_options += ["--trail", "{0}".format(self.trailing)]
         pass1_options += ["--antishake", "{0}".format(self.antishake)]
         pass1_options += ["--estimate", "{0}".format(self.estimate)]
-        pass1_options += ["--skip", "{0}".format(self.editor.imageselector2.slider.value()*10)]
+        pass1_options += ["--skip", "{0}".format(self.editor.imageselector2.slider.start()*10)]
+        pass1_options += ["--last", "{0}".format(self.editor.imageselector2.slider.end()*10+9)]
         pass1_options += ["--focus",] + [str(x) for x in self.editor.focus]
         if self.btn_zerodrift.isChecked():
             pass1_options += ["--zero",]
@@ -622,7 +627,8 @@ class EditorGUI(QWidget):
         #self.setAttribute(Qt.WA_DeleteOnClose)
         layout = self.make_layout()
         self.imageselector2 = ImageSelector2()
-        self.imageselector2.slider.valueChanged.connect(self.frameChanged)
+        self.imageselector2.slider.startValueChanged.connect(self.frameChanged)
+        self.imageselector2.slider.endValueChanged.connect(self.frameChanged)
         imageselector_layout = QHBoxLayout()
         imageselector_layout.addWidget(self.imageselector2)
         imageselector_gbox = QGroupBox(self.tr('1. Seek the first video frame'))
@@ -647,11 +653,12 @@ class EditorGUI(QWidget):
     def updateTimeLine(self, cv2thumbs):
         #count time and limit update
         now = time.time()
-        if now - self.lastupdatethumbs < 0.2:
+        if now - self.lastupdatethumbs < 0.1:
             return
         #transformation filter
         self.imageselector2.imagebar.setTransformer(self.thumbtransformer)
         self.imageselector2.setThumbs(cv2thumbs)
+        #print("THUMBS", len(cv2thumbs))
         self.lastupdatethumbs = time.time()
         
     def make_layout(self):
@@ -1027,7 +1034,7 @@ def resource_path(relative):
 
 ## def pyqt_set_trace():
 ##     '''Set a tracepoint in the Python debugger that works with Qt'''
-##     from PyQt5.QtCore import pyqtRemoveInputHook
+##     from PyQt4.QtCore import pyqtRemoveInputHook
 ##     import pdb
 ##     import sys
 ##     pyqtRemoveInputHook()
