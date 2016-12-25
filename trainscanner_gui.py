@@ -2,9 +2,9 @@
 #-*- coding: utf-8 -*-
 
 #Core of the GUI and image process
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
-from PyQt5.QtGui     import QImage, QPixmap, QPainter
-from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator, QRect, QSize
+#from PyQt5.QtWidgets import * #QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
+from PyQt4.QtGui     import QImage, QPixmap, QPainter, QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
+from PyQt4.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator, QRect, QSize
 
 import cv2
 import numpy as np
@@ -424,8 +424,12 @@ class SettingsGUI(QWidget):
 
         if self.editor is not None:
             self.editor.close()
-        self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        #for Qt4
+        self.filename = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)")
+        #for Qt5
+        #self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        #    "","Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)")
         if self.filename == "": # or if the file cannot be opened,
             return
         #for py2
@@ -1027,7 +1031,7 @@ def resource_path(relative):
 
 ## def pyqt_set_trace():
 ##     '''Set a tracepoint in the Python debugger that works with Qt'''
-##     from PyQt5.QtCore import pyqtRemoveInputHook
+##     from PyQt4.QtCore import pyqtRemoveInputHook
 ##     import pdb
 ##     import sys
 ##     pyqtRemoveInputHook()

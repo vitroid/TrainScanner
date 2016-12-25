@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from PyQt5.QtWidgets import QWidget, QSlider, QVBoxLayout, QApplication
-from PyQt5.QtGui     import QPainter
-from PyQt5.QtCore    import Qt, pyqtSignal
+#from PyQt4.QtWidgets import QWidget, QSlider, QVBoxLayout, QApplication
+from PyQt4.QtGui     import * # QPainter
+from PyQt4.QtCore    import * # Qt, pyqtSignal
 from imagebar import ImageBar
 
 class ImageSelector2(QWidget):

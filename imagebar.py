@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from PyQt5.QtWidgets import QLabel, QApplication, QFrame
-from PyQt5.QtGui     import QPainter
-from PyQt5.QtCore    import QPoint
+#from PyQt5.QtWidgets import QLabel, QApplication, QFrame
+from PyQt4.QtGui     import QPainter, QLabel, QApplication, QFrame
+from PyQt4.QtCore    import QPoint
 
 import sys
 
