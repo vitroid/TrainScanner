@@ -27,6 +27,8 @@ class ImageSelector2(QWidget):
         lasttail = self.slider.end()
 
         self.imagebar.setThumbs(thumbs)
+        if lastlen == len(thumbs):
+            return
         self.slider.setMax(len(thumbs)-1)
         self.slider.setStart(lasthead)
         if lastlen -1 <= lasttail:

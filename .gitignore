@@ -35,3 +35,7 @@ dist/
 a.mp4
 
 examples.py
+
+*.m4v
+
+tmp.png
