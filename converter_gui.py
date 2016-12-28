@@ -2,9 +2,8 @@
 #-*- coding: utf-8 -*-
 
 #Core of the GUI and image process
-#from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QPushButton, QCheckBox, QFileDialog
-from PyQt4.QtGui import QWidget, QVBoxLayout, QApplication, QPushButton, QCheckBox, QFileDialog
-from PyQt4.QtCore    import QTranslator
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QPushButton, QCheckBox, QFileDialog
+from PyQt5.QtCore    import QTranslator
 import cv2
 import numpy as np
 import math

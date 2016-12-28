@@ -13,15 +13,25 @@ work/*
 sample*png
 *.pyc
 
+.DS_Store
+
+
 *.pdf
 build/
 dist/
 @
-*.tsconf
-*.tspos
+.DS_Store
 
 .DS_Store
+
+*.tsconf
+
+*.tspos
 a.mp4
-*.m4v
+
 examples.py
+
+*.m4v
+
 tmp.png
+

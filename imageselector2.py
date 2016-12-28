@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-#from PyQt4.QtWidgets import QWidget, QSlider, QVBoxLayout, QApplication
-from PyQt4.QtGui     import * # QPainter
-from PyQt4.QtCore    import * # Qt, pyqtSignal
+from PyQt5.QtWidgets import QWidget, QSlider, QVBoxLayout, QApplication
+from PyQt5.QtGui     import QPainter, QImage
+from PyQt5.QtCore    import Qt, pyqtSignal
 from imagebar import ImageBar
 import qrangeslider as rs
 
@@ -27,7 +27,6 @@ class ImageSelector2(QWidget):
         lasttail = self.slider.end()
 
         self.imagebar.setThumbs(thumbs.copy())
-        #print("LEN",lastlen,len(thumbs),self.slider.max())
         if lastlen == len(thumbs):
             return
         self.slider.setMax(len(thumbs)-1)

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-#from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea
-from PyQt4.QtGui     import QImage, QPixmap, QPainter, QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea
-from PyQt4.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea
+from PyQt5.QtGui     import QImage, QPixmap, QPainter
+from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint
 
 import stitch
 import math
