@@ -475,8 +475,8 @@ class SettingsGUI(QWidget):
         #dir = os.path.dirname(self.filename)
         #base = os.path.basename(self.filename)
         #self.filename = "sample3.mov"
-        self.editor.setMaximumHeight(1210)
-        self.editor.setMaximumWidth(826)
+        self.editor.setMaximumHeight(826)
+        self.editor.setMaximumWidth(1210)
         self.editor.show()
         self.le.setText(self.filename)
         
