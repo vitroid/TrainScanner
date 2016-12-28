@@ -475,8 +475,8 @@ class SettingsGUI(QWidget):
         #dir = os.path.dirname(self.filename)
         #base = os.path.basename(self.filename)
         #self.filename = "sample3.mov"
-        self.editor.setMaximumHeight(500)
-        self.editor.setMaximumWidth(500)
+        self.editor.setMaximumHeight(1210)
+        self.editor.setMaximumWidth(826)
         self.editor.show()
         self.le.setText(self.filename)
         
@@ -535,7 +535,8 @@ class SettingsGUI(QWidget):
         pass1_options += ["--trail", "{0}".format(self.trailing)]
         pass1_options += ["--antishake", "{0}".format(self.antishake)]
         pass1_options += ["--estimate", "{0}".format(self.estimate)]
-        pass1_options += ["--skip", "{0}".format(self.editor.imageselector2.slider.value()*10)]
+        pass1_options += ["--skip", "{0}".format(self.editor.imageselector2.slider.start()*10)]
+        pass1_options += ["--last", "{0}".format(self.editor.imageselector2.slider.end()*10)]
         pass1_options += ["--focus",] + [str(x) for x in self.editor.focus]
         if self.btn_zerodrift.isChecked():
             pass1_options += ["--zero",]
@@ -622,7 +623,8 @@ class EditorGUI(QWidget):
         #self.setAttribute(Qt.WA_DeleteOnClose)
         layout = self.make_layout()
         self.imageselector2 = ImageSelector2()
-        self.imageselector2.slider.valueChanged.connect(self.frameChanged)
+        self.imageselector2.slider.startValueChanged.connect(self.frameChanged)
+        self.imageselector2.slider.endValueChanged.connect(self.frameChanged)
         imageselector_layout = QHBoxLayout()
         imageselector_layout.addWidget(self.imageselector2)
         imageselector_gbox = QGroupBox(self.tr('1. Seek the first video frame'))

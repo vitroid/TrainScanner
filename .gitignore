@@ -27,15 +27,11 @@ dist/
 *.tsconf
 
 *.tspos
-
-.DS_Store
-
-.DS_Store
-
-.DS_Store
-
-*.py
-
 a.mp4
 
+examples.py
+
 *.m4v
+
+tmp.png
+

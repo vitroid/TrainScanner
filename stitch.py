@@ -129,7 +129,7 @@ def prepare_parser(parser=None):
                         default=250,
                         dest="slitpos",
                         help="Slit position (0=center, 500=on the edge forward).")
-    parser.add_argument('-L', '--length', type=int, metavar='x',
+    parser.add_argument('-W', '--length', type=int, metavar='x',
                         default=0,
                         dest="length",
                         help="Maximum image length of the product.")
