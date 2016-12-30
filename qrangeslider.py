@@ -157,7 +157,6 @@ class RangeSliderElement(QtWidgets.QGroupBox):
         super(RangeSliderElement, self).__init__(parent)
         self.main = main
         self.vertical = vertical
-        self.setMinimumSize(QtCore.QSize(0, 0))
         
     def setStyleSheet(self, style):
         """redirect style to parent groupbox"""
@@ -392,6 +391,7 @@ class QRangeSlider(QtWidgets.QWidget, RangeSliderForm):
         # defaults
         self.setMin(0)
         self.setMax(99)
+        self._setMinimumRange(0)
         self.setStart(0)
         self.setEnd(99)
         self.setDrawValues(True)
@@ -424,6 +424,10 @@ class QRangeSlider(QtWidgets.QWidget, RangeSliderForm):
         """:return: range slider end value"""
         return getattr(self, '__end', None)
 
+    def minimumRange(self):
+        """:return: range slider minimum width"""
+        return getattr(self, '__minimumRange', None)
+
     def _setStart(self, value):
         """stores the start value only"""
         setattr(self, '__start', value)
@@ -434,6 +438,12 @@ class QRangeSlider(QtWidgets.QWidget, RangeSliderForm):
         assert type(value) is int
         if value < self.min():
             value = self.min()
+        rightEnd = self.max()
+        if self.end() is not None and self.end() < rightEnd:
+            rightEnd = self.end()
+        rightEnd -= self.minimumRange()
+        if rightEnd < value:
+            value = rightEnd
         v = self._valueToPos(value)
         self._splitter.splitterMoved.disconnect()
         self._splitter.moveSplitter(v, self._SPLIT_START)
@@ -450,12 +460,30 @@ class QRangeSlider(QtWidgets.QWidget, RangeSliderForm):
         assert type(value) is int
         if self.max() < value:
             value = self.max()
+        leftEnd = max(self.min(),self.start()) + self.minimumRange()
+        if value < leftEnd:
+            value = leftEnd
         v = self._valueToPos(value) + self._splitter.handleWidth()
         self._splitter.splitterMoved.disconnect()
         self._splitter.moveSplitter(v, self._SPLIT_END)
         self._splitter.splitterMoved.connect(self._handleMoveSplitter)
         self._setEnd(value)
 
+    def _setMinimumRange(self, value):
+        """stores the minimum range only"""
+        setattr(self, '__minimumRange', value)
+    
+    def setMinimumRange(self, value):
+        assert type(value) is int
+        if self.max() - self.min() < value:
+            value = self.max() - self.min()
+        d = self.end() - self.start()
+        if d < value:
+            dh = d // 2
+            self.setStart(self.start() - dh)
+            self.setEnd(self.end() + (d-dh))
+        setattr(self, '__minimumRange', value)
+        
     def drawValues(self):
         """:return: True if slider values will be drawn"""
         return getattr(self, '__drawValues', None)
@@ -469,10 +497,12 @@ class QRangeSlider(QtWidgets.QWidget, RangeSliderForm):
         """:return: the start and end values as a tuple"""
         return (self.start(), self.end())
 
-    def setRange(self, start, end):
+    def setRange(self, start, end, minimumRange=None):
         """set the start and end values"""
         self.setStart(start)
         self.setEnd(end)
+        if minimumRange is not None:
+            self.setMinimumRange(minimumRange)
         
     def keyPressEvent(self, event):
         """overrides key press event to move range left and right"""
@@ -522,18 +552,18 @@ class QRangeSlider(QtWidgets.QWidget, RangeSliderForm):
         if index == self._SPLIT_START:
             v = self._posToValue(pos)
             #_lockPos(self._tail)
-            if v >= self.end():
-                self.setEnd(v)
-                v = self.end()
-            self._setStart(v)
+            if v + self.minimumRange() >= self.end():
+                self.setEnd(v + self.minimumRange())
+                v = self.end() - self.minimumRange()
+            self.setStart(v)
             
         elif index == self._SPLIT_END:
             v = self._posToValue(pos - hw)
             #_lockPos(self._head)
-            if v <= self.start():
-                self.setStart(v)
-                v= self.start()
-            self._setEnd(v)
+            if v - self.minimumRange() <= self.start():
+                self.setStart(v - self.minimumRange())
+                v= self.start() + self.minimumRange()
+            self.setEnd(v)
 
 
 
@@ -550,7 +580,7 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     rs = QRangeSlider(splitterWidth=10, vertical=True)
     rs.show()
-    rs.setRange(15, 35)
+    rs.setRange(15, 35, 10)
     rs.setBackgroundStyle('background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #222, stop:1 #333);')
     rs.handle.setStyleSheet('background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #282, stop:1 #393);')
     app.exec_()

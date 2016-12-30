@@ -12,7 +12,7 @@ class ImageSelector2(QWidget):
         super(ImageSelector2, self).__init__()
         layout = QVBoxLayout()
         self.imagebar = ImageBar()  #Difference from IS1
-        self.slider   = rs.QRangeSlider()
+        self.slider   = rs.QRangeSlider(splitterWidth=10)
         self.slider.setRange(0,0)
         layout.addWidget(self.imagebar)
         layout.addWidget(self.slider)
