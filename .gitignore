@@ -23,7 +23,6 @@ dist/
 .DS_Store
 
 *.tsconf
-
 *.tspos
 a.mp4
 

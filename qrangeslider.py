@@ -499,6 +499,8 @@ class QRangeSlider(QtWidgets.QWidget, RangeSliderForm):
 
     def setRange(self, start, end, minimumRange=None):
         """set the start and end values"""
+        self._setStart(start)
+        self._setEnd(end)
         self.setStart(start)
         self.setEnd(end)
         if minimumRange is not None:
@@ -580,7 +582,9 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     rs = QRangeSlider(splitterWidth=10, vertical=True)
     rs.show()
-    rs.setRange(15, 35, 10)
+    rs.setMin(0)
+    rs.setMax(1000)
+    rs.setRange(100, 1000, 100)
     rs.setBackgroundStyle('background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #222, stop:1 #333);')
     rs.handle.setStyleSheet('background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #282, stop:1 #393);')
     app.exec_()

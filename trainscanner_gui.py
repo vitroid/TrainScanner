@@ -28,8 +28,32 @@ from pass1 import prepare_parser as pp1
 from stitch import prepare_parser as pp2
 import argparse
 
+#
+import qrangeslider as rs
 
+perspectiveCSS="""
+QRangeSlider > QSplitter::handle {
+    background: #55f;
+}
+QRangeSlider > QSplitter::handle:pressed {
+    background: #ccf;
+}
+QRangeSlider #Span {
+    background: #229;
+}
+"""
 
+cropCSS="""
+QRangeSlider > QSplitter::handle {
+    background: #f55;
+}
+QRangeSlider > QSplitter::handle:pressed {
+    background: #fcc;
+}
+QRangeSlider #Span {
+    background: #922;
+}
+"""
 
 class AsyncImageLoader(QObject):
     """
@@ -87,7 +111,7 @@ class DrawableLabel(QLabel):
     def paintEvent(self, event):
         QLabel.paintEvent(self, event)
         painter = QPainter(self)
-        painter.setPen(Qt.red)
+        painter.setPen(Qt.blue)
         #painter.setBrush(Qt.yellow)
         #painter.drawRect(10, 10, 100, 100)
         x,y,w,h = self.geometry
@@ -478,6 +502,20 @@ class SettingsGUI(QWidget):
         self.editor.setMaximumHeight(826)
         self.editor.setMaximumWidth(1210)
         self.editor.show()
+        
+        #we shall set editor's values here.
+        self.editor.sliderL.setMin(0)
+        self.editor.sliderL.setMax(1000)
+        self.editor.sliderL.setRange(self.editor.perspective[0],self.editor.perspective[2],10)
+        self.editor.sliderR.setMin(0)
+        self.editor.sliderR.setMax(1000)
+        self.editor.sliderR.setRange(self.editor.perspective[1],self.editor.perspective[3],10)
+        print("setRange crop ",self.editor.croptop,self.editor.cropbottom)
+        self.editor.crop_slider.setMin(0)
+        self.editor.crop_slider.setMax(1000)
+        self.editor.crop_slider.setRange(self.editor.croptop,self.editor.cropbottom,10)
+        self.editor.slit_slider.setValue(self.editor.slitpos)
+        self.editor.angle_label.setText("{0} ".format(self.editor.angle_degree)+self.tr("degrees"))
         self.le.setText(self.filename)
         
 
@@ -680,62 +718,32 @@ class EditorGUI(QWidget):
 
         #
         crop_layout = QVBoxLayout()
-        self.croptop_slider = QSlider(Qt.Vertical)  # スライダの向き
-        self.croptop_slider.setRange(0, 1000)  # スライダの範囲
-        self.croptop_slider.setValue(1000)  # 初期値
-        self.croptop_slider.valueChanged.connect(self.croptop_slider_on_draw)
-        self.croptop_slider.setMinimumHeight(240)
-        #print(self.croptop_slider.size())
-        crop_layout.addWidget(self.croptop_slider)
-        crop_layout.setAlignment(self.croptop_slider, Qt.AlignTop)
+        self.crop_slider = rs.QRangeSlider(splitterWidth=10, vertical=True)  # スライダの向き
+        self.crop_slider.setFixedWidth(15)
+        self.crop_slider.setStyleSheet(cropCSS)
+        self.crop_slider.setDrawValues(False)
+        self.crop_slider.startValueChanged.connect(self.croptop_slider_on_draw)
+        self.crop_slider.endValueChanged.connect(self.cropbottom_slider_on_draw)
+        self.crop_slider.setMinimumHeight(500)
 
-        self.cropbottom_slider = QSlider(Qt.Vertical)  # スライダの向き
-        self.cropbottom_slider.setRange(0, 1000)  # スライダの範囲
-        self.cropbottom_slider.setValue(0)  # 初期値 499 is top
-        self.cropbottom_slider.valueChanged.connect(self.cropbottom_slider_on_draw)
-        self.cropbottom_slider.setMinimumHeight(240)
-        crop_layout.addWidget(self.cropbottom_slider)
-        crop_layout.setAlignment(self.cropbottom_slider, Qt.AlignBottom)
+        crop_layout.addWidget(self.crop_slider)
 
         
-        perspective_left_layout = QVBoxLayout()
-        self.sliderTL = QSlider(Qt.Vertical)  # スライダの向き
-        self.sliderTL.setRange(0, 1000)  # スライダの範囲
-        self.sliderTL.setValue(1000)  # 初期値
-        #sizepolicy = QSizePolicy()
-        #sizepolicy.setVerticalPolicy(QSizePolicy.Maximum)
-        #self.sliderTL.setSizePolicy(sizepolicy)
-        self.sliderTL.valueChanged.connect(self.sliderTL_on_draw)
-        self.sliderTL.setMinimumHeight(240)
-        perspective_left_layout.addWidget(self.sliderTL)
-        perspective_left_layout.setAlignment(self.sliderTL, Qt.AlignTop)
-
-        self.sliderBL = QSlider(Qt.Vertical)  # スライダの向き
-        self.sliderBL.setRange(0, 1000)  # スライダの範囲
-        self.sliderBL.setValue(0)  # 初期値 499 is top
-        self.sliderBL.valueChanged.connect(self.sliderBL_on_draw)
-        self.sliderBL.setMinimumHeight(240)
-        perspective_left_layout.addWidget(self.sliderBL)
-        perspective_left_layout.setAlignment(self.sliderBL, Qt.AlignBottom)
+        self.sliderL = rs.QRangeSlider(splitterWidth=10, vertical=True)  # スライダの向き
+        self.sliderL.setFixedWidth(15)
+        self.sliderL.setStyleSheet(perspectiveCSS)
+        self.sliderL.setDrawValues(False)
+        self.sliderL.startValueChanged.connect(self.sliderTL_on_draw)
+        self.sliderL.endValueChanged.connect(self.sliderBL_on_draw)
+        self.sliderL.setMinimumHeight(500)
         
-        perspective_right_layout = QVBoxLayout()
-        self.sliderTR = QSlider(Qt.Vertical)  # スライダの向き
-        self.sliderTR.setRange(0, 1000)  # スライダの範囲
-        self.sliderTR.setValue(1000)  # 初期値
-        self.sliderTR.valueChanged.connect(self.sliderTR_on_draw)
-        self.sliderTR.setMinimumHeight(240)
-        perspective_right_layout.addWidget(self.sliderTR)
-        perspective_right_layout.setAlignment(self.sliderTR, Qt.AlignTop)
-
-        self.sliderBR = QSlider(Qt.Vertical)  # スライダの向き
-        self.sliderBR.setRange(0, 1000)  # スライダの範囲
-        self.sliderBR.setValue(0)  # 初期値 499 is top
-        self.sliderBR.valueChanged.connect(self.sliderBR_on_draw)
-        self.sliderBR.setMinimumHeight(240)
-        perspective_right_layout.addWidget(self.sliderBR)
-        perspective_right_layout.setAlignment(self.sliderBR, Qt.AlignBottom)
-        
-        
+        self.sliderR = rs.QRangeSlider(splitterWidth=10, vertical=True)  # スライダの向き
+        self.sliderR.setFixedWidth(15)
+        self.sliderR.setStyleSheet(perspectiveCSS)
+        self.sliderR.setDrawValues(False)
+        self.sliderR.startValueChanged.connect(self.sliderTR_on_draw)
+        self.sliderR.endValueChanged.connect(self.sliderBR_on_draw)
+        self.sliderR.setMinimumHeight(500)
         
         raw_image_layout = QVBoxLayout()
         self.raw_image_pane = DrawableLabel()
@@ -768,7 +776,6 @@ class EditorGUI(QWidget):
         slit_slider_label = QLabel(self.tr('Slit position'))
         self.slit_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.slit_slider.setRange(-500, 500)  # スライダの範囲
-        self.slit_slider.setValue(self.slitpos)  # 初期値
         #スライダの目盛りを両方に出す
         self.slit_slider.setTickPosition(QSlider.TicksBelow)
         self.slit_slider.valueChanged.connect(self.slit_slider_on_draw)
@@ -781,9 +788,9 @@ class EditorGUI(QWidget):
         
         #combine panels
         topleft_layout = QHBoxLayout()
-        topleft_layout.addLayout(perspective_left_layout)
+        topleft_layout.addWidget(self.sliderL)
         topleft_layout.addLayout(raw_image_layout)
-        topleft_layout.addLayout(perspective_right_layout)
+        topleft_layout.addWidget(self.sliderR)
         left_layout = QVBoxLayout()
         left_layout.addLayout(topleft_layout)
         left_layout.addLayout(rotation_layout)
@@ -830,40 +837,26 @@ class EditorGUI(QWidget):
         self.show_snapshots()
 
     def frameChanged(self, value):
-        #if value < self.imageselector2.firstFrame:
-        #    value = self.imageselector2.firstFrame
         self.frame = value
         self.show_snapshots()
 
     def sliderTL_on_draw(self):
-        self.perspective[0] = 1000 - self.sliderTL.value()
-        if self.perspective[2] - self.perspective[0] < 2:
-            self.perspective[0] = self.perspective[2] - 2
-            self.sliderTL.setValue(1000 - self.perspective[0])
+        self.perspective[0] = self.sliderL.start()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def sliderBL_on_draw(self):
-        self.perspective[2] = 1000 - self.sliderBL.value()
-        if self.perspective[2] - self.perspective[0] < 2:
-            self.perspective[2] = self.perspective[0] + 2
-            self.sliderBL.setValue(1000 - self.perspective[2])
+        self.perspective[2] = self.sliderL.end()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def sliderTR_on_draw(self):
-        self.perspective[1] = 1000 - self.sliderTR.value()
-        if self.perspective[3] - self.perspective[1] < 2:
-            self.perspective[1] = self.perspective[3] - 2
-            self.sliderTR.setValue(1000 - self.perspective[1])
+        self.perspective[1] = self.sliderR.start()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def sliderBR_on_draw(self):
-        self.perspective[3] = 1000 - self.sliderBR.value()
-        if self.perspective[3] - self.perspective[1] < 2:
-            self.perspective[3] = self.perspective[1] + 2
-            self.sliderBR.setValue(1000 - self.perspective[3])
+        self.perspective[3] = self.sliderR.end()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
@@ -968,18 +961,12 @@ class EditorGUI(QWidget):
         self.show_snapshots()
 
     def croptop_slider_on_draw(self):
-        self.croptop = 1000 - self.croptop_slider.value()
-        if self.cropbottom - self.croptop < 2:
-            self.croptop = self.cropbottom - 2
-            self.croptop_slider.setValue(1000 - self.croptop)
+        self.croptop = self.crop_slider.start()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
     def cropbottom_slider_on_draw(self):
-        self.cropbottom = 1000 - self.cropbottom_slider.value()
-        if self.cropbottom - self.croptop < 2:
-            self.cropbottom = self.croptop + 2
-            self.cropbottom_slider.setValue(1000 - self.cropbottom)
+        self.cropbottom = self.crop_slider.end()
         self.updateTimeLine(self.asyncimageloader.snapshots)
         self.show_snapshots()
 
