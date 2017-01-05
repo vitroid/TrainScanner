@@ -30,8 +30,9 @@ macapp-personally: prepare_for_mac_py3
 macdebug:
 	pyinstaller --noconfirm --debug --console macos.spec
 	pyinstaller --noconfirm --debug --console converter_gui.macos.spec
-maczip:
-	cd dist; zip -r trainscanner.x.y.macos.zip TrainScanner.app TS_converter.app; md5 trainscanner.x.y.macos.zip | tee trainscanner.x.y.macos.zip.md5
+maczip.%:
+	cd dist; zip -r trainscanner.$*.macos.zip TrainScanner.app TS_converter.app; md5 trainscanner.$*.macos.zip | tee trainscanner.$*.macos.zip.md5
+	-cp dist/trainscanner.$*.macos.zip* ~/Google\ Drive/TrainScanner/
 patch_for_mac:
 	patch /usr/local/lib/python3.5/site-packages/PyInstaller/depend/bindepend.py < bindepend.diff
 prepare_for_mac_py3:
