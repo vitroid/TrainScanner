@@ -6,10 +6,12 @@ import numpy as np
 import math
 import trainscanner
 import sys
+import myargparse
 import argparse
 import film
 import helix
 import rect
+import logging
 #real	0m39.344s
 #user	0m43.773s
 #sys	0m11.850s
@@ -116,7 +118,7 @@ class Canvas():
 
 def prepare_parser(parser=None):
     if parser is None:
-        parser = argparse.ArgumentParser(description='TrainScanner stitcher')
+        parser = myargparse.MyArgumentParser(description='TrainScanner stitcher')
     parser.add_argument('-C', '--canvas', type=int,
                         nargs=4, default=None,
                         dest="canvas", 
@@ -174,11 +176,42 @@ class Stitcher(Canvas):
     exclude video handling
     """
     def __init__(self, argv):
-        ap = argparse.ArgumentParser(fromfile_prefix_chars='@',
-                                     description='TrainScanner stitcher')
+        logger = logging.getLogger()
+        ####Avoid unknown error.
+        #myargparse does not show the usage correctly.
+        ap0 = argparse.ArgumentParser(fromfile_prefix_chars='@',
+                                        description='TrainScanner stitcher')
+        prepare_parser(ap0).parse_known_args(argv[1:])
+        ####
+        ap = myargparse.MyArgumentParser(fromfile_prefix_chars='@',
+                                        description='TrainScanner stitcher')
         self.parser  = prepare_parser(ap)
         self.params,unknown = self.parser.parse_known_args(argv[1:])
-        self.outfilename = self.params.logbase+".png"
+        #Decide the path to output.
+        #Movie file may have different path and may be in the different location.
+        #tsconf file must be given.
+        #tsconf file has different basename.
+        #The stitched result mainly depends on the settings in the tsconf file,
+        #so the output dir and name should be same as tsconf
+
+        #Usually the settings are given as a tsconf file,
+        #which is specified in the command line with "@" symbol.
+        if self.parser.fromfile_name is not None:
+            logger.debug("Conf filename {0}".format(self.parser.fromfile_name))
+            filename = self.parser.fromfile_name
+            if filename[-7:] == ".tsconf":
+                filename = filename[:-7]
+                self.tspos = filename + ".tspos"
+            filename += ".png"
+        elif self.params.logbase is not None:
+            filename = self.params.logbase + ".png"
+            self.tspos = self.params.logbase + ".tspos"
+        else:
+            #tspos is unknown, so it won't work.
+            logger.error("tsconf and tspos must be specified with --log option.")
+        logger.debug("Output filename: {0}".format(filename))
+
+        self.outfilename = filename
 
         self.cap = cv2.VideoCapture(self.params.filename)
         self.firstFrame = True
@@ -208,7 +241,7 @@ class Stitcher(Canvas):
         locations = []
         absx = 0
         absy = 0
-        tspos = open(self.params.logbase + ".tspos")
+        tspos = open(self.tspos)
         for line in tspos.readlines():
             if len(line) > 0 and line[0] != '@':
                 cols = [int(x) for x in line.split()]
@@ -304,5 +337,13 @@ class Stitcher(Canvas):
         
 
 if __name__ == "__main__":
+    debug =True
+    if debug:
+        logging.basicConfig(level=logging.DEBUG,
+                            #filename='log.txt',
+                            format="%(asctime)s %(levelname)s %(message)s")
+    else:
+        logging.basicConfig(level=logging.INFO,
+                            format="%(asctime)s %(levelname)s %(message)s")
     st = Stitcher(argv=sys.argv)
     st.stitch()

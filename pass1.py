@@ -6,8 +6,9 @@ import numpy as np
 import math
 import trainscanner
 import sys
+import os
 import re
-import argparse
+import myargparse
 import itertools
 import logging
 
@@ -119,7 +120,7 @@ def canvas_size(canvas_dimen, image, x, y):
 
 
 def prepare_parser():
-    parser = argparse.ArgumentParser(description='TrainScanner matcher', fromfile_prefix_chars='@',)
+    parser = myargparse.MyArgumentParser(description='TrainScanner matcher', fromfile_prefix_chars='@',)
     parser.add_argument('-z', '--zero', action='store_true',
                         dest='zero',
                         help="Suppress drift.")
@@ -192,19 +193,46 @@ def prepare_parser():
 class Pass1():
         
     def __init__(self,argv):
+        logger = logging.getLogger()
         self.parser = prepare_parser()
         self.params, unknown = self.parser.parse_known_args(argv[1:])
-        #print(vars(self.params))
+        #Assume the video is in the same dir.
+        self.dirnames = []
+        if self.parser.fromfile_name is not None:
+            logger.debug("Conf filename {0}".format(self.parser.fromfile_name))
+            self.dirnames.append(os.path.dirname(self.parser.fromfile_name))
+        self.dirnames.append(os.path.dirname(self.params.filename))
+        #remove the dirname from the filename
+        self.params.filename = os.path.basename(self.params.filename)
+        logger.debug("Directory candidates: {0}".format(self.dirnames))
+        
+        
         
     def before(self):
         """
         prepare for the loop
         note that it is a generator.
         """
+        logger = logging.getLogger()
+        ####Determine the movie file########################
+        found = None
+        logger.debug("Basename {0}".format(self.params.filename))
+        # First we assume that the movie is in the same directory as tsconf if tsconf is specified.
+        # Otherwise we look at the absolute path given in the command line or in the tsconf.
+        for dirname in self.dirnames:
+            filename = dirname+"/"+self.params.filename
+            if os.path.exists(filename):
+                found = filename
+                break
+        if not found:
+            logger.error("File not found.")
+        #update the file path
+        self.params.filename = found
+        logger.debug("Found filename {0}".format(found))
         ####prepare tsconf file#############################
-        self.head   = ""
+        self.tsconf   = ""
         args = trainscanner.deparse(self.parser,self.params)
-        self.head += "{0}\n".format(args["__UNNAMED__"])
+        self.tsconf += "{0}\n".format(args["__UNNAMED__"])
         for option in args:
             value = args[option]
             if value is None or option in ("__UNNAMED__"):
@@ -214,28 +242,28 @@ class Pass1():
                 for v in value:
                     equal = v.find("=")
                     if equal >= 0:
-                        self.head += "--{0}\n{1}\n".format(v[:equal],v[equal+1:])
+                        self.tsconf += "--{0}\n{1}\n".format(v[:equal],v[equal+1:])
                     else:
-                        self.head += "--{0}\n".format(v)
+                        self.tsconf += "--{0}\n".format(v)
             else:
                 if option in ("--perspective", "--focus", "--crop", ):  #multiple values
-                    self.head += "{0}\n".format(option)
+                    self.tsconf += "{0}\n".format(option)
                     for v in value:
-                        self.head += "{0}\n".format(v)
+                        self.tsconf += "{0}\n".format(v)
                 elif option in ("--zero", "--stall", "--helix", "--film", "--rect"):
                     if value is True:
-                        self.head += option+"\n"
+                        self.tsconf += option+"\n"
                 else:
-                    self.head += "{0}\n{1}\n".format(option,value)
-        #print(self.head)
+                    self.tsconf += "{0}\n{1}\n".format(option,value)
+        #print(self.tsconf)
         #end of the header
 
         #############Open the video file #############################
-        self.cap    = cv2.VideoCapture(self.params.filename)
-        self.body   = ""
+        self.cap    = cv2.VideoCapture(found)
+        self.tspos   = ""
 
         self.nframes = 0  #1 is the first frame
-        self.cache   = [] #save only "active" frames
+        self.cache   = [] #save only "active" frames.
         self.deltax  = [] #store displacements
         self.deltay  = [] #store displacements
         #This does not work with some kind of MOV. (really?)
@@ -283,15 +311,15 @@ class Pass1():
     def after(self):
         if self.canvas is None:
             return
-        self.head += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
+        self.tsconf += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
         if self.params.log is None:
             ostream = sys.stdout
         else:
             ostream = open(self.params.log+".tsconf", "w")
-        ostream.write(self.head)
+        ostream.write(self.tsconf)
         if self.params.log is not None:
             ostream = open(self.params.log+".tspos", "w")
-        ostream.write(self.body)
+        ostream.write(self.tspos)
         ostream.close()
 
     def backward_match(self, velx,vely):
@@ -301,20 +329,17 @@ class Pass1():
         Do not break the cache. It will be used again.
         """
         logger = logging.getLogger()
-        a = self.cache[-1][1]   #image
-        an = self.cache[-1][0]  #frame #
-        bn = -1 
-        ax = self.absx
-        ay = self.absy
-        cursor = len(self.cache) - 1
-        newbody = []
+        curFrameNum, curFrameImg = self.cache.pop(-1)
+        prevFrameNum = -1 
+        curFrameAbsX = self.absx
+        curFrameAbsY = self.absy
+        newDeltas = []
         for i in range(self.precount + self.params.trailing):
-            next = len(self.cache) - 2 - i
-            if next < 0:
+            logger.debug("Rewinding {0} {1} {2}".format(i,self.precount+self.params.trailing,len(self.cache)))
+            if len(self.cache) == 0:
                 break
-            b = self.cache[next][1]  #image
-            bn = self.cache[next][0] #frame #
-            d = motion(b, a, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(velx, vely))
+            prevFrameNum,prevFrameImg = self.cache.pop(-1)
+            d = motion(prevFrameImg, curFrameImg, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(velx, vely))
             if d is None:
                 dx = 0
                 dy = 0
@@ -325,21 +350,25 @@ class Pass1():
             if abs(dx) > self.params.antishake or abs(dy) > self.params.antishake:
                 velx = dx
                 vely = dy
-            newbody = [[bn, velx, vely]] + newbody
-            ax -= velx
-            ay -= vely
-            self.canvas = canvas_size(self.canvas, a, ax, ay)
-            logger.info("Rewind {0} {1} {2}".format(bn,velx, vely))
-            a = b
-            an = bn
+            newDeltas = [[prevFrameNum, velx, vely]] + newDeltas
+            curFrameAbsX -= velx
+            curFrameAbsY -= vely
+            self.canvas = canvas_size(self.canvas, curFrameImg, curFrameAbsX, curFrameAbsY)
+            logger.info("Rewind {0} {1} {2}".format(prevFrameNum,velx, vely))
+            curFrameImg = prevFrameImg
+            curFrameNum = prevFrameNum
+        #dispose cache
+        self.cache = None #Dispose image cache.
+        logger.debug("Disposed the image cache.")
+        
         #trick; by the backward matching, the first frame may not be located at the origin
         #So the first frame is specified by the abs coord.
-        if bn < 0:
+        if prevFrameNum < 0:
             return ""
-        newbody = [[bn, ax, ay]] + newbody
+        newDeltas = [[prevFrameNum, curFrameAbsX, curFrameAbsY]] + newDeltas
         s = ""
-        for b in newbody:
-            s += "{0} {1} {2}\n".format(*b)
+        for delta in newDeltas:
+            s += "{0} {1} {2}\n".format(*delta)
         return s
                   
     def onestep(self):
@@ -401,10 +430,10 @@ class Pass1():
         if len(self.deltax) > 5:  #keep only 5 frames
             self.deltax.pop(0)
             self.deltay.pop(0)
-        if nextframe is not None:
+        if nextframe is not None and self.cache is not None:
             self.cache.append([self.nframes, nextframe])
-        if len(self.cache) > 100: #always keep 100 frames in cache
-            self.cache.pop(0)
+            if len(self.cache) > 100: #always keep 100 frames in cache
+                self.cache.pop(0)
         diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus)
         ##### if the motion is very small
         if not self.guess_mode:
@@ -415,7 +444,7 @@ class Pass1():
                 #if the displacements are almost constant in the last 3 frames,
                 if ddx < self.params.antishake and ddy < self.params.antishake:
                     self.guess_mode = True
-                    self.body = self.backward_match(dx,dy)
+                    self.tspos = self.backward_match(dx,dy)
                     self.velx = dx
                     self.vely = dy
                     self.match_fail = 0
@@ -447,14 +476,13 @@ class Pass1():
         self.absx += self.velx
         self.absy += self.vely
         self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
-        self.body += "{0} {3} {4}\n".format(self.nframes,self.absx,self.absy,self.velx,self.vely)
+        self.tspos += "{0} {3} {4}\n".format(self.nframes,self.absx,self.absy,self.velx,self.vely)
         self.frame   = nextframe
         self.preview = nextpreview
         return diff_img
 
 
 if __name__ == "__main__":
-    pass1 = Pass1(argv=sys.argv)
     debug =True
     if debug:
         logging.basicConfig(level=logging.DEBUG,
@@ -463,6 +491,7 @@ if __name__ == "__main__":
     else:
         logging.basicConfig(level=logging.INFO,
                             format="%(asctime)s %(levelname)s %(message)s")
+    pass1 = Pass1(argv=sys.argv)
     for num, den in pass1.before():
         pass
     while True:

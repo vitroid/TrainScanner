@@ -189,7 +189,7 @@ class SettingsGUI(QWidget):
         self.antishake = 5
         self.estimate = 10
         self.slitwidth = 50
-        self.identity = 2.0
+        self.identity = 0.5
         self.accel    = 1
 
         #private
@@ -569,6 +569,7 @@ class SettingsGUI(QWidget):
         pass1_options += ["--trail", "{0}".format(self.trailing)]
         pass1_options += ["--antishake", "{0}".format(self.antishake)]
         pass1_options += ["--estimate", "{0}".format(self.estimate)]
+        pass1_options += ["--identity", "{0}".format(self.identity)]
         pass1_options += ["--skip", "{0}".format(self.editor.imageselector2.slider.start()*10)]
         pass1_options += ["--last", "{0}".format(self.editor.imageselector2.slider.end()*10)]
         pass1_options += ["--focus",] + [str(x) for x in self.editor.focus]
@@ -1031,7 +1032,7 @@ def main():
     if loc[:2] == "ja":
         translator.load(rpath+"/i18n/trainscanner_ja")
     app.installTranslator(translator)
-    debug = True
+    debug = False
     if debug:
         logging.basicConfig(level=logging.DEBUG,
                             #filename='log.txt',
