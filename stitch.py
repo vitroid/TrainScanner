@@ -47,7 +47,6 @@ class AlphaMask():
             slitin = self.img_width//2 + self.slitpos
             slitout = slitin - slitwidth
             alpha[:slitout,:] = 1.0
-            print(slitin,slitout,slitwidth)
             alpha[slitout:slitin, :] = np.fromfunction(lambda x,v: (slitwidth-x)/ slitwidth, (slitwidth, 3))
         self.alphas[displace] = alpha
         return alpha
@@ -79,8 +78,6 @@ class Canvas():
     def __init__(self, image=None, position=None):
         self.image  = image
         self.origin = position
-        #if self.image is not None:
-        #    print("Initial canvas is given", image.shape, position)
         self.first = True
     def abs_merge(self, add_image, x, y, alpha=None ):
         if self.image is None:
@@ -89,7 +86,6 @@ class Canvas():
             return
         if self.first:
             self.first = False
-            #print(add_image.shape, x,y)
         absx, absy = self.origin   #absolute coordinate of the top left of the canvas
         cxmin = absx
         cymin = absy
@@ -182,8 +178,6 @@ class Stitcher(Canvas):
                                      description='TrainScanner stitcher')
         self.parser  = prepare_parser(ap)
         self.params,unknown = self.parser.parse_known_args(argv[1:])
-        #print(3,self.params,unknown)
-        #print(vars(self.params))
         self.outfilename = self.params.logbase+".png"
 
         self.cap = cv2.VideoCapture(self.params.filename)
@@ -222,7 +216,6 @@ class Stitcher(Canvas):
                     absx += cols[1]
                     absy += cols[2]
                     cols = [cols[0],absx,absy] + cols[1:]
-                    #print(cols)
                     cols[1:] = [int(x*self.params.scale) for x in cols[1:]]
                     locations.append(cols)
         self.locations = locations

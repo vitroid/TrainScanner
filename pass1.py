@@ -9,7 +9,7 @@ import sys
 import re
 import argparse
 import itertools
-
+import logging
 
 def draw_focus_area(f, focus, delta=0):
     h, w = f.shape[0:2]
@@ -244,7 +244,6 @@ class Pass1():
         #ret, frame = self.cap.read()
         #if not ret:
         self.nframes = 0
-        #print("skip:",skip)
     
         for i in range(self.params.skip):  #skip frames
             ret = self.cap.grab()
@@ -301,6 +300,7 @@ class Pass1():
         "postdict" the displacements
         Do not break the cache. It will be used again.
         """
+        logger = logging.getLogger()
         a = self.cache[-1][1]   #image
         an = self.cache[-1][0]  #frame #
         bn = -1 
@@ -314,7 +314,6 @@ class Pass1():
                 break
             b = self.cache[next][1]  #image
             bn = self.cache[next][0] #frame #
-            #print(an,bn,self.params.focus, self.params.maxaccel,self.velx, self.vely)
             d = motion(b, a, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(velx, vely))
             if d is None:
                 dx = 0
@@ -330,7 +329,7 @@ class Pass1():
             ax -= velx
             ay -= vely
             self.canvas = canvas_size(self.canvas, a, ax, ay)
-            print(bn,velx, vely)
+            logger.info("Rewind {0} {1} {2}".format(bn,velx, vely))
             a = b
             an = bn
         #trick; by the backward matching, the first frame may not be located at the origin
@@ -344,6 +343,7 @@ class Pass1():
         return s
                   
     def onestep(self):
+        logger = logging.getLogger()
         ret = True
         ##### Pick up every x frame
         if self.params.skip < self.params.last < self.nframes + self.params.every:
@@ -352,13 +352,13 @@ class Pass1():
             ret = self.cap.grab()
             self.nframes += 1
             if not ret:
-                print("Video ended (1).")
+                logger.debug("Video ended (1).")
                 return None
         ret, nextframe = self.cap.read()
         self.nframes += 1
         ##### return None if the frame is empty
         if not ret:
-            print("Video ended (2).")
+            logger.debug("Video ended (2).")
             return None
         ##### compare with the previous raw frame
         diff = cv2.absdiff(nextframe,self.rawframe)
@@ -366,7 +366,7 @@ class Pass1():
         self.rawframe = nextframe.copy()
         diff = np.sum(diff) / np.product(diff.shape)
         if diff < self.params.identity:
-            sys.stderr.write("skip identical frame #{0}\n".format(diff))
+            logger.info("skip identical frame #{0}".format(diff))
             #They are identical frames
             #This happens when the frame rate difference is compensated.
             return True
@@ -386,7 +386,7 @@ class Pass1():
             #because the velocity uncertainty.
             delta = motion(self.frame, nextframe, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(self.velx,self.vely))
             if delta is None:
-                print("Matching failed (probabily the motion detection window goes out of the image).")
+                logger.error("Matching failed (probabily the motion detection window goes out of the image).")
                 return None
             dx,dy = delta
         else:
@@ -420,7 +420,7 @@ class Pass1():
                     self.vely = dy
                     self.match_fail = 0
             if not self.guess_mode:
-                sys.stderr.write("({0} {1} {2})\n".format(self.nframes,dx,dy))
+                logger.info("Wait ({0} {1} {2})".format(self.nframes,dx,dy))
                 self.frame   = nextframe
                 self.preview = nextpreview
                 return diff_img
@@ -429,7 +429,7 @@ class Pass1():
             ##### wait until motion becomes enough.
             self.match_fail += 1
             if self.match_fail <= self.params.trailing:
-                sys.stderr.write("({0} {1} {2} +{3}/{4})\n".format(self.nframes,dx,dy,self.match_fail, self.params.trailing))
+                logger.info("Skip ({0} {1} {2} +{3}/{4})".format(self.nframes,dx,dy,self.match_fail, self.params.trailing))
                 # do not update the velx and vely
                 #but update the frame and preview
                 #self.frame   = nextframe
@@ -443,7 +443,7 @@ class Pass1():
             self.velx = dx
             self.vely = dy
             self.match_fail = 0
-        sys.stderr.write(" {0} {2} {3} #{1}\n".format(self.nframes,np.amax(diff), self.velx, self.vely))
+        logger.info("Scan {0} {2} {3} #{1}".format(self.nframes,np.amax(diff), self.velx, self.vely))
         self.absx += self.velx
         self.absy += self.vely
         self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
@@ -455,6 +455,14 @@ class Pass1():
 
 if __name__ == "__main__":
     pass1 = Pass1(argv=sys.argv)
+    debug =True
+    if debug:
+        logging.basicConfig(level=logging.DEBUG,
+                            #filename='log.txt',
+                            format="%(asctime)s %(levelname)s %(message)s")
+    else:
+        logging.basicConfig(level=logging.INFO,
+                            format="%(asctime)s %(levelname)s %(message)s")
     for num, den in pass1.before():
         pass
     while True:
@@ -464,5 +472,4 @@ if __name__ == "__main__":
         if ret is not True: #True means skipping
             cv2.imshow("pass1", ret)
             cv2.waitKey(1)
-            
     pass1.after()

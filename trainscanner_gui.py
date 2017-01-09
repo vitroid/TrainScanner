@@ -12,6 +12,7 @@ import math
 import trainscanner
 from imageselector2 import ImageSelector2
 import time
+import logging
 
 #File handling
 import os
@@ -79,7 +80,6 @@ class AsyncImageLoader(QObject):
         self.isRunning = False
         #trash images
         self.snapshots = []
-        #print("Thumbs trashed.")
 
 
     def task(self):
@@ -98,8 +98,6 @@ class AsyncImageLoader(QObject):
                 ret = self.cap.grab()
                 if not ret:
                     break
-
-        #print("Finished")
 
 
 class DrawableLabel(QLabel):
@@ -446,6 +444,7 @@ class SettingsGUI(QWidget):
                 code = 'utf-8'
                 return code
 
+        logger = logging.getLogger()
         if self.editor is not None:
             self.editor.close()
         self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
@@ -456,7 +455,6 @@ class SettingsGUI(QWidget):
         #if type(self.filename) is not str:
         #    self.filename = unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8')
         #for py3 self.filename is a str
-        #print(type(self.filename))
         if self.filename.rfind(".tsconf") + 7 == len(self.filename):
             #read all initial values from the file.
             ap = argparse.ArgumentParser(fromfile_prefix_chars='@',
@@ -464,20 +462,18 @@ class SettingsGUI(QWidget):
             parser_stitch = pp2(ap)
             tsconf = self.filename
             params,unknown = parser_stitch.parse_known_args(["@"+tsconf])
-            print(3,params,unknown)
+            logger.debug("Params1 {0} {1}".format(params,unknown))
             unknown += [params.filename] #supply filename for pass1 parser
-            #print(params.filename,"<<<")
             self.filename = params.filename
             parser_pass1 = pp1()
             #params2,unknown2 = parser_pass1.parse_known_args(unknown)
             params2,unknown2 = parser_pass1.parse_known_args(["@"+tsconf])
-            print(4,params2,unknown2)
+            logger.debug("Params2 {0} {1}".format(params2,unknown2))
             #Only non-default values should overwrite the pp2 result.
             p1 = vars(params)
             p2 = vars(params2)
             for key in p2:
                 p1[key] = p2[key]
-            print(p1)
             #set variables in self
             #and make the editor also.
             self.editor = EditorGUI(self, params=p1)
@@ -510,7 +506,7 @@ class SettingsGUI(QWidget):
         self.editor.sliderR.setMin(0)
         self.editor.sliderR.setMax(1000)
         self.editor.sliderR.setRange(self.editor.perspective[1],self.editor.perspective[3],10)
-        print("setRange crop ",self.editor.croptop,self.editor.cropbottom)
+        logger.debug("setRange crop {0} {1}".format(self.editor.croptop,self.editor.cropbottom))
         self.editor.crop_slider.setMin(0)
         self.editor.crop_slider.setMax(1000)
         self.editor.crop_slider.setRange(self.editor.croptop,self.editor.cropbottom,10)
@@ -592,7 +588,6 @@ class SettingsGUI(QWidget):
         for op in stitch_options:
             argv += ["-2", op]
         argv += [self.filename,]
-        #print(argv)
         
         self.matcher = pass1_gui.MatcherUI(argv, False)  #do not terminate
         self.matcher.exec_()
@@ -624,6 +619,7 @@ class EditorGUI(QWidget):
         
         # options
         #self.skip       = 0
+        logger = logging.getLogger()
         self.perspective = [0,0,1000,1000]
         self.angle_degree    = 0
         self.focus = [333,666,333,666]
@@ -631,7 +627,7 @@ class EditorGUI(QWidget):
         self.cropbottom = 1000
         self.slitpos = 250
         if params is not None:
-            print(params)
+            logger.debug("EditorGUI params {0}".format(params))
             self.angle_degree = params["rotate"]
             if params["perspective"] is not None:
                 self.perspective     = params["perspective"]
@@ -874,12 +870,13 @@ class EditorGUI(QWidget):
         """
         if self.frame < 0:
             return
+        logger = logging.getLogger()
         image = self.asyncimageloader.snapshots[self.frame]
         self.transform = trainscanner.transformation(self.angle_degree, self.perspective, [self.croptop, self.cropbottom])
         rotated, warped, cropped = self.transform.process_first_image(image)
         self.put_cv2_image(rotated, self.raw_image_pane)
         if region is not None:
-            print(region)
+            logger.debug("show_snapshot region {0}".format(region))
             #assume the QLabel size is square preview_size x preview_size
             top, left, bottom, right = region.top(), region.left(), region.bottom(), region.right()
             if top < 0:
@@ -906,12 +903,10 @@ class EditorGUI(QWidget):
                     height = height * self.preview_size // width
                     width  = self.preview_size
             #indicate the region size relative to the image size
-            #print(left,right,top,bottom)
             top    = top    * 1000 // height + 500
             bottom = bottom * 1000 // height + 500
             left   = left   * 1000 // width + 500
             right  = right  * 1000 // width + 500
-            #print(left,right,top,bottom)
             if top < 0:
                 top = 0
             if top > 1000:
@@ -929,7 +924,6 @@ class EditorGUI(QWidget):
             if right > 1000:
                 right = 1000
             self.focus = left,right,top,bottom
-            #print(self.focus)
             
         self.put_cv2_image(cropped, self.processed_pane)
         
@@ -993,7 +987,6 @@ def SystemLanguage():
             lang = re.sub(r'[ "]+', '', l)
             loc.append(lang)
         return loc[0]
-        #print(loc)
     elif ostype == "Windows":
         import ctypes
         import locale
@@ -1038,6 +1031,14 @@ def main():
     if loc[:2] == "ja":
         translator.load(rpath+"/i18n/trainscanner_ja")
     app.installTranslator(translator)
+    debug = True
+    if debug:
+        logging.basicConfig(level=logging.DEBUG,
+                            #filename='log.txt',
+                            format="%(asctime)s %(levelname)s %(message)s")
+    else:
+        logging.basicConfig(level=logging.WARN,
+                            format="%(asctime)s %(levelname)s %(message)s")
     se = SettingsGUI()
     se.show()
     se.raise_()
