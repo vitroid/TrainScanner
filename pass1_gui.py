@@ -28,9 +28,6 @@ class Worker(QObject):
     def __init__(self, argv):
         super(Worker, self).__init__()
         self._isRunning = True
-        q = QImage()
-        q.load("test/by.png")
-        self.frameRendered.emit(q)
         self.pass1 = pass1.Pass1(argv=argv)
 
     def task(self):
@@ -50,6 +47,7 @@ class Worker(QObject):
                 self.frameRendered.emit(cv2toQImage(ret))
 
         self.pass1.after()
+        self.pass1.done()
         #print("finished...")
         self.finished.emit()
 

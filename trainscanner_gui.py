@@ -466,7 +466,6 @@ class SettingsGUI(QWidget):
             unknown += [params.filename] #supply filename for pass1 parser
             self.filename = params.filename
             parser_pass1 = pp1()
-            #params2,unknown2 = parser_pass1.parse_known_args(unknown)
             params2,unknown2 = parser_pass1.parse_known_args(["@"+tsconf])
             logger.debug("Params2 {0} {1}".format(params2,unknown2))
             #Only non-default values should overwrite the pp2 result.
@@ -590,26 +589,25 @@ class SettingsGUI(QWidget):
             argv += ["-2", op]
         argv += [self.filename,]
         
-        self.matcher = pass1_gui.MatcherUI(argv, False)  #do not terminate
-        self.matcher.exec_()
-        if self.matcher.terminated:
+        matcher = pass1_gui.MatcherUI(argv, False)  #do not terminate
+        matcher.exec_()
+        if matcher.terminated:
+            matcher = None
             return
+        matcher = None
         argv = ["stitch"]
         argv += [ "@"+logfilenamebase+".tsconf",]
             
-        self.stitcher = stitch_gui.StitcherUI(argv, False)
-        file_name = self.stitcher.st.outfilename
-        self.stitcher.setMaximumHeight(500)
-        self.stitcher.showMaximized()
-        #self.stitcher.show()
-        
+        stitcher = stitch_gui.StitcherUI(argv, False)
+        file_name = stitcher.stitcher.outfilename
+        stitcher.setMaximumHeight(500)
+        stitcher.showMaximized()
+        stitcher = None
 
     def closeEvent(self,event):
         if self.editor is not None:
             self.editor.close()
 
-    #def focusInEvent(self, event):
-    #    #clear precede input
 
 #https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class EditorGUI(QWidget):

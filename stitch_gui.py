@@ -9,15 +9,16 @@ import math
 import numpy as np
 import cv2
 import sys
+import logging
 
 class Renderer(QObject):
     frameRendered = pyqtSignal(QImage)  # it is target of emit()
     finished = pyqtSignal()
     progress = pyqtSignal(int)
 
-    def __init__(self, parent=None, st=None, preview_ratio=1.0):
+    def __init__(self, parent=None, stitcher=None, preview_ratio=1.0):
         super(Renderer, self).__init__(parent)
-        self.st = st
+        self.stitcher = stitcher
         self._isRunning = True
         self.preview_ratio = preview_ratio
             
@@ -33,14 +34,14 @@ class Renderer(QObject):
         if not self._isRunning:
             self._isRunning = True
 
-        for num,den in self.st.before():
+        for num,den in self.stitcher.before():
             self.progress.emit(num*100//den)
-        for num,den in self.st.loop():
+        for num,den in self.stitcher.loop():
             if not self._isRunning:
                 break
         #while self._isRunning == True:
-        #    result = self.st.onestep()
-            canvas = self.st.image #.copy()
+        #    result = self.stitcher.onestep()
+            canvas = self.stitcher.image #.copy()
             height, width = canvas.shape[0:2]
             h = int(height*self.preview_ratio)
             w = int(width *self.preview_ratio)
@@ -48,13 +49,14 @@ class Renderer(QObject):
             self.cv2toQImage(resized)
             image = QImage(resized.data, w, h, w*3, QImage.Format_RGB888)
             self.frameRendered.emit(image)
-        #    num,den = self.st.getProgress()
+        #    num,den = self.stitcher.getProgress()
             self.progress.emit(num*100//den)
             
         #    if result is not None:
         #        break
                         
-        self.st.after()
+        self.stitcher.after()
+        self.stitcher.done()
         self.finished.emit()
         
     def stop(self):
@@ -106,23 +108,23 @@ class StitcherUI(QDialog):
     def __init__(self, argv, terminate, parent=None):
         super(StitcherUI, self).__init__(parent)
         self.setWindowTitle("Stitcher Preview")
-        st = stitch.Stitcher(argv=argv)
-        self.st = st
+        stitcher = stitch.Stitcher(argv=argv)
+        self.stitcher = stitcher
         #determine the shrink ratio to avoid too huge preview
         preview_ratio = 1.0
-        if st.image.shape[1] > 10000:
-            preview_ratio = 10000.0 / st.image.shape[1]
-        if st.image.shape[0]*preview_ratio > 500:
-            preview_ratio = 500.0 / st.image.shape[0]
+        if stitcher.image.shape[1] > 10000:
+            preview_ratio = 10000.0 / stitcher.image.shape[1]
+        if stitcher.image.shape[0]*preview_ratio > 500:
+            preview_ratio = 500.0 / stitcher.image.shape[0]
         self.terminate = terminate
         self.thread = QThread()
         self.thread.start()
 
-        self.worker = Renderer(st=st, preview_ratio=preview_ratio)
+        self.worker = Renderer(stitcher=stitcher, preview_ratio=preview_ratio)
         #it might be too early.
         
         #determine the window size
-        height,width = st.image.shape[0:2]
+        height,width = stitcher.image.shape[0:2]
         height = int(height*preview_ratio)
         #determine the preview area size
         width = int(width*preview_ratio)
@@ -170,12 +172,22 @@ class StitcherUI(QDialog):
         self.stop_thread()
         
     def stop_thread(self):
+        logger = logging.getLogger()
         self.worker.stop()
         self.thread.quit()
         self.thread.wait()
+        logger.debug("Stitch_gui thread stopped.")
 
 
 if __name__ == '__main__':
+    debug =True
+    if debug:
+        logging.basicConfig(level=logging.DEBUG,
+                            #filename='log.txt',
+                            format="%(asctime)s %(levelname)s %(message)s")
+    else:
+        logging.basicConfig(level=logging.INFO,
+                            format="%(asctime)s %(levelname)s %(message)s")
 
     import sys
 

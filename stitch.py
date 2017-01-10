@@ -288,6 +288,7 @@ class Stitcher(Canvas):
         #while result is None:
         #    result = self.onestep()
         self.after()
+        self.done()
                 
 
     def loop(self):
@@ -335,6 +336,13 @@ class Stitcher(Canvas):
             img = rect.rectify( img )
             cv2.imwrite(file_name + ".rect.png", img)
         
+
+    def done(self):
+        """
+        Release memory
+        """
+        self.image = None
+
 
 if __name__ == "__main__":
     debug =True

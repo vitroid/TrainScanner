@@ -322,6 +322,15 @@ class Pass1():
         ostream.write(self.tspos)
         ostream.close()
 
+    def done(self):
+        """
+        release memory
+        """
+        self.rawframe = None
+        self.frame    = None
+        self.canvas   = None
+        
+
     def backward_match(self, velx,vely):
         """
         using cached images,
