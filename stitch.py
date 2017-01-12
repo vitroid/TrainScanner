@@ -6,6 +6,7 @@ import numpy as np
 import math
 import trainscanner
 import sys
+import os
 import myargparse
 import argparse
 import film
@@ -187,33 +188,35 @@ class Stitcher(Canvas):
                                         description='TrainScanner stitcher')
         self.parser  = prepare_parser(ap)
         self.params,unknown = self.parser.parse_known_args(argv[1:])
-        #Decide the path to output.
-        #Movie file may have different path and may be in the different location.
-        #tsconf file must be given.
-        #tsconf file has different basename.
-        #The stitched result mainly depends on the settings in the tsconf file,
-        #so the output dir and name should be same as tsconf
-
-        #Usually the settings are given as a tsconf file,
-        #which is specified in the command line with "@" symbol.
+        #Decide the paths
+        moviepath = self.params.filename
+        moviedir  = os.path.dirname(moviepath)
+        moviebase = os.path.basename(moviepath)
+        self.tsposfile = ""
+        
         if self.parser.fromfile_name is not None:
-            logger.debug("Conf filename {0}".format(self.parser.fromfile_name))
-            filename = self.parser.fromfile_name
-            if filename[-7:] == ".tsconf":
-                filename = filename[:-7]
-                self.tspos = filename + ".tspos"
-            filename += ".png"
-        elif self.params.logbase is not None:
-            filename = self.params.logbase + ".png"
-            self.tspos = self.params.logbase + ".tspos"
-        else:
-            #tspos is unknown, so it won't work.
-            logger.error("tsconf and tspos must be specified with --log option.")
-        logger.debug("Output filename: {0}".format(filename))
-
-        self.outfilename = filename
-
-        self.cap = cv2.VideoCapture(self.params.filename)
+            #When the "@"file is specified,
+            #read tsconf there. (actually it is alread read.)
+            #read tspos at the same path
+            tsconfdir = os.path.dirname(self.parser.fromfile_name)
+            tsconfbase = os.path.basename(self.parser.fromfile_name)
+            if tsconfbase[-7:] == ".tsconf":
+                tsconfbase = tsconfbase[:-7]
+            self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
+        #or tspos in the logbase
+        if self.tsposfile == "" or not os.path.exists(self.tsposfile):
+            tsconfdir = os.path.dirname(self.parser.logbase)
+            tsconfbase = os.path.basename(self.parser.logbase)
+            self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
+        moviefile = tsconfdir + "/" + moviebase
+        self.outfilename = tsconfdir + "/" + tsconfbase + ".png"
+        if not os.path.exists(moviefile):
+            moviefile = moviepath
+        logger.info("TSPos  {0}".format(self.tsposfile))
+        logger.info("Movie  {0}".format(moviefile))
+        logger.info("Output {0}".format(self.outfilename))
+        
+        self.cap = cv2.VideoCapture(moviefile)
         self.firstFrame = True
         self.currentFrame = 0 #1 is the first frame
 
@@ -241,7 +244,7 @@ class Stitcher(Canvas):
         locations = []
         absx = 0
         absy = 0
-        tspos = open(self.tspos)
+        tspos = open(self.tsposfile)
         for line in tspos.readlines():
             if len(line) > 0 and line[0] != '@':
                 cols = [int(x) for x in line.split()]
