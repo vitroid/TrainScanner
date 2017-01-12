@@ -6,7 +6,7 @@ import numpy as np
 import sys
 import argparse
 import logging
-
+import videosequence as vs
 import pass1
 
 
@@ -44,28 +44,14 @@ class ShakeReduction():
         self.parser = prepare_parser()
         self.params, unknown = self.parser.parse_known_args(argv[1:])
 
-        self.cap    = cv2.VideoCapture(self.params.filename)
-
-    def fastforward(self):
-        self.nframe = 1
-        last = 0
-        for i in range(self.params.skip):  #skip frames
-            ret = self.cap.grab()
-            self.nframe += 1
-            if self.nframe * 100 // self.params.skip != last:
-                last = self.nframe * 100 // self.params.skip
-                yield last
-            if not ret:
-                break
-        ret, self.frame0 = self.cap.read()
-        self.nframe += 1
-        if not ret:
-            sys.exit(0)
+        self.frames    = vs.VideoSequence(self.params.filename)
+        
 
     
     def onestep(self):
         logger = logging.getLogger()
-        h,w = self.frame0.shape[0:2]
+        frame0 = self.rawframe = cv2.cvtColor(np.array(self.frames[self.params.skip]), cv2.COLOR_RGB2BGR)
+        h,w = frame0.shape[0:2]
         crop = [self.params.crop[0]*w//1000,
                 self.params.crop[1]*w//1000,
                 self.params.crop[2]*h//1000,
@@ -73,23 +59,24 @@ class ShakeReduction():
         wc = crop[1] - crop[0]
         hc = crop[3] - crop[2]
         out   =  cv2.VideoWriter(self.params.filename+".sr.m4v",cv2.VideoWriter_fourcc('m','p','4','v'), 30, (wc,hc))
-        cropped = self.frame0[crop[2]:crop[3],
-                              crop[0]:crop[1], :]
+        cropped = frame0[crop[2]:crop[3],
+                         crop[0]:crop[1], :]
         out.write(cropped)
 
         dx = 0
         dy = 0
+        f = self.params.skip
         while True:
-            ret, newframe = self.cap.read()
-            self.nframe += 1
-            if not ret:
+            newframe = cv2.cvtColor(np.array(self.frames[f]), cv2.COLOR_RGB2BGR)
+            f += 1
+            if 0 < self.params.last <= f:
                 return
-            d = pass1.motion(newframe, self.frame0, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(dx,dy))
+            d = pass1.motion(newframe, frame0, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(dx,dy))
             if d is not None:
                 dx, dy = d
-            logger.info("{2} Delta: {0} {1}".format(dx,dy, self.nframe))
+            logger.info("{2} Delta: {0} {1}".format(dx,dy, f))
             affine = np.matrix(((1.0,0.0,-dx),(0.0,1.0,-dy)))
-            h,w = self.frame0.shape[0:2]
+            h,w = frame0.shape[0:2]
             cv2.warpAffine(newframe, affine, (w,h), newframe)
             cropped = newframe[crop[2]:crop[3],
                                crop[0]:crop[1], :]
@@ -106,14 +93,13 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO,
                             format="%(asctime)s %(levelname)s %(message)s")
     shaker = ShakeReduction(argv=sys.argv)
-    for progress in shaker.fastforward():
-        logging.getLogger().debug("Progress {0}".format(progress))
     for frame in shaker.onestep():
         h,w = frame.shape[0:2]
         ratio = 700/max(w,h)
         if ratio < 1.0:
             frame = cv2.resize(frame, None, fx=ratio, fy=ratio)
         pass1.draw_focus_area(frame, shaker.params.focus)
+        h,w = frame.shape[0:2]
         crop = [shaker.params.crop[0]*w//1000,
                 shaker.params.crop[1]*w//1000,
                 shaker.params.crop[2]*h//1000,
