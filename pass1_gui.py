@@ -47,8 +47,6 @@ class Worker(QObject):
                 self.frameRendered.emit(cv2toQImage(ret))
 
         self.pass1.after()
-        self.pass1.done()
-        #print("finished...")
         self.finished.emit()
 
     def stop(self):

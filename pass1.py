@@ -13,6 +13,9 @@ import itertools
 import logging
 
 def draw_focus_area(f, focus, delta=0):
+    """
+    cv2形式の画像の中に四角を描く．
+    """
     h, w = f.shape[0:2]
     pos = [w*focus[0]//1000,w*focus[1]//1000,h*focus[2]//1000,h*focus[3]//1000]
     cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
@@ -23,6 +26,9 @@ def draw_focus_area(f, focus, delta=0):
 
 
 def draw_slit_position(f, slitpos, dx):
+    """
+    cv2形式の画像の中にスリットマーカーを描く．
+    """
     h, w = f.shape[0:2]
     if dx > 0:
         x1 = w//2 + slitpos*w//1000
@@ -36,6 +42,10 @@ def draw_slit_position(f, slitpos, dx):
 
 
 def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), antishake=2):
+    """
+    ref画像の，focusで指定された領域内の画像と同じ画像を，image内でさがして，その変位を返す．
+    maxaccelとdeltaが指定されている場合は，探索範囲を絞り高速にマッチングできる．
+    """
     hi,wi = ref.shape[0:2]
     wmin = wi*focus[0]//1000
     wmax = wi*focus[1]//1000
@@ -83,6 +93,9 @@ def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), anti
 
 
 def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
+    """
+    2枚のcv2画像の差を返す．
+    """
     affine = np.matrix(((1.0,0.0,dx),(0.0,1.0,dy)))
     h,w = frame1.shape[0:2]
     frame1 = cv2.warpAffine(frame1, affine, (w,h))
@@ -96,6 +109,10 @@ def diffImage(frame1,frame2,dx,dy,focus=None,slitpos=None):
 
 #Automatically extensible canvas.
 def canvas_size(canvas_dimen, image, x, y):
+    """
+    canvas_dimenで定義されるcanvasの，位置(x,y)にimageを貼りつけた場合の，拡張後のcanvasの大きさを返す．
+    canvas_dimenはcanvasの左上角の絶対座標と，canvasの幅高さの4因子でできている．
+    """
     if canvas_dimen is None:
         h,w = image.shape[:2]
         return w,h,x,y
@@ -120,6 +137,9 @@ def canvas_size(canvas_dimen, image, x, y):
 
 
 def prepare_parser():
+    """
+    pass1のコマンドラインオプションのパーザ
+    """
     parser = myargparse.MyArgumentParser(description='TrainScanner matcher', fromfile_prefix_chars='@',)
     parser.add_argument('-z', '--zero', action='store_true',
                         dest='zero',
@@ -191,7 +211,10 @@ def prepare_parser():
                 
             
 class Pass1():
-        
+    """
+    ムービーを前から読んで，最終的なキャンバスの大きさと，各フレームを貼りつける位置を調べて，tsposファイルに書きだす．
+    実際に大きな画像を作る作業はstitch.pyにまかせる．
+    """
     def __init__(self,argv):
         logger = logging.getLogger()
         self.parser = prepare_parser()
@@ -309,6 +332,9 @@ class Pass1():
 
         
     def after(self):
+        """
+        Action after the loop
+        """
         if self.canvas is None:
             return
         self.tsconf += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
@@ -322,10 +348,6 @@ class Pass1():
         ostream.write(self.tspos)
         ostream.close()
 
-    def done(self):
-        """
-        release memory
-        """
         self.rawframe = None
         self.frame    = None
         self.canvas   = None
