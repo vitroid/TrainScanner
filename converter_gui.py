@@ -3,7 +3,7 @@
 
 #Core of the GUI and image process
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QPushButton, QCheckBox, QFileDialog
-from PyQt5.QtCore    import QTranslator
+from PyQt5.QtCore    import QTranslator, QLocale
 import cv2
 import numpy as np
 import math
@@ -84,32 +84,7 @@ class SettingsGUI(QWidget):
         if self.btn_finish_rect.isChecked():
             rimg = rect.rectify( img )
             cv2.imwrite(file_name + ".rect.png", rimg)
-        
 
-
-
-def SystemLanguage():
-    import platform
-    ostype = platform.system()
-    loc = []
-    if ostype == "Darwin":
-        #for macos
-        import re
-        output = subprocess.check_output(["defaults","read","-g","AppleLanguages"])
-        output = output.decode('utf-8')
-        for l in output.split("\n")[1:len(output)-2]:
-            lang = re.sub(r'[ "]+', '', l)
-            loc.append(lang)
-        return loc[0]
-        #print(loc)
-    elif ostype == "Windows":
-        import ctypes
-        import locale
-        windll = ctypes.windll.kernel32
-        loc = locale.windows_locale[ windll.GetUserDefaultUILanguage() ]
-        return loc
-    return loc
-    
 #for pyinstaller
 def resource_path(relative):
     return os.path.join(
@@ -126,8 +101,7 @@ def main():
     app = QApplication(sys.argv)
     translator = QTranslator(app)
     rpath = getattr(sys, '_MEIPASS', os.getcwd())
-    loc = SystemLanguage()
-    if loc[:2] == "ja":
+    if QLocale.system().language() == QLocale.Japanese:
         translator.load(rpath+"/i18n/trainscanner_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
