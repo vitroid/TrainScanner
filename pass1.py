@@ -510,7 +510,7 @@ class Pass1():
 
 
 if __name__ == "__main__":
-    debug =True
+    debug = True
     if debug:
         logging.basicConfig(level=logging.DEBUG,
                             #filename='log.txt',
