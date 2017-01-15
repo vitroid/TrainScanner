@@ -368,11 +368,11 @@ class Pass1():
         #Prepare a scalable self.canvas with the origin.
         self.canvas = None
         
-        absx,absy = 0, 0
+        absx,absy  = 0, 0
         velx, vely = 0.0, 0.0
         match_fail = 0
         guess_mode = params.stall
-        precount = 0
+        precount   = 0
         preview_size  = 500
         preview       = trainscanner.fit_to_square(cropped, preview_size)
         preview_ratio = preview.shape[0] / cropped.shape[0]
@@ -432,12 +432,13 @@ class Pass1():
             ##### Suppress drifting.
             if params.zero:
                 dy = 0
-            #record anyway.
+            #直近5フレームの移動量を記録する．
             deltax.append(dx)
             deltay.append(dy)
-            if len(deltax) > 5:  #keep only 5 frames
+            if len(deltax) > 5:
                 deltax.pop(0)
                 deltay.pop(0)
+            #最大100フレームの画像を記録する．
             if cropped is not None and self.cache is not None:
                 self.cache.append([nframes, cropped])
                 if len(self.cache) > 100: #always keep 100 frames in self.cache
@@ -448,11 +449,14 @@ class Pass1():
             diff_img = diffImage(cropped,lastframe,int(dx),int(dy))
             diff_img = trainscanner.fit_to_square(diff_img,preview_size)
             draw_focus_area(diff_img, params.focus, delta=int(dx*preview_ratio))
+            #previewを表示
             yield diff_img
-            ##### if the motion is very small
+            ##### if the motion is large
             if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
                 if not guess_mode:
-                    precount += 1 #number of frames since the first motion is detected.
+                    #number of frames since the first motion is detected.
+                    precount += 1 
+                    #過去5フレームでの移動量の変化
                     ddx = max(deltax) - min(deltax)
                     ddy = max(deltay) - min(deltay)
                     #if the displacements are almost constant in the last 5 frames,
@@ -460,7 +464,9 @@ class Pass1():
                         logger.info("Wait ({0} {1} {2})".format(nframes,dx,dy))
                         continue
                     else:
+                        #速度は安定した．
                         guess_mode = True
+                        #この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
                         self.tspos = self._backward_match(absx, absy, dx, dy, precount)
                 #変位をそのまま採用する．
                 velx = dx
@@ -469,6 +475,7 @@ class Pass1():
             else:
                 #動きがantishake水準より小さかった場合
                 match_fail += 1
+                #match_failカウンターがparams.trailingに届くまではそのまま回す．
                 if match_fail > params.trailing:
                     #end of work
                     #Add trailing frames to the log file here.
@@ -479,7 +486,7 @@ class Pass1():
             absx += velx
             absy += vely
             self.canvas = canvas_size(self.canvas, cropped, absx, absy)
-            self.tspos += "{0} {3} {4}\n".format(nframes,absx,absy,velx,vely)
+            self.tspos += "{0} {1} {2}\n".format(nframes,velx,vely)
 
         
     def after(self):
@@ -500,8 +507,6 @@ class Pass1():
         ostream.close()
 
         self.rawframe = None
-        self.frame    = None
-        self.canvas   = None
 
 
 if __name__ == "__main__":
