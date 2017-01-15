@@ -39,12 +39,10 @@ class Worker(QObject):
             if den:
                 self.progress.emit(num*100//den)
         
-        while self._isRunning == True:
-            ret = self.pass1.onestep()
-            if ret is None:
+        for img in self.pass1.iter():
+            if not self._isRunning:
                 break
-            if ret is not True: #True means skipping frame
-                self.frameRendered.emit(cv2toQImage(ret))
+            self.frameRendered.emit(cv2toQImage(img))
 
         self.pass1.after()
         self.finished.emit()

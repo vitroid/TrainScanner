@@ -12,14 +12,14 @@ import myargparse
 import itertools
 import logging
 
-def draw_focus_area(f, focus, delta=0):
+def draw_focus_area(f, focus, delta=None):
     """
     cv2形式の画像の中に四角を描く．
     """
     h, w = f.shape[0:2]
     pos = [w*focus[0]//1000,w*focus[1]//1000,h*focus[2]//1000,h*focus[3]//1000]
     cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (0, 255, 0), 1)
-    if delta != 0:
+    if delta is not None:
         pos = [w*focus[0]//1000+delta,w*focus[1]//1000+delta,h*focus[2]//1000,h*focus[3]//1000]
         cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (255, 255, 0), 1)
         
@@ -283,12 +283,7 @@ class Pass1():
 
         #############Open the video file #############################
         self.cap    = cv2.VideoCapture(found)
-        self.tspos   = ""
-
         self.nframes = 0  #1 is the first frame
-        self.cache   = [] #save only "active" frames.
-        self.deltax  = [] #store displacements
-        self.deltay  = [] #store displacements
         #This does not work with some kind of MOV. (really?)
         #self.cap.set(cv2.CAP_PROP_POS_FRAMES, skip)
         #self.nframes = skip
@@ -308,52 +303,9 @@ class Pass1():
         self.nframes += 1    #first frame is 1
         self.rawframe = frame
         
-        self.transform = trainscanner.transformation(angle=self.params.rotate, pers=self.params.perspective, crop=self.params.crop)
-        rotated, warped, cropped = self.transform.process_first_image(self.rawframe)
-        self.frame = cropped
-        #Prepare a scalable canvas with the origin.
-        self.canvas = None
-        
-        self.absx,self.absy = 0, 0
-        self.velx, self.vely = 0.0, 0.0
-        self.match_fail = 0
-        if self.params.stall:
-            #estimation must be on by default.
-            self.guess_mode = True
-        else:
-            #we cannot estimate the run-in velocity
-            #so the estimateion is off by default.
-            self.guess_mode = False
-        self.precount = 0
-        self.preview_size = 500
-        self.preview = trainscanner.fit_to_square(self.frame, self.preview_size)
-        self.preview_ratio = self.preview.shape[0] / self.frame.shape[0]
-        yield self.nframes, self.params.skip
-
-        
-    def after(self):
-        """
-        Action after the loop
-        """
-        if self.canvas is None:
-            return
-        self.tsconf += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
-        if self.params.log is None:
-            ostream = sys.stdout
-        else:
-            ostream = open(self.params.log+".tsconf", "w")
-        ostream.write(self.tsconf)
-        if self.params.log is not None:
-            ostream = open(self.params.log+".tspos", "w")
-        ostream.write(self.tspos)
-        ostream.close()
-
-        self.rawframe = None
-        self.frame    = None
-        self.canvas   = None
         
 
-    def backward_match(self, velx,vely):
+    def _backward_match(self, absx, absy, velx, vely, precount):
         """
         using cached images,
         "postdict" the displacements
@@ -362,11 +314,11 @@ class Pass1():
         logger = logging.getLogger()
         curFrameNum, curFrameImg = self.cache.pop(-1)
         prevFrameNum = -1 
-        curFrameAbsX = self.absx
-        curFrameAbsY = self.absy
+        curFrameAbsX = absx
+        curFrameAbsY = absy
         newDeltas = []
-        for i in range(self.precount + self.params.trailing):
-            logger.debug("Rewinding {0} {1} {2}".format(i,self.precount+self.params.trailing,len(self.cache)))
+        for i in range(precount + self.params.trailing):
+            logger.debug("Rewinding {0} {1} {2}".format(i,precount+self.params.trailing,len(self.cache)))
             if len(self.cache) == 0:
                 break
             prevFrameNum,prevFrameImg = self.cache.pop(-1)
@@ -401,116 +353,155 @@ class Pass1():
         for delta in newDeltas:
             s += "{0} {1} {2}\n".format(*delta)
         return s
-                  
-    def onestep(self):
-        logger = logging.getLogger()
-        ret = True
-        ##### Pick up every x frame
-        if self.params.skip < self.params.last < self.nframes + self.params.every:
-            return None
-        for i in range(self.params.every-1):
-            ret = self.cap.grab()
-            self.nframes += 1
-            if not ret:
-                logger.debug("Video ended (1).")
-                return None
-        ret, nextframe = self.cap.read()
-        self.nframes += 1
-        ##### return None if the frame is empty
-        if not ret:
-            logger.debug("Video ended (2).")
-            return None
-        ##### compare with the previous raw frame
-        diff = cv2.absdiff(nextframe,self.rawframe)
-        ##### preserve the raw frame for next comparison.
-        self.rawframe = nextframe.copy()
-        diff = np.sum(diff) / np.product(diff.shape)
-        if diff < self.params.identity:
-            logger.info("skip identical frame #{0}".format(diff))
-            #They are identical frames
-            #This happens when the frame rate difference is compensated.
-            return True
-        ##### Warping the frame
-        rotated, warped, cropped = self.transform.process_next_image(nextframe)
-        nextframe = cropped
-        ##### Make the preview image
-        nextpreview = trainscanner.fit_to_square(nextframe,self.preview_size)
-        ##### motion detection.
-        #if maxaccel is set, motion detection area becomes very narrow
-        #assuming that the train is running at constant speed.
-        #This mode is activated after the 10th frames.
 
-        #Now I do care only magrin case.
-        if self.guess_mode:
-            #do not apply maxaccel for the first 10 frames
-            #because the velocity uncertainty.
-            delta = motion(self.frame, nextframe, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(self.velx,self.vely))
-            if delta is None:
-                logger.error("Matching failed (probabily the motion detection window goes out of the image).")
-                return None
-            dx,dy = delta
-        else:
-            dx,dy = motion(self.frame, nextframe, focus=self.params.focus)
-            
-        ##### Suppress drifting.
-        if self.params.zero:
-            dy = 0
-        #record anyway.
-        self.deltax.append(dx)
-        self.deltay.append(dy)
-        if len(self.deltax) > 5:  #keep only 5 frames
-            self.deltax.pop(0)
-            self.deltay.pop(0)
-        if nextframe is not None and self.cache is not None:
-            self.cache.append([self.nframes, nextframe])
-            if len(self.cache) > 100: #always keep 100 frames in cache
-                self.cache.pop(0)
-        diff_img = diffImage(nextpreview,self.preview,int(dx*self.preview_ratio),int(dy*self.preview_ratio),focus=self.params.focus)
-        ##### if the motion is very small
-        if not self.guess_mode:
-            if (abs(dx) >= self.params.antishake or abs(dy) >= self.params.antishake):
-                self.precount += 1 #number of frames since the first motion is detected.
-                ddx = max(self.deltax) - min(self.deltax)
-                ddy = max(self.deltay) - min(self.deltay)
-                #if the displacements are almost constant in the last 3 frames,
-                if ddx < self.params.antishake and ddy < self.params.antishake:
-                    self.guess_mode = True
-                    self.tspos = self.backward_match(dx,dy)
-                    self.velx = dx
-                    self.vely = dy
-                    self.match_fail = 0
-            if not self.guess_mode:
-                logger.info("Wait ({0} {1} {2})".format(self.nframes,dx,dy))
-                self.frame   = nextframe
-                self.preview = nextpreview
-                return diff_img
-        if (abs(dx) < self.params.antishake and abs(dy) < self.params.antishake):
-            ##### accumulate the motion
-            ##### wait until motion becomes enough.
-            self.match_fail += 1
-            if self.match_fail <= self.params.trailing:
-                logger.info("Skip ({0} {1} {2} +{3}/{4})".format(self.nframes,dx,dy,self.match_fail, self.params.trailing))
-                # do not update the velx and vely
-                #but update the frame and preview
-                #self.frame   = nextframe
-                #self.preview = nextpreview
-                #return diff_img
+                  
+    def iter(self):
+        logger = logging.getLogger()
+        #All self variables to be inherited.
+        rawframe = self.rawframe
+        cap      = self.cap
+        nframes  = self.nframes
+        params   = self.params
+        
+        transform = trainscanner.transformation(angle=params.rotate, pers=params.perspective, crop=params.crop)
+        rotated, warped, cropped = transform.process_first_image(rawframe)
+        #Prepare a scalable self.canvas with the origin.
+        self.canvas = None
+        
+        absx,absy = 0, 0
+        velx, vely = 0.0, 0.0
+        match_fail = 0
+        guess_mode = params.stall
+        precount = 0
+        preview_size  = 500
+        preview       = trainscanner.fit_to_square(cropped, preview_size)
+        preview_ratio = preview.shape[0] / cropped.shape[0]
+
+        self.tspos   = ""
+        self.cache   = [] #save only "active" frames.
+        deltax  = [] #store displacements
+        deltay  = [] #store displacements
+
+        while True:
+            lastrawframe = rawframe
+            lastframe   = cropped
+            lastpreview = preview
+            #もしlastが設定されていて，しかもframe数がそれを越えていれば，終了．
+            if params.skip < params.last < nframes + params.every:
+                return
+            #フレームの早送り
+            for i in range(params.every-1):
+                ret = cap.grab()
+                nframes += 1
+                if not ret:
+                    logger.debug("Video ended (1).")
+                    return
+            #1フレームとりこみ
+            ret, rawframe = cap.read()
+            nframes += 1
+            if not ret:
+                logger.debug("Video ended (2).")
+                return
+            ##### compare with the previous raw frame
+            diff = cv2.absdiff(rawframe,lastrawframe)
+            #When the raw frame is not changed at all, ignore the frame.
+            #It happens in the frame rate adjustment between PAL and NTSC
+            diff = np.sum(diff) / np.product(diff.shape)
+            if diff < params.identity:
+                logger.info("skip identical frame #{0}".format(diff))
+                continue
+            ##### Warping the frame
+            rotated, warped, cropped = transform.process_next_image(rawframe)
+            ##### motion detection.
+            #if maxaccel is set, motion detection area becomes very narrow
+            #assuming that the train is running at constant speed.
+            #This mode is activated after the 10th frames.
+
+            #Now I do care only magrin case.
+            if guess_mode:
+                #do not apply maxaccel for the first 10 frames
+                #because the velocity uncertainty.
+                delta = motion(lastframe, cropped, focus=params.focus, maxaccel=params.maxaccel, delta=(velx,vely))
+                if delta is None:
+                    logger.error("Matching failed (probabily the motion detection window goes out of the image).")
+                    return
+                dx,dy = delta
             else:
-                #end of work
-                #Add trailing frames to the log file here.
-                return None
+                dx,dy = motion(lastframe, cropped, focus=params.focus)
+            
+            ##### Suppress drifting.
+            if params.zero:
+                dy = 0
+            #record anyway.
+            deltax.append(dx)
+            deltay.append(dy)
+            if len(deltax) > 5:  #keep only 5 frames
+                deltax.pop(0)
+                deltay.pop(0)
+            if cropped is not None and self.cache is not None:
+                self.cache.append([nframes, cropped])
+                if len(self.cache) > 100: #always keep 100 frames in self.cache
+                    self.cache.pop(0)
+            ##### Make the preview image
+            #preview = trainscanner.fit_to_square(cropped,preview_size)
+            #diff_img = diffImage(preview,lastpreview,int(dx*preview_ratio),int(dy*preview_ratio),focus=params.focus)
+            diff_img = diffImage(cropped,lastframe,int(dx),int(dy))
+            diff_img = trainscanner.fit_to_square(diff_img,preview_size)
+            draw_focus_area(diff_img, params.focus, delta=int(dx*preview_ratio))
+            yield diff_img
+            ##### if the motion is very small
+            if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
+                if not guess_mode:
+                    precount += 1 #number of frames since the first motion is detected.
+                    ddx = max(deltax) - min(deltax)
+                    ddy = max(deltay) - min(deltay)
+                    #if the displacements are almost constant in the last 5 frames,
+                    if params.antishake <= ddx or params.antishake <= ddy:
+                        logger.info("Wait ({0} {1} {2})".format(nframes,dx,dy))
+                        continue
+                    else:
+                        guess_mode = True
+                        self.tspos = self._backward_match(absx, absy, dx, dy, precount)
+                #変位をそのまま採用する．
+                velx = dx
+                vely = dy
+                match_fail = 0
+            else:
+                #動きがantishake水準より小さかった場合
+                match_fail += 1
+                if match_fail > params.trailing:
+                    #end of work
+                    #Add trailing frames to the log file here.
+                    return
+                logger.info("Skip ({0} {1} {2} +{3}/{4})".format(nframes,dx,dy,match_fail, params.trailing))
+                # believe the last velx and vely
+            logger.info("Scan {0} {2} {3} #{1}".format(nframes,np.amax(diff), velx, vely))
+            absx += velx
+            absy += vely
+            self.canvas = canvas_size(self.canvas, cropped, absx, absy)
+            self.tspos += "{0} {3} {4}\n".format(nframes,absx,absy,velx,vely)
+
+        
+    def after(self):
+        """
+        Action after the loop
+        """
+        if self.canvas is None:
+            return
+        self.tsconf += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
+        if self.params.log is None:
+            ostream = sys.stdout
         else:
-            self.velx = dx
-            self.vely = dy
-            self.match_fail = 0
-        logger.info("Scan {0} {2} {3} #{1}".format(self.nframes,np.amax(diff), self.velx, self.vely))
-        self.absx += self.velx
-        self.absy += self.vely
-        self.canvas = canvas_size(self.canvas, nextframe, self.absx, self.absy)
-        self.tspos += "{0} {3} {4}\n".format(self.nframes,self.absx,self.absy,self.velx,self.vely)
-        self.frame   = nextframe
-        self.preview = nextpreview
-        return diff_img
+            ostream = open(self.params.log+".tsconf", "w")
+        ostream.write(self.tsconf)
+        if self.params.log is not None:
+            ostream = open(self.params.log+".tspos", "w")
+        ostream.write(self.tspos)
+        ostream.close()
+
+        self.rawframe = None
+        self.frame    = None
+        self.canvas   = None
 
 
 if __name__ == "__main__":
@@ -525,11 +516,7 @@ if __name__ == "__main__":
     pass1 = Pass1(argv=sys.argv)
     for num, den in pass1.before():
         pass
-    while True:
-        ret = pass1.onestep()
-        if ret is None:
-            break
-        if ret is not True: #True means skipping
-            cv2.imshow("pass1", ret)
-            cv2.waitKey(1)
+    for ret in pass1.iter():
+        cv2.imshow("pass1", ret)
+        cv2.waitKey(1)
     pass1.after()
