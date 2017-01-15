@@ -9,7 +9,7 @@ macapp:
 
 
 #This does not include the libraries in the App.
-macapp-personally: prepare_for_mac_py3
+macapp-personally: #prepare_for_mac_py3
 	pip3 install py2app
 	-rm -rf build dist
 	python3 trainscanner_gui-setup.py py2app -A      #alias mode. It is not portable

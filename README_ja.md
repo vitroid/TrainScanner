@@ -8,7 +8,12 @@ Windowsの実行ファイルも同じ場所に置いてありますが，こち�
 ###ソースからのインストール
 ソースは[github](https://github.com/vitroid/TrainScanner)で配布しています．zipファイルをダウンロードして展開して下さい．
 
-MacでHomeBrewが使える人は，makeしてみて下さい．(HomeBrewそのものを入れる方法は[ここ](http://vdeep.net/intr-homebrew)を参照して下さい．) Python3やらPyQt5が自動的にインストールされるので，それが困る人は注意して下さい．distフォルダの中に，`TrainScanner.app`が作られます．ただし，この実行ファイルは，OpenCV3などのライブラリにリンクしているので，ほかのMacではたぶん動きません．
+MacでHomeBrewが使える人は，以下の方法を試してみて下さい．(HomeBrewそのものを入れる方法は[ここ](http://vdeep.net/intr-homebrew)を参照して下さい．)
+
+    % brew tap vitroid/homebrew-TrainScanner
+    % brew install trainscanner
+
+Python3やらPyQt5が自動的にインストールされるので，それが困る人は注意して下さい．distフォルダの中に，`TrainScanner.app`が作られます．ただし，この実行ファイルは，OpenCV3などのライブラリにリンクしているので，ほかのMacではたぶん動きません．
 
 TrainScannerはPythonで書かれているので，Windows/Linuxでも動くはずですが，開発者の手が回っていません．協力を募集しています．
 
