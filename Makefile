@@ -1,10 +1,14 @@
-all: macapp-personally
+all: macapp install #macapp-personally
 	echo Done.
 
 #for mac and windows
-macapp:
+macapp: dist/TrainScanner.app dist/TS_Converter.app
+dist/TrainScanner.app: $(wildcard *.py)
 	pyinstaller --noconfirm macos.spec
+dist/TS_Converter.app: $(wildcard *.py)
 	pyinstaller --noconfirm converter_gui.macos.spec
+install: dist/TrainScanner.app dist/TS_Converter.app
+	cp $^ /Applications
 #icons are generated at /Users/matto/github/TrainScanner/trainscanner.icns
 
 
