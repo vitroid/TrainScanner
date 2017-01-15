@@ -19,9 +19,8 @@ from canvas import Canvas
 
 class AlphaMask():
     alphas = dict()
-    def __init__(self, img_width, img_height, slit=0, width=1.0):
+    def __init__(self, img_width, slit=0, width=1.0):
         self.img_width  = img_width
-        self.img_height = img_height
         self.width      = width
         self.slitpos    = slit*img_width//1000
 
@@ -51,27 +50,6 @@ class AlphaMask():
             alpha[slitout:slitin, :] = np.fromfunction(lambda x,v: (slitwidth-x)/ slitwidth, (slitwidth, 3))
         self.alphas[displace] = alpha
         return alpha
-
-
-def make_vert_alpha0( alphas, displace, img_width, img_height, slit=0, width=1.0 ):
-    """
-    Make an orthogonal mask
-    slit position is -500 to 500
-    slit width=1 is standard, width<1 is narrow (sharp) and width>1 is diffuse alpha
-    """
-    if (displace, width, slit) in alphas:
-        return alphas[(displace, width, slit)]
-    if displace == 0:
-        return np.zeros((img_height,img_width,3))+1
-    if displace > 0:
-        centerx = img_width/2 - slit*img_width/1000
-    else:
-        centerx = img_width/2 + slit*img_width/1000
-    alpha = np.fromfunction(lambda y, x, v: (x-centerx)/(displace*width), (img_height, img_width, 3))
-    np.clip(alpha,0,1,out=alpha)  # float 0..1 values
-    #alpha += 1
-    alphas[(displace, width, slit)] = alpha
-    return alpha
 
 
 
@@ -232,7 +210,6 @@ class Stitcher(Canvas):
         if self.firstFrame:
             self.abs_merge(cropped, absx, absy)
             self.mask = AlphaMask(cropped.shape[1],
-                                  cropped.shape[0],
                                   slit=self.params.slitpos,
                                   width=self.params.slitwidth)
             self.firstFrame = False
@@ -244,7 +221,6 @@ class Stitcher(Canvas):
     def stitch(self):
         for num,den in self.before():
             pass
-        result = None
         for num,den in self.loop():
             pass
         #while result is None:
@@ -276,7 +252,8 @@ class Stitcher(Canvas):
         self.currentFrame += 1
         if not ret:
             return self.image
-        frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)
+        if self.params.scale != 1:
+            frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)
         self.add_image(frame, *self.locations[0][1:])
         self.locations.pop(0)
         if len(self.locations) == 0:

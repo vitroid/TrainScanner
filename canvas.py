@@ -41,5 +41,5 @@ class Canvas():
         self.origin = (xmin,ymin)
         
 
-    def save(filename):
+    def save(self, filename):
         cv2.imwrite(filename, self.image)
