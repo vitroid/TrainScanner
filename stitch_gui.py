@@ -180,7 +180,7 @@ class StitcherUI(QDialog):
 
 
 if __name__ == '__main__':
-    debug =True
+    debug =False
     if debug:
         logging.basicConfig(level=logging.DEBUG,
                             #filename='log.txt',

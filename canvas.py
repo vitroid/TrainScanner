@@ -1,3 +1,5 @@
+import cv2
+
 #Automatically extensible canvas.
 class Canvas():
 
