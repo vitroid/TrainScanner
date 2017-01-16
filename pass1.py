@@ -113,6 +113,8 @@ def canvas_size(canvas_dimen, image, x, y):
     canvas_dimenで定義されるcanvasの，位置(x,y)にimageを貼りつけた場合の，拡張後のcanvasの大きさを返す．
     canvas_dimenはcanvasの左上角の絶対座標と，canvasの幅高さの4因子でできている．
     """
+    x = int(x)
+    y = int(y)
     if canvas_dimen is None:
         h,w = image.shape[:2]
         return w,h,x,y
@@ -132,6 +134,7 @@ def canvas_size(canvas_dimen, image, x, y):
     ymax = max(cymax,iymax)
     if (xmax-xmin, ymax-ymin) != (canvas_dimen[0], canvas_dimen[1]):
         canvas_dimen = [xmax-xmin,ymax-ymin,xmin,ymin]
+    logging.getLogger().debug(canvas_dimen)
     return canvas_dimen
 
 
@@ -141,6 +144,9 @@ def prepare_parser():
     pass1のコマンドラインオプションのパーザ
     """
     parser = myargparse.MyArgumentParser(description='TrainScanner matcher', fromfile_prefix_chars='@',)
+    parser.add_argument('--debug', action='store_true',
+                        dest='debug',
+                        help="Show debug info.")
     parser.add_argument('-z', '--zero', action='store_true',
                         dest='zero',
                         help="Suppress drift.")
@@ -219,6 +225,13 @@ class Pass1():
         logger = logging.getLogger()
         self.parser = prepare_parser()
         self.params, unknown = self.parser.parse_known_args(argv[1:])
+        if self.params.debug:
+            logging.basicConfig(level=logging.DEBUG,
+                                #filename='log.txt',
+                                format="%(asctime)s %(levelname)s %(message)s")
+        else:
+            logging.basicConfig(level=logging.INFO,
+                                format="%(asctime)s %(levelname)s %(message)s")
         #Assume the video is in the same dir.
         self.dirnames = []
         if self.parser.fromfile_name is not None:
@@ -314,8 +327,8 @@ class Pass1():
         logger = logging.getLogger()
         curFrameNum, curFrameImg = self.cache.pop(-1)
         prevFrameNum = -1 
-        curFrameAbsX = absx
-        curFrameAbsY = absy
+        curFrameAbsX = int(absx)
+        curFrameAbsY = int(absy)
         newDeltas = []
         for i in range(precount + self.params.trailing):
             logger.debug("Rewinding {0} {1} {2}".format(i,precount+self.params.trailing,len(self.cache)))
@@ -510,14 +523,6 @@ class Pass1():
 
 
 if __name__ == "__main__":
-    debug = True
-    if debug:
-        logging.basicConfig(level=logging.DEBUG,
-                            #filename='log.txt',
-                            format="%(asctime)s %(levelname)s %(message)s")
-    else:
-        logging.basicConfig(level=logging.INFO,
-                            format="%(asctime)s %(levelname)s %(message)s")
     pass1 = Pass1(argv=sys.argv)
     for num, den in pass1.before():
         pass

@@ -136,14 +136,18 @@ class Stitcher(Canvas):
             #read tsconf there. (actually it is alread read.)
             #read tspos at the same path
             tsconfdir = os.path.dirname(self.parser.fromfile_name)
+            if tsconfdir == "":
+                tsconfdir = "."
             tsconfbase = os.path.basename(self.parser.fromfile_name)
             if tsconfbase[-7:] == ".tsconf":
                 tsconfbase = tsconfbase[:-7]
             self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
         #or tspos in the logbase
         if self.tsposfile == "" or not os.path.exists(self.tsposfile):
-            tsconfdir = os.path.dirname(self.parser.logbase)
-            tsconfbase = os.path.basename(self.parser.logbase)
+            tsconfdir = os.path.dirname(self.params.logbase)
+            if tsconfdir == "":
+                tsconfdir = "."
+            tsconfbase = os.path.basename(self.params.logbase)
             self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
         moviefile = tsconfdir + "/" + moviebase
         self.outfilename = tsconfdir + "/" + tsconfbase + ".png"

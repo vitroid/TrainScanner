@@ -32,6 +32,6 @@ coll = COLLECT(exe,
                upx=True,
                name='converter_gui')
 app = BUNDLE(coll,
-             name='TS_converter.app',
+             name='TrainConverter.app',
              icon='trainscanner.icns',
              bundle_identifier='jp.vitroid.ts_converter')
