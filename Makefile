@@ -13,10 +13,11 @@ all-mac-brew:
 	make prepare-mac-brew
 	make macapp-brew
 	make install-mac-brew
+#python3.6 is incompat with pyinstaller
+#To install the older python3.5.2_3:
+#brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/ec545d45d4512ace3570782283df4ecda6bb0044/Formula/python3.rb
 prepare-mac-brew:
-	#brew install python3  python3.6 is incompat with pyinstaller
-	#Older formula for python3.5.2_3
-	brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/ec545d45d4512ace3570782283df4ecda6bb0044/Formula/python3.rb
+	brew install python3 #
 	brew install pyqt5  # wants python3
 	pip3 install pyinstaller
 	brew install opencv3 --with-ffmpeg --with-tbb --with-python3 --HEAD
@@ -35,8 +36,10 @@ macapp: dist/TrainScanner.app dist/TrainConverter.app
 install-macapp: dist/TrainScanner.app dist/TrainConverter.app
 	cp $^ /Applications
 dist/TrainScanner.app: $(wildcard *.py)
+	echo PyInstaller is not available because it is incompatible with python3.6.
 	pyinstaller --noconfirm macos.spec
 dist/TrainConverter.app: $(wildcard *.py)
+	echo PyInstaller is not available because it is incompatible with python3.6.
 	pyinstaller --noconfirm converter_gui.macos.spec
 zip-macapp.%: macapp
 	cd dist; zip -r trainscanner.$*.macos.zip TrainScanner.app TS_converter.app; md5 trainscanner.$*.macos.zip | tee trainscanner.$*.macos.zip.md5
