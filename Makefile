@@ -14,7 +14,9 @@ all-mac-brew:
 	make macapp-brew
 	make install-mac-brew
 prepare-mac-brew:
-	brew install python3
+	#brew install python3  python3.6 is incompat with pyinstaller
+	#Older formula for python3.5.2_3
+	brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/ec545d45d4512ace3570782283df4ecda6bb0044/Formula/python3.rb
 	brew install pyqt5  # wants python3
 	pip3 install pyinstaller
 	brew install opencv3 --with-ffmpeg --with-tbb --with-python3 --HEAD
