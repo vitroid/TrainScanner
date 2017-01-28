@@ -13,7 +13,8 @@ import film
 import helix
 import rect
 import logging
-from canvas import Canvas
+from canvas import Canvas    #On-memory canvas
+#from canvas2 import Canvas   #Cached canvas
 
 
 
@@ -223,10 +224,11 @@ class Stitcher(Canvas):
 
 
     def stitch(self):
+        logger = logging.getLogger()
         for num,den in self.before():
             pass
         for num,den in self.loop():
-            pass
+            logger.info(num/den)
         #while result is None:
         #    result = self.onestep()
         self.after()
@@ -250,24 +252,24 @@ class Stitcher(Canvas):
         while self.currentFrame + 1 < self.locations[0][0]:
             ret = self.cap.grab()
             if not ret:
-                return self.image
+                return self.get_image()
             self.currentFrame += 1
         ret,frame = self.cap.read()
         self.currentFrame += 1
         if not ret:
-            return self.image
+            return self.get_image()
         if self.params.scale != 1:
             frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)
         self.add_image(frame, *self.locations[0][1:])
         self.locations.pop(0)
         if len(self.locations) == 0:
-            return self.image
+            return self.get_image()
         return None  #not end
 
     def after(self):
-        self.save(self.outfilename)
         file_name = self.outfilename
-        img       = self.image
+        img       = self.get_image()
+        cv2.imwrite(file_name, img)
         if self.params.film:
             img = film.filmify( img )
             file_name += ".film.png"
@@ -280,15 +282,10 @@ class Stitcher(Canvas):
             cv2.imwrite(file_name + ".rect.png", img)
         
 
-    def done(self):
-        """
-        Release memory
-        """
-        self.image = None
 
 
 if __name__ == "__main__":
-    debug =True
+    debug =False
     if debug:
         logging.basicConfig(level=logging.DEBUG,
                             #filename='log.txt',

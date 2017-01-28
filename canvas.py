@@ -4,14 +4,25 @@ import cv2
 class Canvas():
 
     def __init__(self, image=None, position=None):
-        self.image  = image
+        self._image  = image
         self.origin = position
         self.first = True
 
 
+    def done(self):
+        """
+        Release memory
+        """
+        self._image = None
+
+
+    def get_image(self):
+        return self._image
+
+    
     def abs_merge(self, add_image, x, y, alpha=None ):
-        if self.image is None:
-            self.image  = add_image.copy()
+        if self._image is None:
+            self._image  = add_image.copy()
             self.origin = x, y
             return
         if self.first:
@@ -19,8 +30,8 @@ class Canvas():
         absx, absy = self.origin   #absolute coordinate of the top left of the canvas
         cxmin = absx
         cymin = absy
-        cxmax = self.image.shape[1] + absx
-        cymax = self.image.shape[0] + absy
+        cxmax = self._image.shape[1] + absx
+        cymax = self._image.shape[0] + absy
         ixmin = x
         iymin = y
         ixmax = add_image.shape[1] + x
@@ -30,18 +41,16 @@ class Canvas():
         xmax = max(cxmax,ixmax)
         ymin = min(cymin,iymin)
         ymax = max(cymax,iymax)
-        if (xmax-xmin, ymax-ymin) != (self.image.shape[1], self.image.shape[0]):
+        if (xmax-xmin, ymax-ymin) != (self._image.shape[1], self._image.shape[0]):
             newcanvas = np.zeros((ymax-ymin, xmax-xmin,3), np.uint8)
-            newcanvas[cymin-ymin:cymax-ymin, cxmin-xmin:cxmax-xmin, :] = self.image[:,:,:]
+            newcanvas[cymin-ymin:cymax-ymin, cxmin-xmin:cxmax-xmin, :] = self._image[:,:,:]
         else:
-            newcanvas = self.image
+            newcanvas = self._image
         if alpha is None:
             newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = add_image[:,:,:]
         else:
             newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = add_image[:,:,:]*alpha[:,:] + newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:]*(1-alpha[:,:])
-        self.image  = newcanvas
+        self._image  = newcanvas
         self.origin = (xmin,ymin)
         
 
-    def save(self, filename):
-        cv2.imwrite(filename, self.image)
