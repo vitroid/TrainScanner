@@ -166,7 +166,10 @@ class Stitcher(Canvas):
         self.M = None
         self.transform = trainscanner.transformation(self.params.rotate, self.params.perspective, self.params.crop)
         # initialization of the super class
-        Canvas.__init__(self)
+        cachedir = tsconfdir + "/" + tsconfbase + ".pngs"
+        tilesize = (512,512) #canbe smaller for smaller machine
+        cachesize = 10
+        Canvas.__init__(self, dir=cachedir, tilesize=tilesize, cachesize=cachesize, clean=False)
         logger.info("scale:{0}".format(self.params.scale))
         logger.info("length:{0}".format(self.params.length))
         if self.params.scale == 1 and self.params.length > 0:
