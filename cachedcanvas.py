@@ -1,1 +1,0 @@
-../HugeCanvas/cachedcanvas.py
