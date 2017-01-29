@@ -41,7 +41,7 @@ class Renderer(QObject):
                 break
         #while self._isRunning == True:
         #    result = self.stitcher.onestep()
-            canvas = self.stitcher.image #.copy()
+            canvas = self.stitcher.get_image() #.copy()
             height, width = canvas.shape[0:2]
             h = int(height*self.preview_ratio)
             w = int(width *self.preview_ratio)
@@ -112,10 +112,10 @@ class StitcherUI(QDialog):
         self.stitcher = stitcher
         #determine the shrink ratio to avoid too huge preview
         preview_ratio = 1.0
-        if stitcher.image.shape[1] > 10000:
-            preview_ratio = 10000.0 / stitcher.image.shape[1]
-        if stitcher.image.shape[0]*preview_ratio > 500:
-            preview_ratio = 500.0 / stitcher.image.shape[0]
+        if stitcher.dimen[0] > 10000:
+            preview_ratio = 10000.0 / stitcher.dimen[0]
+        if stitcher.dimen[1]*preview_ratio > 500:
+            preview_ratio = 500.0 / stitcher.dimen[1]
         self.terminate = terminate
         self.thread = QThread()
         self.thread.start()
@@ -124,7 +124,7 @@ class StitcherUI(QDialog):
         #it might be too early.
         
         #determine the window size
-        height,width = stitcher.image.shape[0:2]
+        width,height = stitcher.dimen[:2]
         height = int(height*preview_ratio)
         #determine the preview area size
         width = int(width*preview_ratio)

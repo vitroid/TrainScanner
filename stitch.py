@@ -13,8 +13,8 @@ import film
 import helix
 import rect
 import logging
-from canvas import Canvas    #On-memory canvas
-#from canvas2 import Canvas   #Cached canvas
+#from canvas import Canvas    #On-memory canvas
+from canvas2 import Canvas   #Cached canvas
 
 
 
@@ -166,18 +166,28 @@ class Stitcher(Canvas):
         self.M = None
         self.transform = trainscanner.transformation(self.params.rotate, self.params.perspective, self.params.crop)
         # initialization of the super class
-        if self.params.canvas is None:
-            Canvas.__init__(self)
-            self.dimen = None
-        else:
-            if self.params.scale == 1 and self.params.length > 0:
-                #product length is specified.
-                #scale is overridden
-                self.params.scale = self.params.length / self.params.canvas[0]
-                if self.params.scale > 1:
-                    self.params.scale = 1  #do not allow stretching
-            self.dimen = [int(x*self.params.scale) for x in self.params.canvas]
-            Canvas.__init__(self,image=np.zeros((self.dimen[1],self.dimen[0],3),np.uint8), position=self.dimen[2:4]) #python2 style
+        Canvas.__init__(self)
+        logger.info("scale:{0}".format(self.params.scale))
+        logger.info("length:{0}".format(self.params.length))
+        if self.params.scale == 1 and self.params.length > 0:
+            #product length is specified.
+            #scale is overridden
+            self.params.scale = self.params.length / self.params.canvas[0]
+            if self.params.scale > 1:
+                self.params.scale = 1  #do not allow stretching
+            #for GUI
+        self.dimen = [int(x*self.params.scale) for x in self.params.canvas]
+#        if self.params.canvas is None:
+#            Canvas.__init__(self)
+#        else:
+#            if self.params.scale == 1 and self.params.length > 0:
+#                #product length is specified.
+#                #scale is overridden
+#                self.params.scale = self.params.length / self.params.canvas[0]
+#                if self.params.scale > 1:
+#                    self.params.scale = 1  #do not allow stretching
+#            dimen = [int(x*self.params.scale) for x in self.params.canvas]
+#            Canvas.__init__(self,image=np.zeros((dimen[1],dimen[0],3),np.uint8), position=dimen[2:4]) #python2 style
 
     def before(self):
         """
