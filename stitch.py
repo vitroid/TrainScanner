@@ -110,7 +110,7 @@ def prepare_parser(parser=None):
 
 
 
-class Stitcher(Canvas):
+class Stitcher():
     """
     exclude video handling
     """
@@ -118,9 +118,9 @@ class Stitcher(Canvas):
         logger = logging.getLogger()
         ####Avoid unknown error.
         #myargparse does not show the usage correctly.
-        ap0 = argparse.ArgumentParser(fromfile_prefix_chars='@',
-                                        description='TrainScanner stitcher')
-        prepare_parser(ap0).parse_known_args(argv[1:])
+        #ap0 = argparse.ArgumentParser(fromfile_prefix_chars='@',
+        #                                description='TrainScanner stitcher')
+        #prepare_parser(ap0).parse_known_args(argv[1:])
         ####
         ap = myargparse.MyArgumentParser(fromfile_prefix_chars='@',
                                         description='TrainScanner stitcher')
@@ -152,6 +152,7 @@ class Stitcher(Canvas):
             self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
         moviefile = tsconfdir + "/" + moviebase
         self.outfilename = tsconfdir + "/" + tsconfbase + ".png"
+        self.cachedir    = tsconfdir + "/" + tsconfbase + ".pngs" #if required
         if not os.path.exists(moviefile):
             moviefile = moviepath
         logger.info("TSPos  {0}".format(self.tsposfile))
@@ -166,11 +167,6 @@ class Stitcher(Canvas):
         self.M = None
         self.transform = trainscanner.transformation(self.params.rotate, self.params.perspective, self.params.crop)
         # initialization of the super class
-        cachedir = tsconfdir + "/" + tsconfbase + ".pngs"
-        tilesize = (512,512) #canbe smaller for smaller machine
-        cachesize = 10
-        #Canvas.__init__(self)
-        Canvas.__init__(self, dir=cachedir, tilesize=tilesize, cachesize=cachesize)
         #logger.info("scale:{0}".format(self.params.scale))
         #logger.info("length:{0}".format(self.params.length))
         if self.params.scale == 1 and self.params.length > 0:
@@ -192,6 +188,10 @@ class Stitcher(Canvas):
 #                    self.params.scale = 1  #do not allow stretching
 #            dimen = [int(x*self.params.scale) for x in self.params.canvas]
 #            Canvas.__init__(self,image=np.zeros((dimen[1],dimen[0],3),np.uint8), position=dimen[2:4]) #python2 style
+
+    #Canvas should be set after the arguments are parsed.
+    def set_canvas(self, canvas):
+        self.canvas = canvas
 
     def before(self):
         """
@@ -227,14 +227,14 @@ class Stitcher(Canvas):
     def add_image(self, frame, absx,absy,idx,idy):
         rotated,warped,cropped = self.transform.process_image(frame)
         if self.firstFrame:
-            self.abs_merge(cropped, absx, absy)
+            self.canvas.abs_merge(cropped, absx, absy)
             self.mask = AlphaMask(cropped.shape[1],
                                   slit=self.params.slitpos,
                                   width=self.params.slitwidth)
             self.firstFrame = False
         else:
             alpha = self.mask.make_linear_alpha( int(idx) )
-            self.abs_merge(cropped, absx, absy, alpha=alpha)
+            self.canvas.abs_merge(cropped, absx, absy, alpha=alpha)
 
 
     def stitch(self):
@@ -282,7 +282,7 @@ class Stitcher(Canvas):
 
     def after(self):
         file_name = self.outfilename
-        img       = self.get_image()
+        img       = self.canvas.get_image()
         cv2.imwrite(file_name, img)
         if self.params.film:
             img = film.filmify( img )
@@ -308,4 +308,10 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO,
                             format="%(asctime)s %(levelname)s %(message)s")
     st = Stitcher(argv=sys.argv)
+    
+    tilesize = (512,512) #canbe smaller for smaller machine
+    cachesize = 10
+    canvas = Canvas(dir=st.cachedir, tilesize=tilesize, cachesize=cachesize)
+    st.set_canvas(canvas)
+
     st.stitch()
