@@ -21,13 +21,14 @@ class Canvas():
         return self._image
 
     
-    def abs_merge(self, add_image, x, y, alpha=None ):
+    def put_image(self, pos, add_image, linear_alpha=None ):
         if self._image is None:
             self._image  = add_image.copy()
-            self.origin = x, y
+            self.origin = pos
             return
         if self.first:
             self.first = False
+        x,y = pos
         absx, absy = self.origin   #absolute coordinate of the top left of the canvas
         cxmin = absx
         cymin = absy
@@ -47,10 +48,10 @@ class Canvas():
             newcanvas[cymin-ymin:cymax-ymin, cxmin-xmin:cxmax-xmin, :] = self._image[:,:,:]
         else:
             newcanvas = self._image
-        if alpha is None:
+        if linear_alpha is None:
             newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = add_image[:,:,:]
         else:
-            newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = add_image[:,:,:]*alpha[:,:] + newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:]*(1-alpha[:,:])
+            newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:] = add_image[:,:,:]*linear_alpha[:,:] + newcanvas[iymin-ymin:iymax-ymin,ixmin-xmin:ixmax-xmin,:]*(1-linear_alpha[:,:])
         self._image  = newcanvas
         self.origin = (xmin,ymin)
         

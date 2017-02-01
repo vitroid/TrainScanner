@@ -11,6 +11,10 @@ import cv2
 import sys
 import logging
 
+#from QTiledImage import QTiledImage
+import cachedimage as ci
+from scaledcanvas import ScaledCanvas
+
 class Renderer(QObject):
     frameRendered = pyqtSignal(QImage)  # it is target of emit()
     finished = pyqtSignal()
@@ -21,7 +25,10 @@ class Renderer(QObject):
         self.stitcher = stitcher
         self._isRunning = True
         self.preview_ratio = preview_ratio
-            
+        #On memory canvas for storing the preview
+        self.preview = ScaledCanvas(scale = preview_ratio)
+        #Dirty signal handler
+        self.stitcher.canvas.set_hook(self.preview.put_image)
 
     def cv2toQImage(self,image):
         tmp = np.zeros_like(image[:,:,0])
@@ -39,29 +46,28 @@ class Renderer(QObject):
         for num,den in self.stitcher.loop():
             if not self._isRunning:
                 break
-        #while self._isRunning == True:
-        #    result = self.stitcher.onestep()
-            canvas = self.stitcher.get_image() #.copy()
-            height, width = canvas.shape[0:2]
-            h = int(height*self.preview_ratio)
-            w = int(width *self.preview_ratio)
-            resized = cv2.resize(canvas, (w, h), interpolation = cv2.INTER_CUBIC)
-            self.cv2toQImage(resized)
-            image = QImage(resized.data, w, h, w*3, QImage.Format_RGB888)
-            self.frameRendered.emit(image)
-        #    num,den = self.stitcher.getProgress()
+            #image = self.stitcher.canvas.get_image() #.copy()
+            #height, width = image.shape[0:2]
+            #h = int(height*self.preview_ratio)
+            #w = int(width *self.preview_ratio)
+            #resized = cv2.resize(image, (w, h), interpolation = cv2.INTER_CUBIC)
+            #self.cv2toQImage(resized)
+            image = self.preview.get_image()[:,:,::-1].copy()  #reverse order
+            h,w = image.shape[:2]
+            qimage = QImage(image.data, w, h, w*3, QImage.Format_RGB888)
+            self.frameRendered.emit(qimage)
+
             self.progress.emit(num*100//den)
             
-        #    if result is not None:
-        #        break
                         
         self.stitcher.after()
-        self.stitcher.done()
+        self.stitcher.canvas.done()
         self.finished.emit()
         
     def stop(self):
         self._isRunning = False
-
+        #self.stitcher.canvas.add_hook(None)
+        
 
 class ExtensibleCanvasWidget(QWidget):
     def __init__(self, width, height, parent=None):
@@ -109,6 +115,9 @@ class StitcherUI(QDialog):
         super(StitcherUI, self).__init__(parent)
         self.setWindowTitle("Stitcher Preview")
         stitcher = stitch.Stitcher(argv=argv)
+        tilesize = (512,512) #canbe smaller for smaller machine
+        cachesize = 10
+        stitcher.set_canvas(ci.CachedImage("new", dir=stitcher.cachedir, tilesize=tilesize, cachesize=cachesize))
         self.stitcher = stitcher
         #determine the shrink ratio to avoid too huge preview
         preview_ratio = 1.0

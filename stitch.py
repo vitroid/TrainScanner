@@ -14,8 +14,8 @@ import helix
 import rect
 import logging
 #from canvas import Canvas    #On-memory canvas
-from canvas2 import Canvas   #Cached canvas
-
+#from canvas2 import Canvas   #Cached canvas
+import cachedimage as ci
 
 
 class AlphaMask():
@@ -227,14 +227,14 @@ class Stitcher():
     def add_image(self, frame, absx,absy,idx,idy):
         rotated,warped,cropped = self.transform.process_image(frame)
         if self.firstFrame:
-            self.canvas.abs_merge(cropped, absx, absy)
+            self.canvas.put_image((absx, absy), cropped)
             self.mask = AlphaMask(cropped.shape[1],
                                   slit=self.params.slitpos,
                                   width=self.params.slitwidth)
             self.firstFrame = False
         else:
             alpha = self.mask.make_linear_alpha( int(idx) )
-            self.canvas.abs_merge(cropped, absx, absy, alpha=alpha)
+            self.canvas.put_image((absx, absy), cropped, linear_alpha=alpha)
 
 
     def stitch(self):
@@ -246,15 +246,12 @@ class Stitcher():
         #while result is None:
         #    result = self.onestep()
         self.after()
-        self.done()
+        self.canvas.done()
                 
 
     def loop(self):
-        while True:
-            result = self._onestep()
+        while self._onestep():
             yield self.getProgress()
-            if result is not None:
-                break
 
 
     def _onestep(self):
@@ -266,22 +263,26 @@ class Stitcher():
         while self.currentFrame + 1 < self.locations[0][0]:
             ret = self.cap.grab()
             if not ret:
-                return self.get_image()
+                return False
             self.currentFrame += 1
         ret,frame = self.cap.read()
         self.currentFrame += 1
         if not ret:
-            return self.get_image()
+            return False
         if self.params.scale != 1:
             frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)
         self.add_image(frame, *self.locations[0][1:])
         self.locations.pop(0)
         if len(self.locations) == 0:
-            return self.get_image()
-        return None  #not end
+            return False
+        return True  #not end
 
     def after(self):
+        """
+        This is an optional process.
+        """
         file_name = self.outfilename
+        #It costs high when using the CachedImage.
         img       = self.canvas.get_image()
         cv2.imwrite(file_name, img)
         if self.params.film:
@@ -311,7 +312,7 @@ if __name__ == "__main__":
     
     tilesize = (512,512) #canbe smaller for smaller machine
     cachesize = 10
-    canvas = Canvas(dir=st.cachedir, tilesize=tilesize, cachesize=cachesize)
+    canvas = ci.CachedImage("new", dir=st.cachedir, tilesize=tilesize, cachesize=cachesize)
     st.set_canvas(canvas)
 
     st.stitch()
