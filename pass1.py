@@ -486,15 +486,21 @@ class Pass1():
                 vely = dy
                 match_fail = 0
             else:
-                #動きがantishake水準より小さかった場合
-                match_fail += 1
-                #match_failカウンターがparams.trailingに届くまではそのまま回す．
-                if match_fail > params.trailing:
-                    #end of work
-                    #Add trailing frames to the log file here.
-                    return
-                logger.info("Skip ({0} {1} {2} +{3}/{4})".format(nframes,dx,dy,match_fail, params.trailing))
-                # believe the last velx and vely
+                if guess_mode:
+                    #動きがantishake水準より小さかった場合
+                    match_fail += 1
+                    #match_failカウンターがparams.trailingに届くまではそのまま回す．
+                    if match_fail > params.trailing:
+                        #end of work
+                        #Add trailing frames to the log file here.
+                        return
+                    logger.info("Skip ({0} {1} {2} +{3}/{4})".format(nframes,dx,dy,match_fail, params.trailing))
+                    # believe the last velx and vely
+                else:
+                    #not guess mode, not large motion: just ignore.
+                    logger.info("Still ({0} {1} {2})".format(nframes,dx,dy))
+                    continue
+                    
             logger.info("Scan {0} {2} {3} #{1}".format(nframes,np.amax(diff), velx, vely))
             absx += velx
             absy += vely

@@ -15,27 +15,23 @@ import logging
 import cachedimage as ci
 from scaledcanvas import ScaledCanvas
 
+
+#It is run in the thread.
 class Renderer(QObject):
-    frameRendered = pyqtSignal(QImage)  # it is target of emit()
+    #frameRendered = pyqtSignal(QImage)  # it is target of emit()
+    tileRendered  = pyqtSignal(tuple, np.ndarray)
     finished = pyqtSignal()
     progress = pyqtSignal(int)
 
-    def __init__(self, parent=None, stitcher=None, preview_ratio=1.0):
+    def __init__(self, parent=None, stitcher=None):
         super(Renderer, self).__init__(parent)
         self.stitcher = stitcher
         self._isRunning = True
-        self.preview_ratio = preview_ratio
-        #On memory canvas for storing the preview
-        self.preview = ScaledCanvas(scale = preview_ratio)
         #Dirty signal handler
-        self.stitcher.canvas.set_hook(self.preview.put_image)
+        self.stitcher.canvas.set_hook(self.signal_sender)
 
-    def cv2toQImage(self,image):
-        tmp = np.zeros_like(image[:,:,0])
-        tmp = image[:,:,0].copy()
-        image[:,:,0] = image[:,:,2]
-        image[:,:,2] = tmp
-
+    def signal_sender(self, pos, image):
+        self.tileRendered.emit(pos, image)
                 
     def task(self):
         if not self._isRunning:
@@ -46,19 +42,7 @@ class Renderer(QObject):
         for num,den in self.stitcher.loop():
             if not self._isRunning:
                 break
-            #image = self.stitcher.canvas.get_image() #.copy()
-            #height, width = image.shape[0:2]
-            #h = int(height*self.preview_ratio)
-            #w = int(width *self.preview_ratio)
-            #resized = cv2.resize(image, (w, h), interpolation = cv2.INTER_CUBIC)
-            #self.cv2toQImage(resized)
-            image = self.preview.get_image()[:,:,::-1].copy()  #reverse order
-            h,w = image.shape[:2]
-            qimage = QImage(image.data, w, h, w*3, QImage.Format_RGB888)
-            self.frameRendered.emit(qimage)
-
             self.progress.emit(num*100//den)
-            
                         
         self.stitcher.after()
         self.stitcher.canvas.done()
@@ -69,8 +53,34 @@ class Renderer(QObject):
         #self.stitcher.canvas.add_hook(None)
         
 
-class ExtensibleCanvasWidget(QWidget):
-    def __init__(self, width, height, parent=None):
+class ExtensibleCanvasWidget(QLabel):
+    def __init__(self, width, height, parent=None, preview_ratio=1.0):
+        super(ExtensibleCanvasWidget, self).__init__(parent)
+
+        self.pixmap = QPixmap()
+
+        self.setWindowTitle("ExtensibleCanvas")
+        #self.setCursor(Qt.CrossCursor)
+        #This is the initial paint size
+        self.resize(width, height)
+        self.preview = ScaledCanvas(scale = preview_ratio)
+        
+    
+    def updatePixmap(self, pos, image):
+        #self.count += 1
+        #if self.count == 7:
+        #    self.count = 0
+        self.preview.put_image(pos, image)
+        fullimage = self.preview.get_image()[:,:,::-1].copy()  #reverse order
+        h,w = fullimage.shape[:2]
+        qimage = QImage(fullimage.data, w, h, w*3, QImage.Format_RGB888)
+        self.setPixmap(QPixmap.fromImage(qimage))
+        self.update()
+
+
+
+class ExtensibleCanvasWidget0(QWidget):
+    def __init__(self, width, height, parent=None, preview_ratio=1.0):
         super(ExtensibleCanvasWidget, self).__init__(parent)
 
         self.pixmap = QPixmap()
@@ -79,7 +89,9 @@ class ExtensibleCanvasWidget(QWidget):
         self.setCursor(Qt.CrossCursor)
         #This is the initial paint size
         self.resize(width, height)
-
+        self.preview = ScaledCanvas(scale = preview_ratio)
+        #self.setPixmap(self.pixmap)
+        
     def paintEvent(self, event):
         #get the "paint" region"
         #paint is the body image of the widget
@@ -95,11 +107,17 @@ class ExtensibleCanvasWidget(QWidget):
         #What if the pixmap size is different from painter size?
         #Paint does not expand even if the pixmap becomes larger and larger.
         #So you need resize() it.
-
-
-    def updatePixmap(self, image):
-        self.pixmap = QPixmap.fromImage(image)
-        self.update()
+        
+    def updatePixmap(self, pos, image):
+        #self.count += 1
+        #if self.count == 7:
+        #    self.count = 0
+            self.preview.put_image(pos, image)
+            fullimage = self.preview.get_image()[:,:,::-1].copy()  #reverse order
+            h,w = fullimage.shape[:2]
+            qimage = QImage(fullimage.data, w, h, w*3, QImage.Format_RGB888)
+            self.pixmap = QPixmap.fromImage(qimage)
+            self.update()
 
 
 
@@ -129,7 +147,7 @@ class StitcherUI(QDialog):
         self.thread = QThread()
         self.thread.start()
 
-        self.worker = Renderer(stitcher=stitcher, preview_ratio=preview_ratio)
+        self.worker = Renderer(stitcher=stitcher)
         #it might be too early.
         
         #determine the window size
@@ -140,9 +158,10 @@ class StitcherUI(QDialog):
 
         self.scrollArea = QScrollArea()
         #self.scrollArea.setMaximumHeight(1000)
-        self.largecanvas = ExtensibleCanvasWidget(width, height)
+        self.largecanvas = ExtensibleCanvasWidget(width, height, preview_ratio=preview_ratio)
         #print(width,height)
-        self.worker.frameRendered.connect(self.largecanvas.updatePixmap)
+        #self.worker.frameRendered.connect(self.largecanvas.updatePixmap)
+        self.worker.tileRendered.connect(self.largecanvas.updatePixmap)
         #Do not close the window when finished.
         #self.worker.finished.connect(self.finishIt)
         self.worker.moveToThread(self.thread)
