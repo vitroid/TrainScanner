@@ -54,15 +54,8 @@ class Renderer(QObject):
         
 
 class ExtensibleCanvasWidget(QLabel):
-    def __init__(self, width, height, parent=None, preview_ratio=1.0):
+    def __init__(self, parent=None, preview_ratio=1.0):
         super(ExtensibleCanvasWidget, self).__init__(parent)
-
-        self.pixmap = QPixmap()
-
-        self.setWindowTitle("ExtensibleCanvas")
-        #self.setCursor(Qt.CrossCursor)
-        #This is the initial paint size
-        self.resize(width, height)
         self.preview = ScaledCanvas(scale = preview_ratio)
         
     
@@ -73,57 +66,11 @@ class ExtensibleCanvasWidget(QLabel):
         self.preview.put_image(pos, image)
         fullimage = self.preview.get_image()[:,:,::-1].copy()  #reverse order
         h,w = fullimage.shape[:2]
+        self.resize(w, h)
         qimage = QImage(fullimage.data, w, h, w*3, QImage.Format_RGB888)
         self.setPixmap(QPixmap.fromImage(qimage))
         self.update()
 
-
-
-class ExtensibleCanvasWidget0(QWidget):
-    def __init__(self, width, height, parent=None, preview_ratio=1.0):
-        super(ExtensibleCanvasWidget, self).__init__(parent)
-
-        self.pixmap = QPixmap()
-
-        self.setWindowTitle("ExtensibleCanvas")
-        self.setCursor(Qt.CrossCursor)
-        #This is the initial paint size
-        self.resize(width, height)
-        self.preview = ScaledCanvas(scale = preview_ratio)
-        #self.setPixmap(self.pixmap)
-        
-    def paintEvent(self, event):
-        #get the "paint" region"
-        #paint is the body image of the widget
-        #it is called again and again (who calls it?)
-        #This just put the pixmap on the "paint"
-        #perhaps the thread calls it.
-        #It is called even when the image is just scrolled..... Redundant.
-        #No it is required. Otherwise image disappears during scrolling.
-        painter = QPainter(self)
-        #Always resize. Is it ok here? NO
-        #self.resize(self.pixmap.size())
-        painter.drawPixmap(QPoint(), self.pixmap)
-        #What if the pixmap size is different from painter size?
-        #Paint does not expand even if the pixmap becomes larger and larger.
-        #So you need resize() it.
-        
-    def updatePixmap(self, pos, image):
-        #self.count += 1
-        #if self.count == 7:
-        #    self.count = 0
-            self.preview.put_image(pos, image)
-            fullimage = self.preview.get_image()[:,:,::-1].copy()  #reverse order
-            h,w = fullimage.shape[:2]
-            qimage = QImage(fullimage.data, w, h, w*3, QImage.Format_RGB888)
-            self.pixmap = QPixmap.fromImage(qimage)
-            self.update()
-
-
-
-    #This will be the trigger for the first rendering
-    #def resizeEvent(self, event):
-    #    self.thread.render(self.size())
 
 
 class StitcherUI(QDialog):
@@ -133,7 +80,7 @@ class StitcherUI(QDialog):
         super(StitcherUI, self).__init__(parent)
         self.setWindowTitle("Stitcher Preview")
         stitcher = stitch.Stitcher(argv=argv)
-        tilesize = (512,512) #canbe smaller for smaller machine
+        tilesize = (128,512) #can be smaller for smaller machine
         cachesize = 10
         stitcher.set_canvas(ci.CachedImage("new", dir=stitcher.cachedir, tilesize=tilesize, cachesize=cachesize))
         self.stitcher = stitcher
@@ -158,7 +105,7 @@ class StitcherUI(QDialog):
 
         self.scrollArea = QScrollArea()
         #self.scrollArea.setMaximumHeight(1000)
-        self.largecanvas = ExtensibleCanvasWidget(width, height, preview_ratio=preview_ratio)
+        self.largecanvas = ExtensibleCanvasWidget(preview_ratio=preview_ratio)
         #print(width,height)
         #self.worker.frameRendered.connect(self.largecanvas.updatePixmap)
         self.worker.tileRendered.connect(self.largecanvas.updatePixmap)

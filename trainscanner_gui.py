@@ -69,6 +69,8 @@ class AsyncImageLoader(QObject):
 
         #capture the first frame ASAP to avoid "no frame" errors.
         self.size = size
+        logger = logging.getLogger()
+        logger.debug("Open video: {0}".format(filename))
         self.cap = cv2.VideoCapture(filename)
         ret, frame = self.cap.read()
         if self.size:
@@ -387,6 +389,15 @@ class SettingsGUI(QWidget):
         rows += 1
         #####################################################################
 
+        #####################################################################
+        #Example of a checkbox
+        settings2_layout.addWidget(QLabel(self.tr('Debug')), rows, 0, Qt.AlignRight)
+        self.btn_debug = QCheckBox()
+        #self.btn_stall.setCheckState(Qt.Checked)
+        self.btn_debug.toggled.connect(self.toggle_debug)
+        settings2_layout.addWidget(self.btn_debug,rows, 1, Qt.AlignCenter)
+        rows += 1
+        #####################################################################
 
         gbox_settings.setLayout(settings2_layout)
 
@@ -433,22 +444,13 @@ class SettingsGUI(QWidget):
         self.le.setText(self.tr('(File name appears here)'))
         
     def getfile(self):
-        #OSチェック
-        def os_check():
-            #windows
-            if os.name is 'nt':
-                code = 'cp932'
-                return code
-            #Unix、Mac
-            if os.name is not 'nt':
-                code = 'utf-8'
-                return code
-
         logger = logging.getLogger()
         if self.editor is not None:
             self.editor.close()
+        logger.debug("Let's select a file")
         self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)")
+        logger.debug("File: {0}".format(self.filename))
         if self.filename == "": # or if the file cannot be opened,
             return
         #for py2
@@ -460,11 +462,21 @@ class SettingsGUI(QWidget):
             ap = argparse.ArgumentParser(fromfile_prefix_chars='@',
                                         description='TrainScanner')
             parser_stitch = pp2(ap)
+            #Set priority to the path of the given tsconf
             tsconf = self.filename
+            tsconfdir = os.path.dirname(tsconf)
+            if tsconfdir == "":
+                tsconfdir = "."
+            
             params,unknown = parser_stitch.parse_known_args(["@"+tsconf])
             logger.debug("Params1 {0} {1}".format(params,unknown))
             unknown += [params.filename] #supply filename for pass1 parser
-            self.filename = params.filename
+            #Assume the movie file is in the same dir as the tsconf
+            self.filename = tsconfdir + "/" + os.path.basename(params.filename)
+            #Otherwise use the path written in the tsconf file. (original location)
+            if not os.path.exists(self.filename):
+                self.filename = params.filename
+            logger.debug("Movie  {0}".format(self.filename))
             parser_pass1 = pp1()
             params2,unknown2 = parser_pass1.parse_known_args(["@"+tsconf])
             logger.debug("Params2 {0} {1}".format(params2,unknown2))
@@ -475,6 +487,8 @@ class SettingsGUI(QWidget):
                 p1[key] = p2[key]
             #set variables in self
             #and make the editor also.
+            #Overwrite the filename
+            p1["filename"] = self.filename
             self.editor = EditorGUI(self, params=p1)
             self.slitwidth_slider.setValue(int(p1["slitwidth"]*100))
             self.antishake_slider.setValue(p1["antishake"])
@@ -514,10 +528,18 @@ class SettingsGUI(QWidget):
         self.le.setText(self.filename)
         
 
-
-##    def btn_accel_toggle(self, state):
-##        self.accel_slider.setEnabled(state)
-
+    def toggle_debug(self):
+        #Once remove all the handlers
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+        if self.btn_debug.isChecked():
+            print("!!!")
+            logging.basicConfig(level=logging.DEBUG,
+                            #filename='log.txt',
+                            format="%(asctime)s %(levelname)s %(message)s")
+        else:
+            logging.basicConfig(level=logging.WARN,
+                            format="%(asctime)s %(levelname)s %(message)s")
         
     def trailing_slider_on_draw(self):
         self.trailing = self.trailing_slider.value()
@@ -1007,14 +1029,8 @@ def main():
     if QLocale.system().language() == QLocale.Japanese:
         translator.load(rpath+"/i18n/trainscanner_ja")
     app.installTranslator(translator)
-    debug = False
-    if debug:
-        logging.basicConfig(level=logging.DEBUG,
-                            #filename='log.txt',
-                            format="%(asctime)s %(levelname)s %(message)s")
-    else:
-        logging.basicConfig(level=logging.WARN,
-                            format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(level=logging.WARN,
+                        format="%(asctime)s %(levelname)s %(message)s")
     se = SettingsGUI()
     se.show()
     se.raise_()
