@@ -62,6 +62,7 @@ install:
 	echo This software is not suitable for installation. Please use it in the present folder, or build the self-containing application.
 
 
+#pip3 install pylru gi pillow
 
 
 
