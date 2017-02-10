@@ -46,6 +46,7 @@ def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), anti
     ref画像の，focusで指定された領域内の画像と同じ画像を，image内でさがして，その変位を返す．
     maxaccelとdeltaが指定されている場合は，探索範囲を絞り高速にマッチングできる．
     """
+    logger = logging.getLogger()
     hi,wi = ref.shape[0:2]
     wmin = wi*focus[0]//1000
     wmax = wi*focus[1]//1000
@@ -67,6 +68,7 @@ def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), anti
         roix1 = wmax + delta[0] + maxaccel
         roiy1 = hmax + delta[1] + maxaccel
         affine = np.matrix(((1.0,0.0,-roix0),(0.0,1.0,-roiy0)))
+        logger.debug("maxaccel:{0} delta:{1}".format(maxaccel,delta))
         crop = cv2.warpAffine(image, affine, (roix1-roix0,roiy1-roiy0))
         #imageh,imagew = image.shape[0:2]
         #if roix0 < 0 or roix1 >= imagew or roiy0 < 0 or roiy1 >= imageh:
@@ -382,7 +384,7 @@ class Pass1():
         self.canvas = None
         
         absx,absy  = 0, 0
-        velx, vely = 0.0, 0.0
+        velx, vely = 0, 0
         match_fail = 0
         guess_mode = params.stall
         precount   = 0

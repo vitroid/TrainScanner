@@ -35,7 +35,7 @@ class AlphaMask():
             return self.alphas[displace]
         if displace == 0:
             self.alphas[0.0] = np.ones((self.img_width,3))
-            self.alphas[0]   = alphas[0.0]
+            self.alphas[0]   = self.alphas[0.0]
             return self.alphas[0]
         slitwidth = abs(int(displace*self.width))
         alpha = np.zeros((self.img_width,3))

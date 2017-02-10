@@ -697,7 +697,7 @@ class EditorGUI(QWidget):
         rotated,warped,cropped = self.transform.process_image(cv2image)
         h,w = cropped.shape[0:2]
         thumbh = 100
-        thumbw = 50# w*thumbh/h
+        thumbw = w*thumbh//h
         thumb = cv2.resize(cropped,(thumbw,thumbh),interpolation = cv2.INTER_CUBIC)
         return self.cv2toQImage(thumb)
         

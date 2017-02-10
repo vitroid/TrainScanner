@@ -12,7 +12,7 @@ class ImageBar(QLabel):
         self.setFrameStyle(QFrame.StyledPanel)
         self.thumbs = []
         self.setFixedHeight(100)
-        self.transformer=lambda x:x  #no conversion
+        self.transformer=lambda x,:x  #no conversion
         #self._prepareImage()
 
     def paintEvent(self, event):
@@ -28,15 +28,20 @@ class ImageBar(QLabel):
         painter = QPainter(self)
         if len(self.thumbs) == 0:
             return
-        first = self.transformer(self.thumbs[0])
-        h = first.height()
-        w = first.width() + 2
         pw = self.width()
-        nframes = pw//w + 1
-        for i in range(nframes):
-            f = i*len(self.thumbs)//nframes
-            point = QPoint(i*w,0)
-            painter.drawImage(point, self.transformer(self.thumbs[f]))
+        NF = len(self.thumbs)
+        slit_width = pw // NF + 1
+        for i in range(NF):
+            point = QPoint(i*pw // NF,0)
+            thumb = self.transformer(self.thumbs[i])
+            w = thumb.width()
+            h = thumb.height()
+            if w > slit_width:
+                w0 = (w-slit_width)//2
+                cropped = thumb.copy(w0,0,slit_width,h)
+                painter.drawImage(point, cropped)
+            else:
+                painter.drawImage(point, thumb)
 
     def setThumbs(self,thumbs):
         self.thumbs = thumbs

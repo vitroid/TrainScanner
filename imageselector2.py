@@ -35,8 +35,7 @@ class ImageSelector2(QWidget):
             self.slider.setEnd(len(thumbs)-1)
         else:
             self.slider.setEnd(lasttail)
-        
-
+    
 
 def cv2toQImage(cv2image):
     """
