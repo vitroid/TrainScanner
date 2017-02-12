@@ -103,7 +103,15 @@ class TiledImage():
             if linear_alpha is None:
                 src[yr[0]-originy:yr[1]-originy, xr[0]-originx:xr[1]-originx, :] = image[yr[0]-yrange[0]:yr[1]-yrange[0], xr[0]-xrange[0]:xr[1]-xrange[0], :]
             else:
-                src[yr[0]-originy:yr[1]-originy, xr[0]-originx:xr[1]-originx, :] = linear_alpha[xr[0]-xrange[0]:xr[1]-xrange[0], :]*image[yr[0]-yrange[0]:yr[1]-yrange[0], xr[0]-xrange[0]:xr[1]-xrange[0], :] + (1-linear_alpha[xr[0]-xrange[0]:xr[1]-xrange[0], :])*src[yr[0]-originy:yr[1]-originy, xr[0]-originx:xr[1]-originx, :]
+                dy0 = yr[0] - originy
+                dy1 = yr[1] - originy
+                dx0 = xr[0] - originx
+                dx1 = xr[1] - originx
+                sx0 = xr[0] - xrange[0]
+                sx1 = xr[1] - xrange[0]
+                sy0 = yr[0] - yrange[0]
+                sy1 = yr[1] - yrange[0]
+                src[dy0:dy1, dx0:dx1, :] = linear_alpha[sx0:sx1, :]*image[sy0:sy1, sx0:sx1, :] + (1-linear_alpha[sx0:sx1, :])*src[dy0:dy1, dx0:dx1, :]
                 
             #rewrite the item explicitly (for caching)
             self.tiles[tile] = src

@@ -4,7 +4,7 @@
 #Core of the GUI and image process
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
 from PyQt5.QtGui     import QImage, QPixmap, QPainter
-from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator, QRect, QSize, QLocale
+from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator, QRect, QSize, QLocale, QByteArray
 
 import cv2
 import numpy as np
@@ -184,6 +184,8 @@ class MyLabel(QLabel):
 class SettingsGUI(QWidget):
     def __init__(self, parent = None):
         super(SettingsGUI, self).__init__(parent)
+        self.setAcceptDrops(True)
+
 
         # options
         self.trailing = 10
@@ -438,6 +440,45 @@ class SettingsGUI(QWidget):
         self.setLayout(layout)
         self.setWindowTitle("Settings")
 		
+    def dragEnterEvent(self, event):
+        logger = logging.getLogger()
+        event.accept()
+        mimeData = event.mimeData()
+        logger.debug('dragEnterEvent')
+        for mimetype in mimeData.formats():
+            logger.debug('MIMEType: {0}'.format(mimetype))
+            logger.debug('Data: {0}'.format(mimeData.data(mimetype)))
+
+    def dropEvent(self, event):
+        logger = logging.getLogger()
+        event.accept()
+        mimeData = event.mimeData()
+        logger.debug('dropEvent')
+        for mimetype in mimeData.formats():
+            logger.debug('MIMEType: {0}'.format(mimetype))
+            logger.debug('Data: {0}'.format(mimeData.data(mimetype)))
+        #Open only when:
+        #1. Only file is given
+        #3. and the mimetipe is text/uri-list
+        #2. That has the regular extension.
+        logger.debug("len:{0}".format(len(mimeData.formats())))
+        if len(mimeData.formats()) == 1:
+            mimetype = mimeData.formats()[0]
+            if mimetype == "text/uri-list":
+                data = mimeData.data(mimetype)
+                from urllib.parse import urlparse, unquote
+                for line in bytes(data).decode('utf8').splitlines():
+                    parsed = urlparse(unquote(line))
+                    logger.debug('Data: {0}'.format(parsed))
+                    if parsed.scheme == 'file':
+                        if self.editor is not None:
+                            self.editor.close()
+                        self.fileparser(parsed.path)
+                        return
+        #or just ignore
+                
+            
+
     def reset_input(self):
         self.filename = ""
         self.editor = None
@@ -448,15 +489,18 @@ class SettingsGUI(QWidget):
         if self.editor is not None:
             self.editor.close()
         logger.debug("Let's select a file")
-        self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)")
-        logger.debug("File: {0}".format(self.filename))
-        if self.filename == "": # or if the file cannot be opened,
+        logger.debug("File: {0}".format(filename))
+        if filename == "": # or if the file cannot be opened,
             return
-        #for py2
-        #if type(self.filename) is not str:
-        #    self.filename = unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8')
-        #for py3 self.filename is a str
+        self.fileparser(filename)
+
+
+
+    def fileparser(self,filename):
+        logger = logging.getLogger()
+        self.filename = filename
         if self.filename.rfind(".tsconf") + 7 == len(self.filename):
             #read all initial values from the file.
             ap = argparse.ArgumentParser(fromfile_prefix_chars='@',
