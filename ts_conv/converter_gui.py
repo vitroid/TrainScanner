@@ -7,17 +7,17 @@ from PyQt5.QtCore    import QTranslator, QLocale
 import cv2
 import numpy as np
 import math
-import trainscanner
 import time
+import logging
 
 #File handling
 import os
 import subprocess
 
 #final image tranformation
-import film
-import helix
-import rect
+from ts_conv import film
+from ts_conv import helix
+from ts_conv import rect
 
 #options handler
 import sys
@@ -29,6 +29,7 @@ import sys
 class SettingsGUI(QWidget):
     def __init__(self, parent = None):
         super(SettingsGUI, self).__init__(parent)
+        self.setAcceptDrops(True)
 
         finish_layout = QVBoxLayout()
         self.btn = QPushButton(self.tr('Open an image'))
@@ -49,26 +50,10 @@ class SettingsGUI(QWidget):
 		
         
     def getfile(self):
-        #OSチェック
-        def os_check():
-            #windows
-            if os.name is 'nt':
-                code = 'cp932'
-                return code
-            #Unix、Mac
-            if os.name is not 'nt':
-                code = 'utf-8'
-                return code
-
         self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
             "","Image files (*.png *.tif *.jpg *.jpeg *.gif)")
         if self.filename == "": # or if the file cannot be opened,
             return
-        #if type(self.filename) is not str:
-        #    print(type(self.filename))
-        #    self.filename = unicode(self.filename.toUtf8(), encoding=os_check()).encode('utf-8')
-
-
 
 
     def start_process(self):
@@ -84,6 +69,46 @@ class SettingsGUI(QWidget):
         if self.btn_finish_rect.isChecked():
             rimg = rect.rectify( img )
             cv2.imwrite(file_name + ".rect.png", rimg)
+
+
+
+    def dragEnterEvent(self, event):
+        logger = logging.getLogger()
+        event.accept()
+        mimeData = event.mimeData()
+        logger.debug('dragEnterEvent')
+        for mimetype in mimeData.formats():
+            logger.debug('MIMEType: {0}'.format(mimetype))
+            logger.debug('Data: {0}'.format(mimeData.data(mimetype)))
+
+    def dropEvent(self, event):
+        logger = logging.getLogger()
+        event.accept()
+        mimeData = event.mimeData()
+        logger.debug('dropEvent')
+        for mimetype in mimeData.formats():
+            logger.debug('MIMEType: {0}'.format(mimetype))
+            logger.debug('Data: {0}'.format(mimeData.data(mimetype)))
+        #Open only when:
+        #1. Only file is given
+        #3. and the mimetipe is text/uri-list
+        #2. That has the regular extension.
+        logger.debug("len:{0}".format(len(mimeData.formats())))
+        if len(mimeData.formats()) == 1:
+            mimetype = mimeData.formats()[0]
+            if mimetype == "text/uri-list":
+                data = mimeData.data(mimetype)
+                from urllib.parse import urlparse, unquote
+                for line in bytes(data).decode('utf8').splitlines():
+                    parsed = urlparse(unquote(line))
+                    logger.debug('Data: {0}'.format(parsed))
+                    if parsed.scheme == 'file':
+                        self.filename = parsed.path
+                        return
+        #or just ignore
+
+
+
 
 #for pyinstaller
 def resource_path(relative):
