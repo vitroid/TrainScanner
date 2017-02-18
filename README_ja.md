@@ -1,14 +1,16 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 #TrainScannerの使い方
-##アプリのインストール
-[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc). でも，たぶんまだ動きません．(大変苦労しています)
+##インストール
+###Requirements
+`PyQt5`, `OpenCV3`, `Python3`をあらかじめインストールして下さい．OpenCV3をインストールする際には`--with-ffmpeg --with-tbb --with-python3 --HEAD`の各オプションを指定して下さい．
+###pipでインストール
+これが今のところ一番簡単かもしれません．
 
-Windowsの実行ファイルも同じ場所に置いてありますが，こちらも開発機以外で動くのかどうか確認できていません．また，Windowsの実行ファイルは，すこしあと回しになっています．
+    % pip3 install trainscanner
+    % trainscanner
 
 ###ソースからアプリを生成する
 ソースは[github](https://github.com/vitroid/TrainScanner)で配布しています．zipファイルをダウンロードして展開して下さい．
-
-`PyQt5`, `OpenCV3`, `Python3`をあらかじめインストールして下さい．OpenCV3をインストールする際には`--with-ffmpeg --with-tbb --with-python3 --HEAD`の各オプションを指定して下さい．
 
 MacでHomeBrewが使える人は，以下の方法を試してみて下さい．←**2017-1-16現在，動きません．**(HomeBrewそのものを入れる方法は[ここ](http://vdeep.net/intr-homebrew)を参照して下さい．)
 
@@ -19,8 +21,12 @@ Python3やらPyQt5が自動的にインストールされるので，それが�
 
 TrainScannerはPythonで書かれているので，Windows/Linuxでも動くはずですが，開発者の手が回っていません．協力を募集しています．
 
-###ソースからその場で直接実行
-`PyQt5`，`OpenCV3`，`Python3`のインストールをしてから，[github](https://github.com/vitroid/TrainScanner)からソースをダウンロードし、`Terminal.app` 上から`trainscanner_gui.py`を直接実行して下さい。今のところこれが一番おすすめです．
+###コンパイル済みアプリ
+[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc). でも，たぶんまだ動きません．(大変苦労しています)
+
+Windowsの実行ファイルも同じ場所に置いてありますが，こちらも開発機以外で動くのかどうか確認できていません．また，Windowsの実行ファイルは，すこしあと回しになっています．
+
+
 
 ##撮影方法
 列車をビデオカメラで側面から撮影します。
