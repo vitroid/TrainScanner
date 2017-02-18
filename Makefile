@@ -8,13 +8,23 @@ all: #macapp install #macapp-personally
 ##############################
 #  PyPI
 ##############################
+%.rst: %.md
+	md2rst $<
+
 setup:
 	./setup.py build
+
 install:
 	./setup.py install
+
 uninstall:
 	pip3 uninstall trainscanner
+
 pypi:
+	make README.rst
+	./setup.py check -s -r
+#	./setup.py sdist bdist_wheel upload
+
 distclean:
 	-rm -rf dist build *.egg-info __pycache__
 	make -C examples distclean

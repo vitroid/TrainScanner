@@ -38,3 +38,5 @@ test1.png
 .DS_Store
 */*pngs/*
 *.egg-info/*
+
+*.rst
