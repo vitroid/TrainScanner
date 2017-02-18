@@ -32,7 +32,7 @@ setup(name='TrainScanner',
       packages=['trainscanner',
                 'ts_conv',
                 ],
-      install_requires=['numpy', ], #"tiledimage", ],#'pyqt5', ], #cv2
+      install_requires=['numpy', "tiledimage", ],#'pyqt5', ], #cv2
       entry_points = {
               'console_scripts': [
                   'trainscanner        = trainscanner.trainscanner_gui:main',

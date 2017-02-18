@@ -22,8 +22,8 @@ uninstall:
 
 pypi:
 	make README.rst
-	./setup.py check -s -r
-#	./setup.py sdist bdist_wheel upload
+	./setup.py check
+	./setup.py sdist bdist_wheel upload
 
 distclean:
 	-rm -rf dist build *.egg-info __pycache__
