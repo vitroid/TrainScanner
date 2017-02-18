@@ -60,7 +60,8 @@ def filmify(img, label=""):
     return canvas
 
 
-if __name__ == "__main__":
+
+def main():
     #if you want to add Creative Commons sign,
     cc = ""
     while len(sys.argv) > 2:
@@ -75,3 +76,6 @@ if __name__ == "__main__":
     img = cv2.imread(sys.argv[1])
     canvas = filmify( img, label=cc )
     cv2.imwrite("{0}.film.png".format(sys.argv[1]), canvas)
+
+if __name__ == "__main__":
+    main()

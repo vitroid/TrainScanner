@@ -6,6 +6,20 @@ all: #macapp install #macapp-personally
 	echo There is no 'all' to be built for now.
 
 ##############################
+#  PyPI
+##############################
+setup:
+	./setup.py build
+install:
+	./setup.py install
+uninstall:
+	pip3 uninstall trainscanner
+pypi:
+distclean:
+	-rm -rf dist build *.egg-info __pycache__
+	make -C examples distclean
+
+##############################
 #  mac HomeBrew
 ##############################
 #prepare for mac with homebrew environment
@@ -58,7 +72,7 @@ test1.png: test1.tsconf
 	./stitch_gui.py @$<
 test1.tsconf:
 	./pass1_gui.py examples/sample.mov --log test1
-install:
+_install:
 	echo This software is not suitable for installation. Please use it in the present folder, or build the self-containing application.
 
 

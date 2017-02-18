@@ -53,7 +53,7 @@ def prepare_parser():
     return parser
 
 
-if __name__ == "__main__":
+def main():
     parser = prepare_parser()
     params = parser.parse_args(sys.argv[1:])
     print(params.filename)
@@ -64,3 +64,5 @@ if __name__ == "__main__":
     else:
         cv2.imwrite(params.output, canvas2)
     
+if __name__ == "__main__":
+    main()

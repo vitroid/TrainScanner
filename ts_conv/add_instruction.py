@@ -15,7 +15,7 @@ def roundbox(img,p1,p2,r,color):
 
 
 if len(sys.argv) != 2:
-    print "usage: {0} image".format(sys.argv[0])
+    print("usage: {0} image".format(sys.argv[0]))
     sys.exit(1)
 
 img = cv2.imread(sys.argv[1])
