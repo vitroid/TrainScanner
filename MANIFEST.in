@@ -1,3 +1,5 @@
 include README.rst
 include setup.cfg
 #recursive-include tests *
+include i18n/*qm
+
