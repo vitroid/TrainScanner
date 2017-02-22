@@ -8,7 +8,7 @@ Usage:
 from setuptools import setup
 import os
 
-APP = ['ts_conv/converter_gui.py']
+APP = ['ts_conv/__main__.py']
 cwd = os.getcwd()
 DATA_FILES = [('i18n',[cwd+'/i18n/trainscanner_ja.qm'])]
 #OPTIONS = {'argv_emulation': True}
