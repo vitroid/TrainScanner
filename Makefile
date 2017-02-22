@@ -30,14 +30,5 @@ test1.png: test1.tsconf
 test1.tsconf:
 	./pass1_gui.py examples/sample.mov --log test1
 distclean:
-	-rm -rf dist build *.egg-info __pycache__
+	-rm -rf dist build *.egg-info __pycache__ *.pyc
 	make -C examples distclean
-
-##############################
-#  mac personal app
-##############################
-macapp: $(wildcard *.py) 
-	pip3 install py2app
-	-rm -rf build dist
-	python3 trainscanner_gui-setup.py py2app -A      #alias mode. It is not portable
-	python3 converter_gui-setup.py py2app -A      #alias mode. It is not portable
