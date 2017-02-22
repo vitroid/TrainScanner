@@ -19,19 +19,6 @@ Python以外のライブラリを含め，一括してインストールでき�
     % brew install trainscanner
     % trainscanner
 
-##インストール(アプリ版)
-OSのターミナルウィンドウからインストールし，OSのアプリランチャー(Finderなど)からアイコンをダブルクリックして起動する場合．(まだちゃんと動きません)
-###ソースからアプリを生成する
-ソースは[github](https://github.com/vitroid/TrainScanner)で配布しています．zipファイルをダウンロードして展開して下さい．
-
-TrainScannerはPythonで書かれているので，Windows/Linuxでも動くはずですが，開発者の手が回っていません．協力を募集しています．
-###コンパイル済みアプリをもってくる
-最近更新していません．
-
-[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc). でも，たぶんまだ動きません．(大変苦労しています)
-
-Windowsの実行ファイルも同じ場所に置いてありますが，こちらも開発機以外で動くのかどうか確認できていません．また，Windowsの実行ファイルは，すこしあと回しになっています．
-
 ##撮影方法
 列車をビデオカメラで側面から撮影します。
 
