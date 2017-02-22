@@ -125,9 +125,9 @@ import pkgutil
 def main():
     app = QApplication(sys.argv)
     translator = QTranslator(app)
-    rpath = getattr(sys, '_MEIPASS', os.getcwd())
+    path = os.path.dirname(rect.__file__)
     if QLocale.system().language() == QLocale.Japanese:
-        translator.load(rpath+"/i18n/trainscanner_ja")
+        translator.load(path+"/i18n/trainscanner_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()

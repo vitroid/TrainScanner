@@ -43,7 +43,12 @@ setup(name='TrainScanner',
                   'helicify            = ts_conv.helix:main',
                   'ts_converter        = ts_conv.converter_gui:main',
               ]
-          }
+          },
+       include_package_data=True,
+       package_data={
+      'trainscanner': ['i18n/*.qm'],
+      'ts_conv':      ['i18n/*.qm'],
+       },
 #      entry_points="""
 #      [console_scripts]
 #      genice = genice.__main__:main

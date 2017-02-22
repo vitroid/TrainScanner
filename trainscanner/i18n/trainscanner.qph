@@ -1,0 +1,119 @@
+<!DOCTYPE QPH>
+<QPH language="ja_JP">
+<phrase>
+    <source>rotation</source>
+    <target>回転</target>
+</phrase>
+<phrase>
+    <source>Slit position</source>
+    <target>スリットのつなぎ目</target>
+</phrase>
+<phrase>
+    <source>1. Seek the first video frame</source>
+    <target>1. 最初のフレームまで早送りする</target>
+</phrase>
+<phrase>
+    <source>3. Motion Detection and Slit</source>
+    <target>3. うごきをとらえる/スリットの位置</target>
+</phrase>
+<phrase>
+    <source>2. Repair deformation</source>
+    <target>2. ゆがみをなおす</target>
+</phrase>
+<phrase>
+    <source>Open a movie</source>
+    <target>ムービーを開く</target>
+</phrase>
+<phrase>
+    <source>(File name appears here)</source>
+    <target>(ここにファイル名が表示されます)</target>
+</phrase>
+<phrase>
+    <source>Settings</source>
+    <target>設定</target>
+</phrase>
+<phrase>
+    <source>Ignore vertical displacements</source>
+    <target>縦方向のずれを無視する</target>
+</phrase>
+<phrase>
+    <source>Finish</source>
+    <target>仕上げ</target>
+</phrase>
+<phrase>
+    <source>Stitch to a long image strip</source>
+    <target>つないで長い画像をつくる</target>
+</phrase>
+<phrase>
+    <source>Add the film perforations</source>
+    <target>フィルムの縁をつける</target>
+</phrase>
+<phrase>
+    <source>Make a helical image</source>
+    <target>らせん画像を作る</target>
+</phrase>
+<phrase>
+    <source>Start</source>
+    <target>開始</target>
+</phrase>
+<phrase>
+    <source>Open file</source>
+    <target>ファイルを開く</target>
+</phrase>
+<phrase>
+    <source>Short</source>
+    <target>短</target>
+</phrase>
+<phrase>
+    <source>Long</source>
+    <target>長</target>
+</phrase>
+<phrase>
+    <source>Sharp</source>
+    <target>くっきり</target>
+</phrase>
+<phrase>
+    <source>Diffuse</source>
+    <target>ぼんやり</target>
+</phrase>
+<phrase>
+    <source>Small</source>
+    <target>小</target>
+</phrase>
+<phrase>
+    <source>Large</source>
+    <target>大</target>
+</phrase>
+<phrase>
+    <source>Trailing frames</source>
+    <target>列車が去ったあともスキャンを継続する</target>
+</phrase>
+<phrase>
+    <source>Slit mixing</source>
+    <target>スリットのつなぎ目</target>
+</phrase>
+<phrase>
+    <source>Minimal displacement between the frames</source>
+    <target>フレーム間での移動距離の最小値\ln (これより小さい移動は無視する)</target>
+</phrase>
+<phrase>
+    <source>The train is initially stalling in the motion detection area.</source>
+    <target>最初、列車は移動検知窓の中に止まっている.</target>
+</phrase>
+<phrase>
+    <source>pixels</source>
+    <target>画素</target>
+</phrase>
+<phrase>
+    <source>Minimal displacement between the frames</source>
+    <target>フレーム間での移動距離の最小値\n (これより小さい移動は無視する)</target>
+</phrase>
+<phrase>
+    <source>frames</source>
+    <target>コマ</target>
+</phrase>
+<phrase>
+    <source>degrees</source>
+    <target>度</target>
+</phrase>
+</QPH>

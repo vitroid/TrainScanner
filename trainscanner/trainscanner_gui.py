@@ -1052,33 +1052,18 @@ def resource_path(relative):
         relative
     )
 
-#import pkgutil
-
-## def pyqt_set_trace():
-##     '''Set a tracepoint in the Python debugger that works with Qt'''
-##     from PyQt5.QtCore import pyqtRemoveInputHook
-##     import pdb
-##     import sys
-##     pyqtRemoveInputHook()
-##     # set up the debugger
-##     debugger = pdb.Pdb()
-##     debugger.reset()
-##     # custom next to get outside of function scope
-##     debugger.do_next(None) # run the next command
-##     users_frame = sys._getframe().f_back # frame where the user invoked `pyqt_set_trace()`
-##     debugger.interaction(users_frame, None)
 
 
 def main():
     #pyqt_set_trace()
-    app = QApplication(sys.argv)
-    translator = QTranslator(app)
-    rpath = getattr(sys, '_MEIPASS', os.getcwd())
-    if QLocale.system().language() == QLocale.Japanese:
-        translator.load(rpath+"/i18n/trainscanner_ja")
-    app.installTranslator(translator)
     logging.basicConfig(level=logging.WARN,
                         format="%(asctime)s %(levelname)s %(message)s")
+    app = QApplication(sys.argv)
+    translator = QTranslator(app)
+    path = os.path.dirname(trainscanner.__file__)
+    if QLocale.system().language() == QLocale.Japanese:
+        translator.load(path+"/i18n/trainscanner_ja")
+    app.installTranslator(translator)
     se = SettingsGUI()
     se.show()
     se.raise_()
