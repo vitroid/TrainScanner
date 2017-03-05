@@ -2,8 +2,9 @@
 #-*- coding: utf-8 -*-
 
 #Core of the GUI and image process
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QPushButton, QCheckBox, QFileDialog
-from PyQt5.QtCore    import QTranslator, QLocale
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QPushButton, QCheckBox, QFileDialog, QProgressBar
+from PyQt5.QtGui     import QPalette, QPainter
+from PyQt5.QtCore    import QTranslator, QLocale, Qt
 import cv2
 import numpy as np
 import math
@@ -23,6 +24,8 @@ from ts_conv import rect
 import sys
 
 
+#Drag and drop work. Buttons would not be necessary.
+
 
 
 #https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
@@ -32,43 +35,55 @@ class SettingsGUI(QWidget):
         self.setAcceptDrops(True)
 
         finish_layout = QVBoxLayout()
-        self.btn = QPushButton(self.tr('Open an image'))
-        self.btn.clicked.connect(self.getfile)
-        finish_layout.addWidget(self.btn)
+        #self.btn = QPushButton(self.tr('Open an image'))
+        #self.btn.clicked.connect(self.getfile)
+        #finish_layout.addWidget(self.btn)
         self.btn_finish_perf = QCheckBox(self.tr('Add the film perforations'))
         finish_layout.addWidget(self.btn_finish_perf)
         self.btn_finish_helix = QCheckBox(self.tr('Make a helical image'))
         finish_layout.addWidget(self.btn_finish_helix)
         self.btn_finish_rect = QCheckBox(self.tr('Make a rectangular image'))
         finish_layout.addWidget(self.btn_finish_rect)
-        self.start_button = QPushButton(self.tr('Start'),self)
-        self.start_button.clicked.connect(self.start_process)
-        finish_layout.addWidget(self.start_button)
+        #self.start_button = QPushButton(self.tr('Start'),self)
+        #self.start_button.clicked.connect(self.start_process)
+        #finish_layout.addWidget(self.start_button)
+        self.pbar = QProgressBar()
+        self.pbar.setValue(0)
+        self.pbar.setRange(0,8)
+        finish_layout.addWidget(self.pbar)
 
         self.setLayout(finish_layout)
-        self.setWindowTitle("Convert")
+        self.setWindowTitle("Drag&Drop files")
 		
         
-    def getfile(self):
-        self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
-            "","Image files (*.png *.tif *.jpg *.jpeg *.gif)")
-        if self.filename == "": # or if the file cannot be opened,
-            return
-
+#    def getfile(self):
+#        self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+#            "","Image files (*.png *.tif *.jpg *.jpeg *.gif)")
+#        if self.filename == "": # or if the file cannot be opened,
+#            return
 
     def start_process(self):
+        self.pbar.setValue(0)
         file_name = self.filename
         img = cv2.imread(file_name)
+        self.pbar.setValue(1)
         if self.btn_finish_perf.isChecked():
             img = film.filmify( img )
+            self.pbar.setValue(2)
             file_name += ".film.png"
             cv2.imwrite(file_name, img)
+            self.pbar.setValue(3)
         if self.btn_finish_helix.isChecked():
+            self.pbar.setValue(4)
             himg = helix.helicify( img )
+            self.pbar.setValue(5)
             cv2.imwrite(file_name + ".helix.png", himg)
         if self.btn_finish_rect.isChecked():
+            self.pbar.setValue(6)
             rimg = rect.rectify( img )
+            self.pbar.setValue(7)
             cv2.imwrite(file_name + ".rect.png", rimg)
+        self.pbar.setValue(8)
 
 
 
@@ -104,9 +119,9 @@ class SettingsGUI(QWidget):
                     logger.debug('Data: {0}'.format(parsed))
                     if parsed.scheme == 'file':
                         self.filename = parsed.path
-                        return
+                        #Start immediately
+                        self.start_process()
         #or just ignore
-
 
 
 
