@@ -16,11 +16,11 @@ from trainscanner import myargparse
 
 
 class AlphaMask():
-    alphas = dict()
     def __init__(self, img_width, slit=0, width=1.0):
         self.img_width  = img_width
         self.width      = width
         self.slitpos    = slit*img_width//1000
+        self.alphas = dict()
 
     def make_linear_alpha( self, displace ):
         """
