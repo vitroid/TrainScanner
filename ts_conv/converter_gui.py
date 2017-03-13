@@ -19,7 +19,7 @@ import subprocess
 from ts_conv import film
 from ts_conv import helix
 from ts_conv import rect
-
+from tiledimage.cachedimage import CachedImage
 #options handler
 import sys
 
@@ -35,18 +35,12 @@ class SettingsGUI(QWidget):
         self.setAcceptDrops(True)
 
         finish_layout = QVBoxLayout()
-        #self.btn = QPushButton(self.tr('Open an image'))
-        #self.btn.clicked.connect(self.getfile)
-        #finish_layout.addWidget(self.btn)
         self.btn_finish_perf = QCheckBox(self.tr('Add the film perforations'))
         finish_layout.addWidget(self.btn_finish_perf)
         self.btn_finish_helix = QCheckBox(self.tr('Make a helical image'))
         finish_layout.addWidget(self.btn_finish_helix)
         self.btn_finish_rect = QCheckBox(self.tr('Make a rectangular image'))
         finish_layout.addWidget(self.btn_finish_rect)
-        #self.start_button = QPushButton(self.tr('Start'),self)
-        #self.start_button.clicked.connect(self.start_process)
-        #finish_layout.addWidget(self.start_button)
         self.pbar = QProgressBar()
         self.pbar.setValue(0)
         self.pbar.setRange(0,8)
@@ -56,16 +50,19 @@ class SettingsGUI(QWidget):
         self.setWindowTitle("Drag&Drop files")
 		
         
-#    def getfile(self):
-#        self.filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
-#            "","Image files (*.png *.tif *.jpg *.jpeg *.gif)")
-#        if self.filename == "": # or if the file cannot be opened,
-#            return
-
     def start_process(self):
+        logger = logging.getLogger()
         self.pbar.setValue(0)
+        if self.filename[-6:] == ".pngs/":
+            self.filename = self.filename[:-1]
+            cachedimage = CachedImage("inherit",
+                                      dir=self.filename,
+                                      disposal=False)
+            logger.debug(":: {0}".format(cachedimage))
+            img = cachedimage.get_region(None)
+        else:
+            img = cv2.imread(self.filename)
         file_name = self.filename
-        img = cv2.imread(file_name)
         self.pbar.setValue(1)
         if self.btn_finish_perf.isChecked():
             img = film.filmify( img )
@@ -138,6 +135,8 @@ def resource_path(relative):
 import pkgutil
 
 def main():
+    logging.basicConfig(level=logging.WARN,
+                        format="%(asctime)s %(levelname)s %(message)s")
     app = QApplication(sys.argv)
     translator = QTranslator(app)
     path = os.path.dirname(rect.__file__)

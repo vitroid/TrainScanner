@@ -384,7 +384,7 @@ class SettingsGUI(QWidget):
 
         settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2, Qt.AlignRight)
         self.trailing_slider = QSlider(Qt.Horizontal)  # スライダの向き
-        self.trailing_slider.setRange(1, 30)  # スライダの範囲
+        self.trailing_slider.setRange(1, 150)  # スライダの範囲
         self.trailing_slider.setValue(10)  # 初期値
         #スライダの目盛りを両方に出す
         self.trailing_slider.setTickPosition(QSlider.TicksBelow)
