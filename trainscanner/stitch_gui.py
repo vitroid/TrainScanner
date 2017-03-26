@@ -37,8 +37,7 @@ class Renderer(QObject):
         if not self._isRunning:
             self._isRunning = True
 
-        for num,den in self.stitcher.before():
-            self.progress.emit(num*100//den)
+        self.stitcher.before()
         for num,den in self.stitcher.loop():
             if not self._isRunning:
                 break

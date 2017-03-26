@@ -9,6 +9,8 @@ import os
 import re
 import itertools
 import logging
+import videosequence as vs
+
 from trainscanner import trainscanner
 from trainscanner import myargparse
 
@@ -249,7 +251,6 @@ class Pass1():
     def before(self):
         """
         prepare for the loop
-        note that it is a generator.
         """
         logger = logging.getLogger()
         ####Determine the movie file########################
@@ -297,37 +298,24 @@ class Pass1():
         #end of the header
 
         #############Open the video file #############################
-        self.cap    = cv2.VideoCapture(found)
+        self.frames  = vs.VideoSequence(found)
         self.nframes = 0  #1 is the first frame
-        #This does not work with some kind of MOV. (really?)
-        #self.cap.set(cv2.CAP_PROP_POS_FRAMES, skip)
-        #self.nframes = skip
-        #ret, frame = self.cap.read()
-        #if not ret:
-        self.nframes = 0
     
-        for i in range(self.params.skip):  #skip frames
-            ret = self.cap.grab()
-            if not ret:
-                break
-            self.nframes += 1
-            yield self.nframes, self.params.skip #report progress
-        ret, frame = self.cap.read()
-        if not ret:
-            sys.exit(0)
-        self.nframes += 1    #first frame is 1
-        self.rawframe = frame
+        self.current  = self.params.skip
         
         
 
-    def _backward_match(self, absx, absy, velx, vely, precount):
+    def _backward_match(self, absx, absy, velx, vely, precount, transform):
         """
         using cached images,
         "postdict" the displacements
         Do not break the cache. It will be used again.
         """
         logger = logging.getLogger()
-        curFrameNum, curFrameImg = self.cache.pop(-1)
+        curFrameNum = self.cache.pop(-1)
+        f           = cv2.cvtColor(np.array(self.frames[curFrameNum]), cv2.COLOR_RGB2BGR)
+        rotated, warped, cropped = transform.process_next_image(f) 
+        curFrameImg  = cropped
         prevFrameNum = -1 
         curFrameAbsX = int(absx)
         curFrameAbsY = int(absy)
@@ -336,7 +324,10 @@ class Pass1():
             logger.debug("Rewinding {0} {1} {2}".format(i,precount+self.params.trailing,len(self.cache)))
             if len(self.cache) == 0:
                 break
-            prevFrameNum,prevFrameImg = self.cache.pop(-1)
+            prevFrameNum = self.cache.pop(-1)
+            f           = cv2.cvtColor(np.array(self.frames[prevFrameNum]), cv2.COLOR_RGB2BGR)
+            rotated, warped, cropped = transform.process_next_image(f) 
+            prevFrameImg  = cropped
             d = motion(prevFrameImg, curFrameImg, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(velx, vely))
             if d is None:
                 dx = 0
@@ -348,7 +339,8 @@ class Pass1():
             if abs(dx) > self.params.antishake or abs(dy) > self.params.antishake:
                 velx = dx
                 vely = dy
-            newDeltas = [[prevFrameNum, velx, vely]] + newDeltas
+            #backward compatibility; frame number starts from 1 in output data
+            newDeltas = [[prevFrameNum+1, velx, vely]] + newDeltas
             curFrameAbsX -= velx
             curFrameAbsY -= vely
             self.canvas = canvas_size(self.canvas, curFrameImg, curFrameAbsX, curFrameAbsY)
@@ -363,7 +355,8 @@ class Pass1():
         #So the first frame is specified by the abs coord.
         if prevFrameNum < 0:
             return ""
-        newDeltas = [[prevFrameNum, curFrameAbsX, curFrameAbsY]] + newDeltas
+        #backward compatibility; frame number starts from 1 in output data
+        newDeltas = [[prevFrameNum+1, curFrameAbsX, curFrameAbsY]] + newDeltas
         s = ""
         for delta in newDeltas:
             s += "{0} {1} {2}\n".format(*delta)
@@ -373,8 +366,7 @@ class Pass1():
     def iter(self):
         logger = logging.getLogger()
         #All self variables to be inherited.
-        rawframe = self.rawframe
-        cap      = self.cap
+        rawframe = cv2.cvtColor(np.array(self.frames[self.current]), cv2.COLOR_RGB2BGR) 
         nframes  = self.nframes
         params   = self.params
         
@@ -404,26 +396,18 @@ class Pass1():
             #もしlastが設定されていて，しかもframe数がそれを越えていれば，終了．
             if params.skip < params.last < nframes + params.every:
                 return
-            #フレームの早送り
-            for i in range(params.every-1):
-                ret = cap.grab()
-                nframes += 1
-                if not ret:
-                    logger.debug("Video ended (1).")
-                    return
-            #1フレームとりこみ
-            ret, rawframe = cap.read()
-            nframes += 1
-            if not ret:
-                logger.debug("Video ended (2).")
-                return
+            self.current += params.every
+            if self.current >= len(self.frames): 
+                return None 
+            rawframe = cv2.cvtColor(np.array(self.frames[self.current]), cv2.COLOR_RGB2BGR) 
+
             ##### compare with the previous raw frame
             diff = cv2.absdiff(rawframe,lastrawframe)
             #When the raw frame is not changed at all, ignore the frame.
             #It happens in the frame rate adjustment between PAL and NTSC
             diff = np.sum(diff) / np.product(diff.shape)
             if diff < params.identity:
-                logger.info("skip identical frame #{0}".format(diff))
+                logger.info("skip identical frame {1} #{0}".format(diff,self.current))
                 continue
             ##### Warping the frame
             rotated, warped, cropped = transform.process_next_image(rawframe)
@@ -455,7 +439,7 @@ class Pass1():
                 deltay.pop(0)
             #最大100フレームの画像を記録する．
             if cropped is not None and self.cache is not None:
-                self.cache.append([nframes, cropped])
+                self.cache.append(self.current)
                 if len(self.cache) > 100: #always keep 100 frames in self.cache
                     self.cache.pop(0)
             ##### Make the preview image
@@ -476,13 +460,13 @@ class Pass1():
                     ddy = max(deltay) - min(deltay)
                     #if the displacements are almost constant in the last 5 frames,
                     if params.antishake <= ddx or params.antishake <= ddy:
-                        logger.info("Wait ({0} {1} {2})".format(nframes,dx,dy))
+                        logger.info("Wait ({0} {1} {2})".format(self.current+1,dx,dy))
                         continue
                     else:
                         #速度は安定した．
                         guess_mode = True
                         #この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
-                        self.tspos = self._backward_match(absx, absy, dx, dy, precount)
+                        self.tspos = self._backward_match(absx, absy, dx, dy, precount, transform)
                 #変位をそのまま採用する．
                 velx = dx
                 vely = dy
@@ -496,24 +480,25 @@ class Pass1():
                         #end of work
                         #Add trailing frames to the log file here.
                         return
-                    logger.info("Skip ({0} {1} {2} +{3}/{4})".format(nframes,dx,dy,match_fail, params.trailing))
+                    logger.info("Skip ({0} {1} {2} +{3}/{4})".format(self.current+1,dx,dy,match_fail, params.trailing))
                     # believe the last velx and vely
                 else:
                     #not guess mode, not large motion: just ignore.
-                    logger.info("Still ({0} {1} {2})".format(nframes,dx,dy))
+                    logger.info("Still ({0} {1} {2})".format(self.current+1,dx,dy))
                     continue
                     
-            logger.info("Scan {0} {2} {3} #{1}".format(nframes,np.amax(diff), velx, vely))
+            logger.info("Scan {0} {2} {3} #{1}".format(self.current+1,np.amax(diff), velx, vely))
             absx += velx
             absy += vely
             self.canvas = canvas_size(self.canvas, cropped, absx, absy)
-            self.tspos += "{0} {1} {2}\n".format(nframes,velx,vely)
+            self.tspos += "{0} {1} {2}\n".format(self.current+1,velx,vely)
 
         
     def after(self):
         """
         Action after the loop
         """
+        self.frames.close() 
         if self.canvas is None:
             return
         self.tsconf += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
@@ -527,14 +512,13 @@ class Pass1():
         ostream.write(self.tspos)
         ostream.close()
 
-        self.rawframe = None
-
-
-if __name__ == "__main__":
+def main():
     pass1 = Pass1(argv=sys.argv)
-    for num, den in pass1.before():
-        pass
+    pass1.before()
     for ret in pass1.iter():
         cv2.imshow("pass1", ret)
         cv2.waitKey(1)
     pass1.after()
+
+if __name__ == "__main__":
+    main()

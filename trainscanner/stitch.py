@@ -8,6 +8,8 @@ import sys
 import os
 import argparse
 import logging
+import videosequence as vs
+
 #from canvas import Canvas    #On-memory canvas
 #from canvas2 import Canvas   #Cached canvas
 from tiledimage import cachedimage as ci
@@ -147,7 +149,7 @@ class Stitcher():
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
         
-        self.cap = cv2.VideoCapture(moviefile)
+        self.frames = vs.VideoSequence(moviefile)
         self.firstFrame = True
         self.currentFrame = 0 #1 is the first frame
 
@@ -165,17 +167,7 @@ class Stitcher():
                 self.params.scale = 1  #do not allow stretching
             #for GUI
         self.dimen = [int(x*self.params.scale) for x in self.params.canvas]
-#        if self.params.canvas is None:
-#            Canvas.__init__(self)
-#        else:
-#            if self.params.scale == 1 and self.params.length > 0:
-#                #product length is specified.
-#                #scale is overridden
-#                self.params.scale = self.params.length / self.params.canvas[0]
-#                if self.params.scale > 1:
-#                    self.params.scale = 1  #do not allow stretching
-#            dimen = [int(x*self.params.scale) for x in self.params.canvas]
-#            Canvas.__init__(self,image=np.zeros((dimen[1],dimen[0],3),np.uint8), position=dimen[2:4]) #python2 style
+
 
     #Canvas should be set after the arguments are parsed.
     def set_canvas(self, canvas):
@@ -183,7 +175,7 @@ class Stitcher():
 
     def before(self):
         """
-        is a generator.
+        is not a generator.
         """
         locations = []
         absx = 0
@@ -200,12 +192,7 @@ class Stitcher():
                     locations.append(cols)
         self.locations = locations
         self.total_frames = len(locations)
-        #self.alphas = dict()
-        #initial seek
-        while self.currentFrame + 1 < self.locations[0][0]:
-            yield self.currentFrame, self.locations[0][0]
-            ret = self.cap.grab()
-            self.currentFrame += 1
+
 
     def getProgress(self):
         den = self.total_frames
@@ -227,8 +214,7 @@ class Stitcher():
 
     def stitch(self):
         logger = logging.getLogger()
-        for num,den in self.before():
-            pass
+        self.before()
         for num,den in self.loop():
             logger.info(num/den)
         #while result is None:
@@ -243,25 +229,15 @@ class Stitcher():
 
 
     def _onestep(self):
-        ##if self.firstFrame:
-        ##    #NOT RELIABLE
-        ##    self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.locations[0][0]-##1)
-        ##    self.currentFrame = self.locations[0][0]
-        ##else:
-        while self.currentFrame + 1 < self.locations[0][0]:
-            ret = self.cap.grab()
-            if not ret:
-                return False
-            self.currentFrame += 1
-        ret,frame = self.cap.read()
-        self.currentFrame += 1
-        if not ret:
-            return False
+        #backward compatibility; frame number starts from 1 in text data  
+        fn = self.locations[0][0] - 1 
+        frame = cv2.cvtColor(np.array(self.frames[fn]), cv2.COLOR_RGB2BGR) 
         if self.params.scale != 1:
             frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)
         self.add_image(frame, *self.locations[0][1:])
         self.locations.pop(0)
         if len(self.locations) == 0:
+            self.frames.close()
             return False
         return True  #not end
 

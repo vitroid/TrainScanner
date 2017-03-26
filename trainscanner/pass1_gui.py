@@ -34,10 +34,7 @@ class Worker(QObject):
         if not self._isRunning:
             self._isRunning = True
 
-        #self.pass1.before() is a generator.
-        for num,den in self.pass1.before():
-            if den:
-                self.progress.emit(num*100//den)
+        self.pass1.before()
         
         for img in self.pass1.iter():
             if not self._isRunning:
