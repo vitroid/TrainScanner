@@ -192,7 +192,7 @@ class SettingsGUI(QWidget):
 
 
         # options
-        self.trailing = 10
+        self.trailing = 30
         self.editor = None
         self.antishake = 5
         self.estimate = 10
