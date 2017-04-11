@@ -48,7 +48,7 @@ Windowsの実行ファイルも同じ場所に置いてありますが，こち�
 プラットホームでの三脚の利用を禁じている駅があります。いろいろ工夫してみて下さい。
 ほかにもいろいろアドバイスはありますが、はじめは気にしなくても大丈夫です。
 ## TrainScannerで開く
-1. まず、「ムービーを開く」を押してムービーファイルを開いて下さい。主要なフォーマットであればそのまま開けますが、開けない場合は、QuickTimeやffmpegなどを利用してフォーマットを変換してから再挑戦して下さい。(以前作った時にできた`.tsconf`ファイルを読みこむこともできます)
+1. まず、「ムービーを開く」を押してムービーファイルを開いて下さい。主要なフォーマットであればそのまま開けますが、開けない場合は、QuickTimeやffmpegなどを利用してフォーマットを変換してから再挑戦して下さい。(以前作った時にできた`.tsconf`ファイルを読みこむこともできます) また、「ムービーを開く」を押す代わりに、ダイアログウィンドウ上に直接ビデオファイルやtsconfファイルをドラッグアンドドロップすることもできます。
 
 ![settings](https://farm6.staticflickr.com/5756/30971812510_6aeffec942_o_d.png)
 
@@ -129,55 +129,51 @@ Windowsの実行ファイルも同じ場所に置いてありますが，こち�
 
 それぞれのコマンドには多数のオプションがあります。`-h`オプションを付けて、使い方を見て下さい。ほとんどのオプションは`trainscanner_gui.py` (アプリケーション名は`TrainScanner.app`, `TrainScanner.exe`)上で指定できますので、グラフィック表示ができる環境であれば、GUIを使うことをお勧めします。ただし、`tsconf`ファイルと`tspos`ファイルを手で修正した場合は`stitch.py`を使いたくなるかもしれません。
 
-### `pass1.py`: 照合プログラム
+### `trainscanner_pass1`: 照合プログラム
 
 ビデオを読みこみ、列車の移動を検出し、移動量を`.tspos`という名前のファイルに出力します。
 
-    ./pass1.py video.mov
+    trainscanner_pass1 video.mov
 
-これにGUIを付けたものが`pass1_gui.py`です。`pass1.py`をコマンドラインで実行するとかなり不便ですので、後述の`trainscanner_gui.py`を使うことをお勧めします。
-
-### `stitch.py`: 結合プログラム
+### `trainscanner_stitch`: 結合プログラム
 
 pass1.pyの出力に従い、映像を連結して1枚の大きな写真を作ります。通常は、以下のように、pass1.pyが出力した`.tsconf`ファイルを読みこんで使用します。
 
-    stitch.py @video.mov.12345.tsconf
+    trainscanner_stitch @video.mov.12345.tsconf
     
 `@`マークは、コマンドラインオプションをファイルからインクルードすることを意味します。この後ろに、さらにオプションを追加することで、スリット位置やフレーム間のぼかし幅を調節できます。例えば、あとからスリット位置と幅をそれぞれ220と1.5に変えたい場合は、
 
-    stitch.py @video.mov.12345.tsconf -s 220 -w 1.5
+    trainscanner_stitch @video.mov.12345.tsconf -s 220 -w 1.5
 
 のようにします。GUIを使う場合には、設定を変える度にpass1.pyも実行せざるをえませんが、stitch.pyを直接使えば、よりすばやく結果を得られます。
 
-これにGUIを付けたものが、`stitch_gui.py`です。
+### `trainscanner`: 統合ユーザーインターフェイス
 
-### `trainscanner_gui.py`: 統合ユーザーインターフェイス
+`trainscanner_pass1`と`trainscanner_stitch`を統合し、オプションを対話的に設定できるUIを備えたTrainScannerの本体です。WindowsのexeファイルやmacOSのAppはこれをパッケージ化したものです。
 
-pass1_gui.pyとstitch_gui.pyに加え、オプションを対話的に設定できるUIを備えたTrainScannerの本体です。WindowsのexeファイルやmacOSのAppはこれをパッケージ化したものです。
-
-### `helicify.py`: 長い画像をらせんにするツール
+### `helicify`: 長い画像をらせんにするツール
 
 長い画像を、定型用紙に入るように「円筒に巻く」プログラムです。
 
-    ./helicify.py longimage.png
+    helicify.py longimage.png
 
-### `rectify.py`: 長い画像をらせんにするツール2
+### `rectify`: 長い画像をらせんにするツール2
 
 長い画像を、定型用紙に入るように「円筒に巻く」プログラムです。こちらは、画像がななめにならない代わり、円筒をのりづけする時にずらす必要があります。
 
-    ./rectify.py longimage.png
+    rectify longimage.png
 
-### `filmify.py`: 長い写真をフィルム風にするツール
+### `filmify`: 長い写真をフィルム風にするツール
 
 長い写真の上下にフィルム風の穴を追加するだけのツールです。
 
-    ./filmify.py longimage.png
+    filmify longimage.png
 
-### `converter_gui.py`: 画像加工ツールのユーザーインターフェース
+### `ts_converter.py`: 画像加工ツールのユーザーインターフェース
 
-上の3つのプログラムを、ボタンで操作できるようにしただけのものです。
+上の3つのプログラムを、ドラッグアンドドロップで操作できるようにしただけのものです。
 
-###`shakereduction.py`: 手振れ補正
+###`shakereduction.py`: 手振れ補正 (試験中)
 
 TrainScannerとおなじしくみを使って，ビデオの手振れを除くツールです．列車の場所ではなく，背景の一区画を`--focus`オプションで選ぶと，その部分が動かなくなるように，各コマを縦横にずらしたしたムービーを作成します．
 
@@ -187,7 +183,6 @@ TrainScannerとおなじしくみを使って，ビデオの手振れを除く�
 
 TrainScannerは基本的に三脚での撮影を前提としています．`shakereduction.py`を使っても，水平が傾いたりする場合までは対応できません．
 
-いずれはTrainScanner本体に組みこむかもしれません．
 
 ## 現在わかっている問題点
 
