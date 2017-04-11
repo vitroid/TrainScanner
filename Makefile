@@ -18,7 +18,7 @@ install:
 	./setup.py install
 
 uninstall:
-	pip3 uninstall trainscanner
+	pip3 uninstall -y trainscanner
 
 pypi:
 	make README.rst
