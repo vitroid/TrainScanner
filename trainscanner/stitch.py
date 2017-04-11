@@ -234,7 +234,7 @@ class Stitcher():
         #while result is None:
         #    result = self.onestep()
         self.after()
-        self.canvas.done()
+        #self.canvas.done()
                 
 
     def loop(self):

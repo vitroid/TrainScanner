@@ -13,6 +13,7 @@ class ImageBar(QLabel):
         self.thumbs = []
         self.setFixedHeight(100)
         self.transformer=lambda x,:x  #no conversion
+        self.minwidth = 5    #Minimum width of a slit
         #self._prepareImage()
 
     def paintEvent(self, event):
@@ -28,11 +29,16 @@ class ImageBar(QLabel):
         painter = QPainter(self)
         if len(self.thumbs) == 0:
             return
-        pw = self.width()
-        NF = len(self.thumbs)
-        slit_width = pw // NF + 1
-        for i in range(NF):
-            point = QPoint(i*pw // NF,0)
+        destwidth = self.width()
+        division = len(self.thumbs)
+        NF       = division
+        slit_width = destwidth // division + 1
+        if slit_width < self.minwidth:
+            slit_width = self.minwidth
+            division   = destwidth // slit_width - 1
+        for slit in range(division):
+            point = QPoint(slit*destwidth // division,0)
+            i     = slit*NF // division
             thumb = self.transformer(self.thumbs[i])
             w = thumb.width()
             h = thumb.height()

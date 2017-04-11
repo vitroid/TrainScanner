@@ -45,7 +45,6 @@ class Renderer(QObject):
             self.progress.emit(num*100//den)
                         
         self.stitcher.after()
-        self.stitcher.canvas.done()
         self.finished.emit()
         
     def stop(self):
