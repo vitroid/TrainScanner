@@ -3,7 +3,6 @@
 append
 */.DS_Store
 .DS_Store
-trainscanner
 work/*
 *.o
 *~
@@ -37,3 +36,6 @@ test1.png
 
 .DS_Store
 */*pngs/*
+*.egg-info/*
+
+*.rst

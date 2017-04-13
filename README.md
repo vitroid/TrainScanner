@@ -3,12 +3,25 @@
 This document is outdated. [README_ja.md](https://github.com/vitroid/TrainScanner/blob/master/README_ja.md) is more frequently updated.
 
 ##Installation
-TrainScanner is written in pure python, so it would be easy to migrate in Windows/Linux, but I have no time and equipments for that. Your help is appreciated.
+###Requirements
+Install `PyQt5`, `OpenCV3`, `Python3` packages.  On installing OpenCV3, specify `--with-ffmpeg --with-tbb --with-python3 --HEAD` options.
+###Install by pip 
+Install the trainscanner from the PyPI with pip3 command:
+
+    % pip3 install trainscanner
+    % trainscanner
+###Install by homebrew (mac)
+It installs everything required. (PyQt5, OpenCV3 with options, Python3)
+
+    % brew tap vitroid/homebrew-TrainScanner
+    % brew install trainscanner
+    % trainscanner
+
 ##How to capture the video
 Capture the whole train from the side with a video camera.
 
 * Tripod is necessary.
-* Be careful to use tripod on the platform.
+* Pay attention to use tripod on the station platform.
 
 Other advises are listed in the last section.
 ##Open in TrainScanner
