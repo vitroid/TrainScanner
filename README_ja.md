@@ -155,7 +155,7 @@ pass1.pyの出力に従い、映像を連結して1枚の大きな写真を作�
 
 長い画像を、定型用紙に入るように「円筒に巻く」プログラムです。
 
-    helicify.py longimage.png
+    helicify longimage.png
 
 ### `rectify`: 長い画像をらせんにするツール2
 
@@ -169,7 +169,7 @@ pass1.pyの出力に従い、映像を連結して1枚の大きな写真を作�
 
     filmify longimage.png
 
-### `ts_converter.py`: 画像加工ツールのユーザーインターフェース
+### `ts_converter`: 画像加工ツールのユーザーインターフェース
 
 上の3つのプログラムを、ドラッグアンドドロップで操作できるようにしただけのものです。
 
