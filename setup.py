@@ -41,6 +41,7 @@ setup(name='TrainScanner',
                   'filmify             = ts_conv.film:main',
                   'rectify             = ts_conv.rect:main',
                   'helicify            = ts_conv.helix:main',
+                  'hansify             = ts_conv.hans_style:main',
                   'ts_converter        = ts_conv.converter_gui:main',
               ]
           },
