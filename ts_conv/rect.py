@@ -62,7 +62,7 @@ def main():
     if params.output == "":
         cv2.imwrite("{0}.rect.jpg".format(params.filename), canvas)
     else:
-        cv2.imwrite(params.output, canvas2)
+        cv2.imwrite(params.output, canvas)
     
 if __name__ == "__main__":
     main()
