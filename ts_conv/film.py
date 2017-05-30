@@ -3,6 +3,7 @@
 import cv2
 import numpy as np
 import math
+import argparse
 import sys
 
 def roundbox(img,p1,p2,r,color):
@@ -59,23 +60,30 @@ def filmify(img, label=""):
         cv2.putText(canvas,label,(int(perf*0.5),int(canh)),font,fontsize,(0,150,200),thick)
     return canvas
 
-
+def prepare_parser():
+    parser = argparse.ArgumentParser(description='Filmify', fromfile_prefix_chars='@',)
+    parser.add_argument('-c', '--creative_commons_sign', type=str, metavar='string',
+                        default="",
+                        dest="creative_commons_sign",
+                        help="Add Creative Commons sign.")
+    parser.add_argument('-o', '--output', type=str, metavar='outfilename',
+                        default="",
+                        dest="output",
+                        help="Output file name.")
+    parser.add_argument('filename', type=str,
+                        help="Image file name.")
+    return parser
 
 def main():
-    #if you want to add Creative Commons sign,
-    cc = ""
-    while len(sys.argv) > 2:
-        option = sys.argv.pop(1)
-        if option == "-c":
-            cc = sys.argv.pop(1)
-
-    if len(sys.argv) != 2:
-        print("usage: {0} image".format(sys.argv[0]))
-        sys.exit(1)
-
-    img = cv2.imread(sys.argv[1])
-    canvas = filmify( img, label=cc )
-    cv2.imwrite("{0}.film.png".format(sys.argv[1]), canvas)
+    parser = prepare_parser()
+    params = parser.parse_args(sys.argv[1:])
+    print(params.filename)
+    img = cv2.imread(params.filename)
+    canvas = filmify( img, label=params.creative_commons_sign)
+    if params.output == "":
+        cv2.imwrite("{0}.film.png".format(params.filename), canvas)
+    else:
+        cv2.imwrite(params.output, canvas)
 
 if __name__ == "__main__":
     main()
