@@ -39,7 +39,7 @@ def prepare_parser():
     parser.add_argument('-g', '--gap', type=int, metavar='x',
                         default=0,
                         dest="gap",
-                        help="Add gaps of x % between the rows.")
+                        help="Add gaps of x %% between the rows.")
     parser.add_argument('-r', '--rows', type=int, metavar='x',
                         default=None,
                         dest="rows",
