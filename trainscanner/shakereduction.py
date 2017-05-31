@@ -7,7 +7,7 @@ import sys
 import argparse
 import logging
 import videosequence as vs
-import pass1
+from trainscanner import pass1
 
 
 
@@ -83,7 +83,7 @@ class ShakeReduction():
             out.write(cropped)
             yield newframe
         
-if __name__ == "__main__":
+def main():
     debug =True
     if debug:
         logging.basicConfig(level=logging.DEBUG,
@@ -109,3 +109,5 @@ if __name__ == "__main__":
         cv2.imshow("shakeR", cropped)
         cv2.waitKey(1)
 
+if __name__ == "__main__":
+    main()
