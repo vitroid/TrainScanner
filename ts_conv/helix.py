@@ -102,7 +102,7 @@ def prepare_parser():
     parser.add_argument('-m', '--margin', type=float, metavar='x',
                         default=0,
                         dest="margin",
-                        help="Add margin of x % of the wider edge around the image.")
+                        help="Add margin of x %% of the wider edge around the image.")
     parser.add_argument('-a', '--aspect', type=float, metavar='x',
                         default=2.0**0.5,
                         dest="aspect",
