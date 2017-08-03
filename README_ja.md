@@ -5,7 +5,7 @@
 Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあまり気にしなくてよくなりそうです。
 
 1. まず、[Anaconda-Navigator](https://www.continuum.io)をインストールし、起動します。
-2. Anacondaのための、trainscannerの環境ファイルを[ここ](https://raw.githubusercontent.com/vitroid/TrainScanner/develop/anaconda/trainscanner-anaconda.yml)からダウンロードします。
+2. Anacondaのための、trainscannerの環境ファイルを[ここ](https://raw.githubusercontent.com/vitroid/TrainScanner/master/anaconda/trainscanner-anaconda.yml)からダウンロードします。
 3. Navigatorの左メニューの"Environment"を押します。
 4. importを押し、さきほどダウンロードした環境ファイルを読み込みます。
 5. Navigatorの左メニューの"Home"を押すと、TrainScannerのタイルが追加されているはずです。
