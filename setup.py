@@ -51,9 +51,5 @@ setup(name='TrainScanner',
       'trainscanner': ['i18n/*.qm'],
       'ts_conv':      ['i18n/*.qm'],
        },
-#      entry_points="""
-#      [console_scripts]
-#      genice = genice.__main__:main
-#      """
       )
 
