@@ -1,18 +1,30 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 # TrainScannerの使い方
-## インストール(コマンドライン版)
+## インストール
+### Anacondaから使う
+Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあまり気にしなくてよくなりそうです。
+
+1. まず、[Anaconda-Navigator](https://www.continuum.io)をインストールし、起動します。
+2. Anacondaのための、trainscannerの環境ファイルを[ここ](https://raw.githubusercontent.com/vitroid/TrainScanner/develop/anaconda/trainscanner-anaconda.yml)からダウンロードします。
+3. Navigatorの左メニューの"Environment"を押します。
+4. importを押し、さきほどダウンロードした環境ファイルを読み込みます。
+5. Navigatorの左メニューの"Home"を押すと、TrainScannerのタイルが追加されているはずです。
+
+まだWindowsとLinuxでは試していません。
+
+### コマンドライン版
 OSのターミナルウィンドウからインストールし，コマンドラインで起動する場合．(これが一番標準的な方法です)
-### Requirements
+#### Requirements
 `PyQt5`, `OpenCV3`, `Python3`をあらかじめインストールして下さい．OpenCV3をインストールする際には`--with-ffmpeg --with-tbb --with-python3 --HEAD`の各オプションを指定して下さい．
 
 (winpythonにはいずれも含まれているようです)
-### pipでインストール
+#### pipでインストール
 Pythonのパッケージインストーラを使ってインストールします．事前に上記のライブラリを何らかの方法でインストールしておいて下さい．
 
     % pip3 install trainscanner
     % trainscanner
 
-### Homebrewでインストール(Macのみ)
+#### Homebrewでインストール(Macのみ)
 Python以外のライブラリを含め，一括してインストールできます．
 
     % brew tap vitroid/homebrew-TrainScanner
@@ -24,16 +36,16 @@ Python以外のライブラリを含め，一括してインストールでき�
 
 opencv3は自動でリンクされないため、3行目のコマンドが必要になります。
 
-## インストール(アプリ版)
+### アプリ版
 OSのターミナルウィンドウからインストールし，OSのアプリランチャー(Finderなど)からアイコンをダブルクリックして起動する場合．
 
 いろいろ試していますが、appを生成する良い方法が見付かりません....
-### ソースからアプリを生成する
+#### ソースからアプリを生成する
 <!--ソースは[github](https://github.com/vitroid/TrainScanner)で配布しています．zipファイルをダウンロードして展開して下さい．
 
 TrainScannerはPythonで書かれているので，Windows/Linuxでも動くはずですが，開発者の手が回っていません．協力を募集しています．-->
 
-### コンパイル済みアプリをもってくる
+#### コンパイル済みアプリをもってくる
 <!--最近更新していません．
 
 [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc). でも，たぶんまだ動きません．(大変苦労しています)
