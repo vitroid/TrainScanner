@@ -9,7 +9,8 @@ package:
 
 source:
   fn: '{{ name }}-{{ version }}.tar.gz'
-  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  url: https://files.pythonhosted.org/packages/39/88/b1534d786439dfd4165464e69f1d2335088da146da98ae50cb97e9753045/TrainScanner-0.11.tar.gz
+#https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
   '{{ hash_type }}': '{{ hash_value }}'
 
 build:

@@ -1,42 +1,48 @@
-
---- trainscanner/meta.yaml	2017-08-07 14:53:26.000000000 +0900
-+++ old2/meta.yaml	2017-08-07 14:55:28.000000000 +0900
-@@ -29,24 +29,24 @@ requirements:
+--- trainscanner/meta.yaml	2017-08-08 04:15:06.000000000 +0900
++++ old2/meta.yaml	2017-08-08 04:15:10.000000000 +0900
+@@ -31,28 +31,28 @@ requirements:
      - python
      - setuptools
      - numpy
 -    - tiledimage
+-    - sk-video
 +#    - tiledimage
++#    - sk-video
    run:
      - python
      - numpy
 -    - tiledimage
+-    - sk-video
 +#    - tiledimage
++#    - sk-video
  
  test:
    imports:
      - trainscanner
      - ts_conv
--  commands:
+   commands:
 -    - trainscanner --help
 -    - trainscanner_pass1 --help
 -    - trainscanner_stitch --help
+-    - trainscanner_shakereduction --help
 -    - filmify --help
 -    - rectify --help
 -    - helicify --help
+-    - hansify --help
 -    - ts_converter --help
-+#  commands:
 +#    - trainscanner --help
 +#    - trainscanner_pass1 --help
 +#    - trainscanner_stitch --help
++#    - trainscanner_shakereduction --help
 +#    - filmify --help
 +#    - rectify --help
 +#    - helicify --help
++#    - hansify --help
 +#    - ts_converter --help
  
  about:
    home: https://github.com/vitroid/TrainScanner/
-@@ -60,3 +60,12 @@ about:
+@@ -66,3 +66,12 @@ about:
  
  extra:
    recipe-maintainers: ''

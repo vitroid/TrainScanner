@@ -5,7 +5,7 @@ prepare:
 	conda install conda-build
 	pip install tiledimage
 trainscanner:
-	conda skeleton pypi trainscanner
+	conda skeleton pypi --pypi-url "https://mirror-ord.pypi.io" trainscanner
 diff:
 	touch old2/meta.yaml
 	diff -up trainscanner/meta.yaml old2/meta.yaml > meta.diff
@@ -15,11 +15,13 @@ patch:
 build:
 	conda build trainscanner
 convert:
-	conda convert --platform all /home/jsmith/miniconda/conda-bld/linux-64/pyinstrument-0.13.1-py27_0.tar.bz2 -o outputdir/
+	conda convert --platform all /Users/matto/anaconda/conda-bld/osx-64/trainscanner-0.11-py36he0c8fd0_0.tar.bz2 -o build/
 
 upload:
 #	~/anaconda/bin/anaconda login
-	~/anaconda/bin/anaconda upload /Users/matto/anaconda/conda-bld/osx-64/trainscanner-0.10-py36hd921793_0.tar.bz2
+	~/anaconda/bin/anaconda upload build/win-64/trainscanner-0.11-py36he0c8fd0_0.tar.bz2
+	~/anaconda/bin/anaconda upload build/linux-64/trainscanner-0.11-py36he0c8fd0_0.tar.bz2
+	~/anaconda/bin/anaconda upload /Users/matto/anaconda/conda-bld/osx-64/trainscanner-0.11-py36he0c8fd0_0.tar.bz2
 	echo restart the anaconda navigator
 clean:
 	rm *~ */*~
