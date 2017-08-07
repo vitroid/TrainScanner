@@ -29,11 +29,11 @@ requirements:
     - python
     - setuptools
     - numpy
-#    - tiledimage
+    - tiledimage
   run:
     - python
     - numpy
-#    - tiledimage
+    - tiledimage
 
 test:
   imports:
@@ -60,12 +60,3 @@ about:
 
 extra:
   recipe-maintainers: ''
-
-app:
-  entry: trainscanner .  [win]
-  entry: trainscanner .  [linux]
-  entry: trainscanner .  [osx]
-  icon: trainscanner.png
-  summary: TrainScanner app makes a long photo from the train video.
-
-#  entry: trainscanner .
