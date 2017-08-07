@@ -1,7 +1,7 @@
 {% set name = "trainscanner" %}
-{% set version = "0.10" %}
+{% set version = "0.11" %}
 {% set hash_type = "sha256" %}
-{% set hash_value = "eaf1963c03017478cf45296c3977ca45a4ec525f21af76bf15c1b15cc9557a23" %}
+{% set hash_value = "11baa5a9b9bcfaa04097d05d2fe2ff252a80e8d7d64612ba849592be9d5705d5" %}
 
 package:
   name: '{{ name|lower }}'
@@ -18,9 +18,11 @@ build:
     - trainscanner        = trainscanner.trainscanner_gui:main
     - trainscanner_pass1  = trainscanner.pass1_gui:main
     - trainscanner_stitch = trainscanner.stitch_gui:main
+    - trainscanner_shakereduction = trainscanner.shakereduction:main
     - filmify             = ts_conv.film:main
     - rectify             = ts_conv.rect:main
     - helicify            = ts_conv.helix:main
+    - hansify             = ts_conv.hans_style:main
     - ts_converter        = ts_conv.converter_gui:main
   script: python setup.py install  --single-version-externally-managed --record=record.txt
 
@@ -30,22 +32,26 @@ requirements:
     - setuptools
     - numpy
 #    - tiledimage
+#    - sk-video
   run:
     - python
     - numpy
 #    - tiledimage
+#    - sk-video
 
 test:
   imports:
     - trainscanner
     - ts_conv
-#  commands:
+  commands:
 #    - trainscanner --help
 #    - trainscanner_pass1 --help
 #    - trainscanner_stitch --help
+#    - trainscanner_shakereduction --help
 #    - filmify --help
 #    - rectify --help
 #    - helicify --help
+#    - hansify --help
 #    - ts_converter --help
 
 about:
