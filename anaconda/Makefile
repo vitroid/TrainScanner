@@ -14,6 +14,9 @@ patch:
 	patch -p1 trainscanner/meta.yaml < meta.diff 
 build:
 	conda build trainscanner
+convert:
+	conda convert --platform all /home/jsmith/miniconda/conda-bld/linux-64/pyinstrument-0.13.1-py27_0.tar.bz2 -o outputdir/
+
 upload:
 #	~/anaconda/bin/anaconda login
 	~/anaconda/bin/anaconda upload /Users/matto/anaconda/conda-bld/osx-64/trainscanner-0.10-py36hd921793_0.tar.bz2
