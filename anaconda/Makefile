@@ -6,13 +6,17 @@ prepare:
 	pip install tiledimage
 trainscanner:
 	conda skeleton pypi trainscanner
+diff:
+	touch old2/meta.yaml
+	diff -up trainscanner/meta.yaml old2/meta.yaml > meta.diff
+	cp old2/trainscanner.png trainscanner
 patch:
-	patch -p0 < meta.diff 
+	patch -p1 trainscanner/meta.yaml < meta.diff 
 build:
 	conda build trainscanner
 upload:
-	~/anaconda/bin/anaconda login
-	~/anaconda/bin/anaconda upload (bz2 file)
+#	~/anaconda/bin/anaconda login
+	~/anaconda/bin/anaconda upload /Users/matto/anaconda/conda-bld/osx-64/trainscanner-0.10-py36hd921793_0.tar.bz2
 	echo restart the anaconda navigator
 clean:
 	rm *~ */*~

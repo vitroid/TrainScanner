@@ -29,24 +29,24 @@ requirements:
     - python
     - setuptools
     - numpy
-    - tiledimage
+#    - tiledimage
   run:
     - python
     - numpy
-    - tiledimage
+#    - tiledimage
 
 test:
   imports:
     - trainscanner
     - ts_conv
-  commands:
-    - trainscanner --help
-    - trainscanner_pass1 --help
-    - trainscanner_stitch --help
-    - filmify --help
-    - rectify --help
-    - helicify --help
-    - ts_converter --help
+#  commands:
+#    - trainscanner --help
+#    - trainscanner_pass1 --help
+#    - trainscanner_stitch --help
+#    - filmify --help
+#    - rectify --help
+#    - helicify --help
+#    - ts_converter --help
 
 about:
   home: https://github.com/vitroid/TrainScanner/
@@ -60,3 +60,12 @@ about:
 
 extra:
   recipe-maintainers: ''
+
+app:
+  entry: trainscanner .  [win]
+  entry: trainscanner .  [linux]
+  entry: trainscanner .  [osx]
+  icon: trainscanner.png
+  summary: TrainScanner app makes a long photo from the train video.
+
+#  entry: trainscanner .
