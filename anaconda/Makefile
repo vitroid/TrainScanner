@@ -26,3 +26,15 @@ upload:
 clean:
 	rm *~ */*~
 
+# Make environment for Anaconda
+anaconda:
+	export PATH=/home/vitroid/anaconda3/bin:$PATH
+	conda create -yn trainscanner
+	source activate trainscanner
+	conda install -c vitroid trainscanner
+	conda install -c menpo opencv3
+	conda install pyqt=5.6
+	pip install sk-video tiledimage
+	conda env export > trainscanner-anaconda-ubuntu.yml
+	source deactivate
+
