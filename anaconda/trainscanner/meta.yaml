@@ -26,26 +26,27 @@ build:
 
 requirements:
   build:
-    - python ==3.5.2
+    - python
     - setuptools
     - numpy
-    - pyqt ==5.6.0
+#    - tiledimage
   run:
-    - python ==3.5.2
+    - python
     - numpy
+#    - tiledimage
 
 test:
   imports:
     - trainscanner
     - ts_conv
-#  commands:
-#    - trainscanner --help
-#    - trainscanner_pass1 --help
-#    - trainscanner_stitch --help
-#    - filmify --help
-#    - rectify --help
-#    - helicify --help
-#    - ts_converter --help
+  commands:
+    - trainscanner --help
+    - trainscanner_pass1 --help
+    - trainscanner_stitch --help
+    - filmify --help
+    - rectify --help
+    - helicify --help
+    - ts_converter --help
 
 about:
   home: https://github.com/vitroid/TrainScanner/

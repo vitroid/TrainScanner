@@ -1,0 +1,15 @@
+--- trainscanner/meta.yaml	2017-08-07 12:12:40.553301126 +0900
++++ trainscanner/meta_new.yaml	2017-08-07 12:25:03.911647998 +0900
+@@ -60,3 +60,12 @@ about:
+ 
+ extra:
+   recipe-maintainers: ''
++
++app:
++  entry: trainscanner .  [win]
++  entry: trainscanner .  [linux]
++  entry: trainscanner .  [osx]
++  icon: trainscanner.png
++  summary: TrainScanner app makes a long photo from the train video.
++
++#  entry: trainscanner .
