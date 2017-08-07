@@ -17,7 +17,7 @@ from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslato
 #private modules
 from trainscanner import trainscanner
 from trainscanner.imageselector2 import ImageSelector2
-
+from trainscanner import video
 #File handling
 import os
 import subprocess
@@ -75,8 +75,8 @@ class AsyncImageLoader(QObject):
         self.size = size
         logger = logging.getLogger()
         logger.debug("Open video: {0}".format(filename))
-        self.cap = cv2.VideoCapture(filename)
-        ret, frame = self.cap.read()
+        self.vi = video.Cv2VideoIter(filename)
+        frame = self.vi.__next__()
         if self.size:
             frame = trainscanner.fit_to_square(frame, self.size)
         self.snapshots = [frame]
@@ -93,17 +93,19 @@ class AsyncImageLoader(QObject):
             self.isRunning = True
             
         while self.isRunning:
-            ret, frame = self.cap.read()
-            if not ret:
-                break
+            try:
+                frame = self.vi.__next__()
+            except StopIteration:
+                return
             if self.size:
                 frame = trainscanner.fit_to_square(frame, self.size)
             self.snapshots.append(frame)
             self.frameIncreased.emit(self.snapshots)
             for i in range(9):
-                ret = self.cap.grab()
-                if not ret:
-                    break
+                try:
+                    self.vi.__next__()
+                except StopIteration:
+                    return
 
 
 class DrawableLabel(QLabel):
@@ -926,11 +928,8 @@ class EditorGUI(QWidget):
         self.show_snapshots()
 
     def cv2toQImage(self,cv2image):
-        tmp = cv2image[:,:,0].copy()
-        cv2image[:,:,0] = cv2image[:,:,2]
-        cv2image[:,:,2] = tmp
         height,width = cv2image.shape[:2]
-        return QImage(cv2image.data, width, height, width*3, QImage.Format_RGB888)
+        return QImage(cv2image[:,:,::-1].copy().data, width, height, width*3, QImage.Format_RGB888)
         
 
     def show_snapshots(self, region=None):

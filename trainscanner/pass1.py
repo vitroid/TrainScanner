@@ -11,6 +11,7 @@ import itertools
 import logging
 from trainscanner import trainscanner
 from trainscanner import myargparse
+from trainscanner import video
 
 def draw_focus_area(f, focus, delta=None):
     """
@@ -297,23 +298,18 @@ class Pass1():
         #end of the header
 
         #############Open the video file #############################
-        self.cap    = cv2.VideoCapture(found)
+        self.vi    = video.SkVideoIter(found)
         self.nframes = 0  #1 is the first frame
-        #This does not work with some kind of MOV. (really?)
-        #self.cap.set(cv2.CAP_PROP_POS_FRAMES, skip)
-        #self.nframes = skip
-        #ret, frame = self.cap.read()
-        #if not ret:
-        self.nframes = 0
     
         for i in range(self.params.skip):  #skip frames
-            ret = self.cap.grab()
+            ret = self.vi.__next__()
             if not ret:
                 break
             self.nframes += 1
             yield self.nframes, self.params.skip #report progress
-        ret, frame = self.cap.read()
-        if not ret:
+        try:
+            frame = self.vi.__next__()
+        except StopIteration:
             logger.debug("End of film.")
             sys.exit(0)
         self.nframes += 1    #first frame is 1
@@ -375,7 +371,7 @@ class Pass1():
         logger = logging.getLogger()
         #All self variables to be inherited.
         rawframe = self.rawframe
-        cap      = self.cap
+        vi       = self.vi
         nframes  = self.nframes
         params   = self.params
         
@@ -407,15 +403,17 @@ class Pass1():
                 return
             #フレームの早送り
             for i in range(params.every-1):
-                ret = cap.grab()
                 nframes += 1
-                if not ret:
+                try:
+                    vi.__next__()
+                except StopIteration:
                     logger.debug("Video ended (1).")
                     return
             #1フレームとりこみ
-            ret, rawframe = cap.read()
-            nframes += 1
-            if not ret:
+            try:
+                nframes += 1
+                rawframe = vi.__next__()
+            except StopIteration:
                 logger.debug("Video ended (2).")
                 return
             ##### compare with the previous raw frame

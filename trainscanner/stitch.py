@@ -13,7 +13,7 @@ import logging
 from tiledimage import cachedimage as ci
 from trainscanner import trainscanner
 from trainscanner import myargparse
-
+from trainscanner import video
 
 class AlphaMask():
     def __init__(self, img_width, slit=0, width=1.0):
@@ -147,7 +147,7 @@ class Stitcher():
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
         
-        self.cap = cv2.VideoCapture(moviefile)
+        self.vi = video.SkVideoIter(moviefile)
         self.firstFrame = True
         self.currentFrame = 0 #1 is the first frame
 
@@ -204,7 +204,7 @@ class Stitcher():
         #initial seek
         while self.currentFrame + 1 < self.locations[0][0]:
             yield self.currentFrame, self.locations[0][0]
-            ret = self.cap.grab()
+            self.vi.__next__()
             self.currentFrame += 1
 
     def getProgress(self):
@@ -243,19 +243,16 @@ class Stitcher():
 
 
     def _onestep(self):
-        ##if self.firstFrame:
-        ##    #NOT RELIABLE
-        ##    self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.locations[0][0]-##1)
-        ##    self.currentFrame = self.locations[0][0]
-        ##else:
         while self.currentFrame + 1 < self.locations[0][0]:
-            ret = self.cap.grab()
-            if not ret:
+            try:
+                ret = self.vi.__next__()
+            except StopIteration:
                 return False
             self.currentFrame += 1
-        ret,frame = self.cap.read()
         self.currentFrame += 1
-        if not ret:
+        try:
+            frame = self.vi.__next__()
+        except StopIteration:
             return False
         if self.params.scale != 1:
             frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)

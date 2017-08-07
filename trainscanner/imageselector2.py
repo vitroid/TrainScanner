@@ -44,7 +44,6 @@ def cv2toQImage(cv2image):
     """
     import numpy as np
     height, width = cv2image.shape[0:2]
-    tmp = np.zeros_like(cv2image[:,:,0])
     tmp = cv2image[:,:,0].copy()
     cv2image[:,:,0] = cv2image[:,:,2]
     cv2image[:,:,2] = tmp
@@ -59,24 +58,29 @@ def main():
     window.resize(300,50)
     window.show()
 
+    from trainscanner import video
     import cv2
-    cap      = cv2.VideoCapture("examples/sample2.mov")
+    vi  = video.SkVideoIter("examples/sample2.mov")
     ret = True
     thumbs = []
     while True:
-        ret, frame = cap.read()
-        if not ret:
+        try:
+            frame = vi.__next__()
+        except StopIteration:
             break
         h,w = frame.shape[0:2]
         thumbh = 100
         thumbw = w*thumbh//h
         thumb = cv2.resize(frame,(thumbw,thumbh),interpolation = cv2.INTER_CUBIC)
         thumbs.append(cv2toQImage(thumb))
+        terminate = False
         for i in range(9):
-            ret = cap.grab()
-            if not ret:
+            try:
+                vi.__next__()
+            except StopIteration:
+                terminate = True
                 break
-        if not ret:
+        if terminate:
             break
     window.setThumbs(thumbs)
         
