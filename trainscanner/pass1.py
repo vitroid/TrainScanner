@@ -314,6 +314,7 @@ class Pass1():
             yield self.nframes, self.params.skip #report progress
         ret, frame = self.cap.read()
         if not ret:
+            logger.debug("End of film.")
             sys.exit(0)
         self.nframes += 1    #first frame is 1
         self.rawframe = frame
@@ -530,7 +531,7 @@ class Pass1():
         self.rawframe = None
 
 
-if __name__ == "__main__":
+def main():
     pass1 = Pass1(argv=sys.argv)
     for num, den in pass1.before():
         pass
@@ -538,3 +539,7 @@ if __name__ == "__main__":
         cv2.imshow("pass1", ret)
         cv2.waitKey(1)
     pass1.after()
+
+
+if __name__ == "__main__":
+    main()
