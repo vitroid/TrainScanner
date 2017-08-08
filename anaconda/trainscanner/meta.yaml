@@ -29,13 +29,13 @@ build:
 
 requirements:
   build:
-    - python
+    - python ==3.5
     - setuptools
     - numpy
 #    - tiledimage
 #    - sk-video
   run:
-    - python
+    - python ==3.5
     - numpy
 #    - tiledimage
 #    - sk-video

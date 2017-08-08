@@ -14,21 +14,22 @@ patch:
 	patch -p1 trainscanner/meta.yaml < meta.diff 
 build:
 	conda build trainscanner
+HASH=py36h6a30d30_0
 convert:
-	conda convert --platform all /Users/matto/anaconda/conda-bld/osx-64/trainscanner-0.11-py36he0c8fd0_0.tar.bz2 -o build/
+	conda convert --platform all /Users/matto/anaconda/conda-bld/osx-64/trainscanner-0.11-$(HASH).tar.bz2 -o convert/
 
 upload:
 #	~/anaconda/bin/anaconda login
-	~/anaconda/bin/anaconda upload build/win-64/trainscanner-0.11-py36he0c8fd0_0.tar.bz2
-	~/anaconda/bin/anaconda upload build/linux-64/trainscanner-0.11-py36he0c8fd0_0.tar.bz2
-	~/anaconda/bin/anaconda upload /Users/matto/anaconda/conda-bld/osx-64/trainscanner-0.11-py36he0c8fd0_0.tar.bz2
+	~/anaconda/bin/anaconda upload convert/win-64/trainscanner-0.11-$(HASH).tar.bz2
+	~/anaconda/bin/anaconda upload convert/linux-64/trainscanner-0.11-$(HASH).tar.bz2
+	~/anaconda/bin/anaconda upload /Users/matto/anaconda/conda-bld/osx-64/trainscanner-0.11-$(HASH).tar.bz2
 	echo restart the anaconda navigator
 clean:
 	rm *~ */*~
 
 # Make environment for Anaconda
-anaconda:
-	export PATH=/home/vitroid/anaconda3/bin:$PATH
+anaconda-ubuntu:
+	export PATH=~/anaconda3/bin:$$PATH
 	conda create -yn trainscanner
 	source activate trainscanner
 	conda install -c vitroid trainscanner
@@ -36,5 +37,15 @@ anaconda:
 	conda install pyqt=5.6
 	pip install sk-video tiledimage
 	conda env export > trainscanner-anaconda-ubuntu.yml
+	source deactivate
+anaconda-mac:
+	export PATH=~/anaconda/bin:$$PATH
+	conda create -yn trainscanner python=3.5
+	source activate trainscanner
+	conda install -c vitroid -y trainscanner
+	conda install -c menpo -y opencv3
+	conda install -y pyqt=5.6
+	pip install sk-video tiledimage
+	conda env export > trainscanner-anaconda-mac.yml
 	source deactivate
 
