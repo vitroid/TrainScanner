@@ -147,7 +147,7 @@ class Stitcher():
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
         
-        self.vi = video.SkVideoIter(moviefile)
+        self.vi = video.VideoIter(moviefile)
         self.firstFrame = True
         self.currentFrame = 0 #1 is the first frame
 

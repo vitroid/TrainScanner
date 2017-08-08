@@ -1,7 +1,21 @@
---- trainscanner/meta.yaml	2017-08-08 04:15:06.000000000 +0900
-+++ old2/meta.yaml	2017-08-08 04:15:10.000000000 +0900
-@@ -31,28 +31,28 @@ requirements:
-     - python
+--- trainscanner/meta.yaml	2017-08-09 00:18:29.000000000 +0900
++++ old2/meta.yaml	2017-08-09 00:18:51.000000000 +0900
+@@ -9,7 +9,8 @@ package:
+ 
+ source:
+   fn: '{{ name }}-{{ version }}.tar.gz'
+-  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
++  url: https://files.pythonhosted.org/packages/39/88/b1534d786439dfd4165464e69f1d2335088da146da98ae50cb97e9753045/TrainScanner-0.11.tar.gz
++#https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+   '{{ hash_type }}': '{{ hash_value }}'
+ 
+ build:
+@@ -28,31 +29,31 @@ build:
+ 
+ requirements:
+   build:
+-    - python
++    - python ==3.5
      - setuptools
      - numpy
 -    - tiledimage
@@ -9,7 +23,8 @@
 +#    - tiledimage
 +#    - sk-video
    run:
-     - python
+-    - python
++    - python ==3.5
      - numpy
 -    - tiledimage
 -    - sk-video
@@ -42,7 +57,7 @@
  
  about:
    home: https://github.com/vitroid/TrainScanner/
-@@ -66,3 +66,12 @@ about:
+@@ -66,3 +67,12 @@ about:
  
  extra:
    recipe-maintainers: ''

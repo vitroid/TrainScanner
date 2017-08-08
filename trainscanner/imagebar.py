@@ -77,7 +77,7 @@ def main():
     #from trainscanner import video
     import video
     import cv2
-    vi      = video.SkVideoIter("examples/sample2.mov")
+    vi      = video.VideoIter("examples/sample2.mov")
     ret = True
     thumbs = []
     while True:

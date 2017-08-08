@@ -75,7 +75,7 @@ class AsyncImageLoader(QObject):
         self.size = size
         logger = logging.getLogger()
         logger.debug("Open video: {0}".format(filename))
-        self.vi = video.SkVideoIter(filename)
+        self.vi = video.VideoIter(filename)
         frame = self.vi.__next__()
         if self.size:
             frame = trainscanner.fit_to_square(frame, self.size)

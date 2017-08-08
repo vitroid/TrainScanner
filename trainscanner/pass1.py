@@ -298,7 +298,7 @@ class Pass1():
         #end of the header
 
         #############Open the video file #############################
-        self.vi    = video.SkVideoIter(found)
+        self.vi    = video.VideoIter(found)
         self.nframes = 0  #1 is the first frame
     
         for i in range(self.params.skip):  #skip frames

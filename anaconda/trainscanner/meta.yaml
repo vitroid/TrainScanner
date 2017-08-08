@@ -1,7 +1,7 @@
 {% set name = "trainscanner" %}
-{% set version = "0.11" %}
+{% set version = "0.11.1" %}
 {% set hash_type = "sha256" %}
-{% set hash_value = "11baa5a9b9bcfaa04097d05d2fe2ff252a80e8d7d64612ba849592be9d5705d5" %}
+{% set hash_value = "6b1aa254f5151364c7299872779ec85510c0c8a7d46186a355fa71dab6093683" %}
 
 package:
   name: '{{ name|lower }}'
@@ -9,7 +9,8 @@ package:
 
 source:
   fn: '{{ name }}-{{ version }}.tar.gz'
-  url: https://files.pythonhosted.org/packages/39/88/b1534d786439dfd4165464e69f1d2335088da146da98ae50cb97e9753045/TrainScanner-0.11.tar.gz
+  # copied from https://pypi.python.org/pypi/TrainScanner
+  url: https://pypi.python.org/packages/a2/df/e5a26535f5fbe82464d52300c263482878bcf8c90aaa346214e9a6feb98e/TrainScanner-0.11.1.tar.gz
 #https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
   '{{ hash_type }}': '{{ hash_value }}'
 
@@ -32,28 +33,26 @@ requirements:
     - python ==3.5
     - setuptools
     - numpy
-#    - tiledimage
-#    - sk-video
+    - pyqt >=5
   run:
     - python ==3.5
     - numpy
-#    - tiledimage
-#    - sk-video
+    - pyqt >=5
 
 test:
   imports:
     - trainscanner
     - ts_conv
   commands:
-#    - trainscanner --help
-#    - trainscanner_pass1 --help
-#    - trainscanner_stitch --help
-#    - trainscanner_shakereduction --help
-#    - filmify --help
-#    - rectify --help
-#    - helicify --help
-#    - hansify --help
-#    - ts_converter --help
+    - trainscanner --help
+    - trainscanner_pass1 --help
+    - trainscanner_stitch --help
+    - trainscanner_shakereduction --help
+    - filmify --help
+    - rectify --help
+    - helicify --help
+    - hansify --help
+    - ts_converter --help
 
 about:
   home: https://github.com/vitroid/TrainScanner/
