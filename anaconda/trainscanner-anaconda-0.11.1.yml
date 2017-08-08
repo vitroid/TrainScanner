@@ -2,33 +2,14 @@ name: trainscanner
 channels:
 - vitroid
 - menpo
-- https://conda.anaconda.org/vitroid
 - anaconda-fusion
 - defaults
 dependencies:
-- hdf5
-- icu
-- mkl
-- numpy
-- openssl
-- pip
 - pyqt=5
 - python=3.5
-- qt=5
-- readline
-- setuptools
-- sip
-- sqlite
-- tk
-- wheel
-- xz
-- zlib
+- trainscanner>=0.11.1
 - opencv3
-- tbb
-- trainscanner=0.11.1
 - pip:
-  - pylru
-  - scipy
   - sk-video
   - tiledimage
 prefix: /Users/matto/anaconda/envs/trainscanner

@@ -44,15 +44,15 @@ test:
     - trainscanner
     - ts_conv
   commands:
-    - trainscanner --help
-    - trainscanner_pass1 --help
-    - trainscanner_stitch --help
-    - trainscanner_shakereduction --help
-    - filmify --help
-    - rectify --help
-    - helicify --help
-    - hansify --help
-    - ts_converter --help
+#    - trainscanner --help
+#    - trainscanner_pass1 --help
+#    - trainscanner_stitch --help
+#    - trainscanner_shakereduction --help
+#    - filmify --help
+#    - rectify --help
+#    - helicify --help
+#    - hansify --help
+#    - ts_converter --help
 
 about:
   home: https://github.com/vitroid/TrainScanner/
