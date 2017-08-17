@@ -77,13 +77,12 @@ def main():
     #from trainscanner import video
     import video
     import cv2
-    vi      = video.VideoIter("examples/sample2.mov")
+    vl      = video.VideoLoader("examples/sample2.mov")
     ret = True
     thumbs = []
     while True:
-        try:
-            frame = vi.__next__()
-        except StopIteration:
+        nframe,frame = vl.next()
+        if nframe == 0:
             break
         h,w = frame.shape[0:2]
         thumbh = 100
@@ -92,9 +91,8 @@ def main():
         thumbs.append(cv2toQImage(thumb))
         terminate = False
         for i in range(9):
-            try:
-                vi.__next__()
-            except StopIteration:
+            nframe = vl.skip()
+            if nframe == 0:
                 terminate = True
                 break
         if terminate:

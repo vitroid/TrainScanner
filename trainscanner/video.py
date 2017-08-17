@@ -3,42 +3,30 @@
 """
 Wrapper for video systems
 
-no skip
-no frame number
-just read from start til end
+It does not fit the iterator framework.
 """
 
-import cv2
+import importlib
+import sys
 
-try:
-    import skvideo.io
-    
-    # Generator
-    def VideoIter(filename):
-        vi = skvideo.io.FFmpegReader(filename)
-        for frame in vi.nextFrame():
-            yield frame[:,:,::-1].copy()  #RGB to BGR (opencv)
-except ImportError:
-    # Iterator
-    class VideoIter(object):
-        def __init__(self,filename):
-            self.cap = cv2.VideoCapture(filename)
-
-        def __iter__(self):
-            return self
-
-        def __next__(self):
-            ret, frame = self.cap.read()
-            if not ret:
-                raise StopIteration
-            return frame
-
+def VideoLoader(filename):
+    module = None
+    if sys.platform == "darwin":
+        module     = importlib.import_module("trainscanner.video_cv2")
+    elif 0 == sys.platform("linux"):
+        module     = importlib.import_module("trainscanner.video_sk") # linux's cv2 does not contain video decoders
+    elif 0 == sys.platform("win"):
+        module     = importlib.import_module("trainscanner.video_cv2")
+    return module.VideoLoader(filename)
 
 
 
 if __name__ == "__main__":
-    vi = VideoIter("../examples/sample3.mov")
+    vl = VideoLoader("../examples/sample3.mov") #58 frames
 
-    for i,frame in enumerate(vi):
-        print(frame.shape, i+1)
+    while True:
+        nframe, frame = vl.next()
+        if nframe == 0:
+            break
+        print(frame.shape, nframe)
 

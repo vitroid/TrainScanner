@@ -147,7 +147,7 @@ class Stitcher():
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
         
-        self.vi = video.VideoIter(moviefile)
+        self.vl = video.VideoLoader(moviefile)
         self.firstFrame = True
         self.currentFrame = 0 #1 is the first frame
 
@@ -185,6 +185,7 @@ class Stitcher():
         """
         is a generator.
         """
+        logger = logging.getLogger()
         locations = []
         absx = 0
         absy = 0
@@ -203,9 +204,9 @@ class Stitcher():
         #self.alphas = dict()
         #initial seek
         while self.currentFrame + 1 < self.locations[0][0]:
+            logger.debug((self.currentFrame, self.locations[0][0]))
             yield self.currentFrame, self.locations[0][0]
-            self.vi.__next__()
-            self.currentFrame += 1
+            self.currentFrame = self.vl.skip()
 
     def getProgress(self):
         den = self.total_frames
@@ -244,15 +245,11 @@ class Stitcher():
 
     def _onestep(self):
         while self.currentFrame + 1 < self.locations[0][0]:
-            try:
-                ret = self.vi.__next__()
-            except StopIteration:
+            self.currentFrame = self.vl.skip()
+            if self.currentFrame == 0:
                 return False
-            self.currentFrame += 1
-        self.currentFrame += 1
-        try:
-            frame = self.vi.__next__()
-        except StopIteration:
+        self.currentFrame, frame = self.vl.next()
+        if self.currentFrame == 0:
             return False
         if self.params.scale != 1:
             frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)

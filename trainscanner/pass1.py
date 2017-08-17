@@ -298,22 +298,20 @@ class Pass1():
         #end of the header
 
         #############Open the video file #############################
-        self.vi    = video.VideoIter(found)
-        self.nframes = 0  #1 is the first frame
+        self.vl    = video.VideoLoader(found)
+        # self.nframes = 0  #1 is the first frame
     
         for i in range(self.params.skip):  #skip frames
-            ret = self.vi.__next__()
-            if not ret:
+            nframe = self.vl.skip()
+            if nframe==0:
                 break
-            self.nframes += 1
-            yield self.nframes, self.params.skip #report progress
-        try:
-            frame = self.vi.__next__()
-        except StopIteration:
+            yield nframe, self.params.skip #report progress
+        nframe, frame = self.vl.next()
+        if nframe==0:
             logger.debug("End of film.")
             sys.exit(0)
-        self.nframes += 1    #first frame is 1
         self.rawframe = frame
+        self.lastnframe = nframe # just for iter()
         
         
 
@@ -371,9 +369,9 @@ class Pass1():
         logger = logging.getLogger()
         #All self variables to be inherited.
         rawframe = self.rawframe
-        vi       = self.vi
-        nframes  = self.nframes
+        vl       = self.vl
         params   = self.params
+        nframe   = self.lastnframe
         
         transform = trainscanner.transformation(angle=params.rotate, pers=params.perspective, crop=params.crop)
         rotated, warped, cropped = transform.process_first_image(rawframe)
@@ -399,21 +397,17 @@ class Pass1():
             lastframe   = cropped
             lastpreview = preview
             #もしlastが設定されていて，しかもframe数がそれを越えていれば，終了．
-            if params.skip < params.last < nframes + params.every:
+            if params.skip < params.last < nframe + params.every:
                 return
             #フレームの早送り
             for i in range(params.every-1):
-                nframes += 1
-                try:
-                    vi.__next__()
-                except StopIteration:
+                nframe = vl.skip()
+                if nframe==0:
                     logger.debug("Video ended (1).")
                     return
             #1フレームとりこみ
-            try:
-                nframes += 1
-                rawframe = vi.__next__()
-            except StopIteration:
+            nframe, rawframe = vl.next()
+            if nframe == 0:
                 logger.debug("Video ended (2).")
                 return
             ##### compare with the previous raw frame
@@ -454,7 +448,7 @@ class Pass1():
                 deltay.pop(0)
             #最大100フレームの画像を記録する．
             if cropped is not None and self.cache is not None:
-                self.cache.append([nframes, cropped])
+                self.cache.append([nframe, cropped])
                 if len(self.cache) > 100: #always keep 100 frames in self.cache
                     self.cache.pop(0)
             ##### Make the preview image
@@ -475,7 +469,7 @@ class Pass1():
                     ddy = max(deltay) - min(deltay)
                     #if the displacements are almost constant in the last 5 frames,
                     if params.antishake <= ddx or params.antishake <= ddy:
-                        logger.info("Wait ({0} {1} {2})".format(nframes,dx,dy))
+                        logger.info("Wait ({0} {1} {2})".format(nframe,dx,dy))
                         continue
                     else:
                         #速度は安定した．
@@ -495,18 +489,18 @@ class Pass1():
                         #end of work
                         #Add trailing frames to the log file here.
                         return
-                    logger.info("Skip ({0} {1} {2} +{3}/{4})".format(nframes,dx,dy,match_fail, params.trailing))
+                    logger.info("Skip ({0} {1} {2} +{3}/{4})".format(nframe,dx,dy,match_fail, params.trailing))
                     # believe the last velx and vely
                 else:
                     #not guess mode, not large motion: just ignore.
-                    logger.info("Still ({0} {1} {2})".format(nframes,dx,dy))
+                    logger.info("Still ({0} {1} {2})".format(nframe,dx,dy))
                     continue
                     
-            logger.info("Scan {0} {2} {3} #{1}".format(nframes,np.amax(diff), velx, vely))
+            logger.info("Scan {0} {2} {3} #{1}".format(nframe,np.amax(diff), velx, vely))
             absx += velx
             absy += vely
             self.canvas = canvas_size(self.canvas, cropped, absx, absy)
-            self.tspos += "{0} {1} {2}\n".format(nframes,velx,vely)
+            self.tspos += "{0} {1} {2}\n".format(nframe,velx,vely)
 
         
     def after(self):

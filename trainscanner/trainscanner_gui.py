@@ -75,8 +75,8 @@ class AsyncImageLoader(QObject):
         self.size = size
         logger = logging.getLogger()
         logger.debug("Open video: {0}".format(filename))
-        self.vi = video.VideoIter(filename)
-        frame = self.vi.__next__()
+        self.vl = video.VideoLoader(filename)
+        nframe, frame = self.vl.next()
         if self.size:
             frame = trainscanner.fit_to_square(frame, self.size)
         self.snapshots = [frame]
@@ -93,18 +93,16 @@ class AsyncImageLoader(QObject):
             self.isRunning = True
             
         while self.isRunning:
-            try:
-                frame = self.vi.__next__()
-            except StopIteration:
+            nframe, frame = self.vl.next()
+            if nframe == 0:
                 return
             if self.size:
                 frame = trainscanner.fit_to_square(frame, self.size)
             self.snapshots.append(frame)
             self.frameIncreased.emit(self.snapshots)
             for i in range(9):
-                try:
-                    self.vi.__next__()
-                except StopIteration:
+                nframe = self.vl.skip()
+                if nframe == 0:
                     return
 
 
