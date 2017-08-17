@@ -1,7 +1,7 @@
 {% set name = "trainscanner" %}
-{% set version = "0.11.2" %}
+{% set version = "0.11.3" %}
 {% set hash_type = "sha256" %}
-{% set hash_value = "b506df9324d82f9c10da8fa179ef215b133edcca3a8f9a80ee09f58b2c0fbd4d" %}
+{% set hash_value = "a641f38ebef56bc86b30db3bc6aa4e78300994256b3bd3f288018dd05b139220" %}
 
 package:
   name: '{{ name|lower }}'
@@ -10,7 +10,7 @@ package:
 source:
   fn: '{{ name }}-{{ version }}.tar.gz'
   # copied from https://pypi.python.org/pypi/TrainScanner
-  url: https://pypi.python.org/packages/6e/34/434c70c9281e99994d842d0806762a0c99c4970dfb5a39774b1d813e571c/TrainScanner-0.11.2.tar.gz
+  url: https://pypi.python.org/packages/e2/5a/19cefdf4e130339bca4073b96af2bd236865ad8fa8701823cc87fc0dd97b/TrainScanner-0.11.3.tar.gz
 #https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
   '{{ hash_type }}': '{{ hash_value }}'
 

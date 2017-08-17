@@ -6,15 +6,16 @@ prepare:
 	pip install tiledimage
 trainscanner:
 	conda skeleton pypi trainscanner
+	cp old/trainscanner.png trainscanner
 #diff:
-#	cp old2/trainscanner.png trainscanner
-#	touch old2/meta.yaml
-#	diff -up trainscanner/meta.yaml old2/meta.yaml > meta.diff
+#	cp old/trainscanner.png trainscanner
+#	touch old/meta.yaml
+#	diff -up trainscanner/meta.yaml old/meta.yaml > meta.diff
 patch:
 	patch -p1 trainscanner/meta.yaml < meta.diff 
 build:
 	conda build trainscanner
-VER=0.11.2-py36h5af0ca9_0
+VER=0.11.3-py36h6137029_0
 convert:
 	conda convert --platform all ~/anaconda/conda-bld/osx-64/trainscanner-$(VER).tar.bz2 -o convert/
 
