@@ -11,11 +11,12 @@ import sys
 
 def VideoLoader(filename):
     module = None
-    if sys.platform == "darwin":
+    ostype = sys.platform
+    if ostype == "darwin":
         module     = importlib.import_module("trainscanner.video_cv2")
-    elif 0 == sys.platform("linux"):
+    elif 0 == ostype.find("linux"):
         module     = importlib.import_module("trainscanner.video_sk") # linux's cv2 does not contain video decoders
-    elif 0 == sys.platform("win"):
+    elif 0 == ostype.find("win"):
         module     = importlib.import_module("trainscanner.video_cv2")
     return module.VideoLoader(filename)
 
