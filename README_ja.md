@@ -2,16 +2,15 @@
 # TrainScannerの使い方
 ## インストール
 ### Anacondaから使う
-Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあまり気にしなくてよくなりそうです。
+Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあまり気にしなくてよいので、当面はAnaconda上で動かすことを前提とします。
 
 1. まず、[Anaconda-Navigator](https://www.continuum.io)をインストールし、起動します。
-2. Anacondaのための、trainscannerの環境ファイルを[ここ](https://www.dropbox.com/sh/x9oeh0riyhhg6ms/AACEN0f6GbGnDeDfs-szmuVUa?dl=0)からダウンロードします。
+2. Anacondaのための、trainscannerの環境ファイルの最新のものを[ここ](https://www.dropbox.com/sh/x9oeh0riyhhg6ms/AACEN0f6GbGnDeDfs-szmuVUa?dl=0)からダウンロードします。
 3. Navigatorの左メニューの"Environment"を押します。
 4. importを押し、さきほどダウンロードした環境ファイルを読み込みます。
 5. Navigatorの左メニューの"Home"を押すと、TrainScannerのタイルが追加されているはずです。
 
-まだWindowsとLinuxでは試していません。
-
+<!--
 ### コマンドライン版
 OSのターミナルウィンドウからインストールし，コマンドラインで起動する場合．(これが一番標準的な方法です)
 #### Requirements
@@ -41,12 +40,13 @@ OSのターミナルウィンドウからインストールし，OSのアプリ�
 
 いろいろ試していますが、appを生成する良い方法が見付かりません....
 #### ソースからアプリを生成する
+-->
 <!--ソースは[github](https://github.com/vitroid/TrainScanner)で配布しています．zipファイルをダウンロードして展開して下さい．
 
 TrainScannerはPythonで書かれているので，Windows/Linuxでも動くはずですが，開発者の手が回っていません．協力を募集しています．-->
 
-#### コンパイル済みアプリをもってくる
 <!--最近更新していません．
+#### コンパイル済みアプリをもってくる
 
 [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc). でも，たぶんまだ動きません．(大変苦労しています)
 
@@ -62,35 +62,35 @@ Windowsの実行ファイルも同じ場所に置いてありますが，こち�
 ## TrainScannerで開く
 1. まず、「ムービーを開く」を押してムービーファイルを開いて下さい。主要なフォーマットであればそのまま開けますが、開けない場合は、QuickTimeやffmpegなどを利用してフォーマットを変換してから再挑戦して下さい。(以前作った時にできた`.tsconf`ファイルを読みこむこともできます) また、「ムービーを開く」を押す代わりに、ダイアログウィンドウ上に直接ビデオファイルやtsconfファイルをドラッグアンドドロップすることもできます。
 
-![settings](https://farm6.staticflickr.com/5756/30971812510_6aeffec942_o_d.png)
+    ![settings](https://farm6.staticflickr.com/5756/30971812510_6aeffec942_o_d.png)
 
 1. ファイルが無事に開くと、大きなダイアログ画面が表示されます。一番上が頭出しのためのスナップショット表示窓、左が列車の歪みを修正するための窓、そして右が動きを検出する枠を指定するための窓です。この順番で作業します。
 
 1. 縦位置で撮影した場合や、カメラが傾いている(あるいはローリングシャッターで画像が傾いている)場合には、左窓下のボタンで画像を回転して、列車の窓枠が垂直になるようにして下さい。(水平は別の方法でも調節できます。)
 
-![edit2a](https://farm6.staticflickr.com/5727/30971812020_d40d7ab74d_o_d.png)
+    ![edit2a](https://farm6.staticflickr.com/5727/30971812020_d40d7ab74d_o_d.png)
 
 1. まず、一番上の窓で、スライダーを使って、列車が視野に入りかける瞬間を指定して下さい。下の左右の窓には、指定されたフレームが表示されます。
  
-![edit1b](https://farm6.staticflickr.com/5599/31196800422_85fe03874b_o_d.png)
+    ![edit1b](https://farm6.staticflickr.com/5599/31196800422_85fe03874b_o_d.png)
 
 1. 左窓の四隅にあるスライダーを使って、画面内の赤い線が列車に平行になるように調節して下さい。右の窓に表示される列車が、長方形になるまで調整します。この作業は省略しても構いません。
 
-![edit2b](https://farm6.staticflickr.com/5641/30533356873_04b912f6f0_o_d.png)
+    ![edit2b](https://farm6.staticflickr.com/5641/30533356873_04b912f6f0_o_d.png)
 
 1. 次に右のパネルに進みます。空や地面はあらかじめ右側のスライダーで削っておくと、あとの処理が速くなります。
 
-![edit3a](https://farm6.staticflickr.com/5324/30971812350_cbde46e80c_o_d.png)
+    ![edit3a](https://farm6.staticflickr.com/5324/30971812350_cbde46e80c_o_d.png)
 
 1. 列車の動きを検知する枠(変位検知窓)を指定します。初期設定では視野の上下左右1/3の中央部分が指定されていますが、うまく動きを検知できない場合は、枠を指定しなおして下さい。
 
-![edit3b](https://farm6.staticflickr.com/5509/31196800822_f4fe5920f6_o_d.png)
+    ![edit3b](https://farm6.staticflickr.com/5509/31196800822_f4fe5920f6_o_d.png)
 
-上の例では、やや斜めから撮影されて遠近がついていた車体に、左窓で赤い線を列車に沿わせることで、右窓では車体のパースペクティブが補正されているのがわかります。
+    上の例では、やや斜めから撮影されて遠近がついていた車体に、左窓で赤い線を列車に沿わせることで、右窓では車体のパースペクティブが補正されているのがわかります。
 
 1. 赤い縦線の位置が、スリットの位置です。つまり、この赤い線に沿った細長い写真の短冊を並べることで、長い列車の写真ができます。2本の線は、右向きの列車と左向きの列車の場合のスリット位置を表しています。赤い線の位置は、右窓下のスライダーで動かせます。背景にあわせて、スリットの位置を決めて下さい。スリットの位置は、緑の変位検知枠よりも前方(右向きに進む列車なら右側)のほうが良いです。
 
-![edit3c](https://farm6.staticflickr.com/5631/30533357123_76b9d372e4_o_d.png)
+    ![edit3c](https://farm6.staticflickr.com/5631/30533357123_76b9d372e4_o_d.png)
 
 ## TrainScannerでつなぐ
 ここまで終わったら、ためしにつないでみましょう。
@@ -207,9 +207,19 @@ TrainScannerでは，ビデオフレーム間の列車の移動距離を求め�
 * 特徴点で比較すると，ときどき照合の失敗が起こります．特に，上に書いたように，列車の表面に影が写りこんでいたり，窓や車体が反射する場合には，失敗する可能性が高まります．
 * 列車はほぼ一定速度で走っていて，加速や減速もほとんどないので，次のフレームでの移動が極めて正確に予測でき，その結果照合する範囲もぎりぎりまで狭められます．このため，単純な照合を行っても，処理時間はごくわずかですみます．照合はあらかじめ指定された枠の中だけで行うので，写真が大きくても処理は軽いです．
 
-## Windowsでの使用
+## OSによる違い
 
-[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてWindows用のアプリも配布しています。ただし、動作するのかどうかわかりません。Windowsユーザーの方の協力を期待しています。
+TrainScannerは主にMacOSで開発されており、ほかのOSで使う場合には若干違った動作をする可能性があります。(かなりの部分はAnacondaが吸収してくれるので助かります。)
+
+### Linux
+
+Linux (Ubuntu)では、AnacondaからインストールされるOpenCV3に、ビデオデコーダが含まれていないらしく、ビデオの取り込みができないので、読み込み部分だけsk-videoを利用しています。ただ、sk-videoのvideo readerにはコマを飛ばす機能がないため、読み飛ばす場合にもフレームをまるまる読み込むことになり、かなり速度が遅いようです。
+
+Video readerの違いはvideo.pyで吸収していますので、将来より良いビデオデコーダが使えるようになったら、随時差し替えていく予定です。
+
+### Windows
+
+Python3.6では正常動作しないので、今のところどのOSでもPython3.5を指定しています。
 
 ## Raspberry PIでの使用
 
@@ -221,6 +231,7 @@ TrainScannerでは，ビデオフレーム間の列車の移動距離を求め�
 
 ## Revision History
 
+* 2017-08-17 Version 0.11.3 履歴を残すのを忘れていました。Anacondaにようやく対応できた感じ。
 * 2016-12-05 Version 0.7.1  Mac用アプリケーションを作りなおした。WindowsはPyQt5を入れる必要あり。
 * 2016-12-03 OMMFにて展示しました．
 * 2016-11-24 Version 0.4: Windowsでの動作とexeファイルの生成。
