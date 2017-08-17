@@ -1,16 +1,17 @@
---- trainscanner/meta.yaml	2017-08-09 00:18:29.000000000 +0900
-+++ old2/meta.yaml	2017-08-09 00:18:51.000000000 +0900
-@@ -9,7 +9,8 @@ package:
+--- trainscanner/meta.yaml	2017-08-17 15:52:08.000000000 +0900
++++ old2/meta.yaml	2017-08-17 15:52:56.000000000 +0900
+@@ -9,7 +9,9 @@ package:
  
  source:
    fn: '{{ name }}-{{ version }}.tar.gz'
 -  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-+  url: https://files.pythonhosted.org/packages/39/88/b1534d786439dfd4165464e69f1d2335088da146da98ae50cb97e9753045/TrainScanner-0.11.tar.gz
++  # copied from https://pypi.python.org/pypi/TrainScanner
++  url: https://pypi.python.org/packages/a2/df/e5a26535f5fbe82464d52300c263482878bcf8c90aaa346214e9a6feb98e/TrainScanner-0.11.1.tar.gz
 +#https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
    '{{ hash_type }}': '{{ hash_value }}'
  
  build:
-@@ -28,31 +29,31 @@ build:
+@@ -28,33 +30,29 @@ build:
  
  requirements:
    build:
@@ -20,16 +21,16 @@
      - numpy
 -    - tiledimage
 -    - sk-video
-+#    - tiledimage
-+#    - sk-video
+-    - videosequence
++    - pyqt >=5
    run:
 -    - python
 +    - python ==3.5
      - numpy
 -    - tiledimage
 -    - sk-video
-+#    - tiledimage
-+#    - sk-video
+-    - videosequence
++    - pyqt >=5
  
  test:
    imports:
@@ -57,7 +58,7 @@
  
  about:
    home: https://github.com/vitroid/TrainScanner/
-@@ -66,3 +67,12 @@ about:
+@@ -68,3 +66,12 @@ about:
  
  extra:
    recipe-maintainers: ''

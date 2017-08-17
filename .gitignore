@@ -39,3 +39,7 @@ test1.png
 *.egg-info/*
 
 *.rst
+
+*.bz2
+
+anaconda/old2/

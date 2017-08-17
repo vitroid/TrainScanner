@@ -6,23 +6,23 @@ prepare:
 	pip install tiledimage
 trainscanner:
 	conda skeleton pypi trainscanner
-diff:
-	cp old2/trainscanner.png trainscanner
-	touch old2/meta.yaml
-	diff -up trainscanner/meta.yaml old2/meta.yaml > meta.diff
+#diff:
+#	cp old2/trainscanner.png trainscanner
+#	touch old2/meta.yaml
+#	diff -up trainscanner/meta.yaml old2/meta.yaml > meta.diff
 patch:
 	patch -p1 trainscanner/meta.yaml < meta.diff 
 build:
 	conda build trainscanner
-VER=0.11.1-py36hdbf4fa7_0
+VER=0.11.2-py36h5af0ca9_0
 convert:
-	conda convert --platform all /anaconda/conda-bld/osx-64/trainscanner-$(VER).tar.bz2 -o convert/
+	conda convert --platform all ~/anaconda/conda-bld/osx-64/trainscanner-$(VER).tar.bz2 -o convert/
 
 upload:
 #	~/anaconda/bin/anaconda login
-	/anaconda/bin/anaconda upload convert/win-64/trainscanner-$(VER).tar.bz2
-	/anaconda/bin/anaconda upload convert/linux-64/trainscanner-$(VER).tar.bz2
-	/anaconda/bin/anaconda upload /anaconda/conda-bld/osx-64/trainscanner-$(VER).tar.bz2
+	~/anaconda/bin/anaconda upload convert/win-64/trainscanner-$(VER).tar.bz2
+	~/anaconda/bin/anaconda upload convert/linux-64/trainscanner-$(VER).tar.bz2
+	~/anaconda/bin/anaconda upload ~/anaconda/conda-bld/osx-64/trainscanner-$(VER).tar.bz2
 	echo restart the anaconda navigator
 clean:
 	rm *~ */*~
@@ -35,7 +35,7 @@ anaconda-ubuntu:
 	conda install -c vitroid trainscanner
 	conda install -c menpo opencv3
 	conda install pyqt=5.6
-	pip install sk-video tiledimage
+	pip install sk-video tiledimage videosequence
 	conda env export > trainscanner-anaconda-ubuntu.yml
 	source deactivate
 anaconda-mac:
@@ -45,7 +45,7 @@ anaconda-mac:
 	conda install -c vitroid -y trainscanner
 	conda install -c menpo -y opencv3
 	conda install -y pyqt=5.6
-	pip install sk-video tiledimage
+	pip install sk-video tiledimage videosequence
 	conda env export > trainscanner-anaconda-mac.yml
 	source deactivate
 
