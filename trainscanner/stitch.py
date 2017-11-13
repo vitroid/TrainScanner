@@ -164,6 +164,7 @@ class Stitcher():
             if self.params.scale > 1:
                 self.params.scale = 1  #do not allow stretching
             #for GUI
+        logger.info(self.params.canvas)
         self.dimen = [int(x*self.params.scale) for x in self.params.canvas]
 #        if self.params.canvas is None:
 #            Canvas.__init__(self)
@@ -271,7 +272,7 @@ class Stitcher():
 
 
 
-if __name__ == "__main__":
+def main():
     debug =False
     if debug:
         logging.basicConfig(level=logging.DEBUG,
@@ -288,3 +289,7 @@ if __name__ == "__main__":
     st.set_canvas(canvas)
 
     st.stitch()
+
+
+if __name__ == "__main__":
+    main()

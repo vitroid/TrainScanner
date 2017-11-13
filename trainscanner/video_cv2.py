@@ -20,11 +20,12 @@ class VideoLoader(object):
             return 0, frame
         return self.nframe,frame
 
-    def skip(self):
-        ret = self.cap.grab()
-        self.nframe += 1
-        if ret == False:
-            return 0
+    def skip(self,n=1):
+        for i in range(n):
+            ret = self.cap.grab()
+            self.nframe += 1
+            if ret == False:
+                return 0
         return self.nframe
 
 

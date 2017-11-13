@@ -6,7 +6,7 @@ import numpy as np
 import sys
 import argparse
 import logging
-import videosequence as vs
+from trainscanner import video
 from trainscanner import pass1
 
 
@@ -23,12 +23,12 @@ def prepare_parser():
                         help="Specify the last frame.")
     parser.add_argument('-f', '--focus', type=int,
                         nargs=4, default=[200,800,166,333],
-                        dest="focus", 
-                        help="Motion detection area relative to the image size.")
+                        dest="focus", metavar='X',
+                        help="Motion detection area relative to the image size. Four values are left, right, top, and bottom. X is in 0..999.")
     parser.add_argument('--crop', type=int,
                         nargs=4, default=[0,1000,0,1000],
-                        dest="crop", 
-                        help="Frame cropping.")
+                        dest="crop", metavar='X',
+                        help="Frame cropping. ")
     parser.add_argument('-m', '--maxaccel', type=int,
                         default=1,
                         dest="maxaccel", metavar="N",
@@ -44,13 +44,14 @@ class ShakeReduction():
         self.parser = prepare_parser()
         self.params, unknown = self.parser.parse_known_args(argv[1:])
 
-        self.frames    = vs.VideoSequence(self.params.filename)
+        self.vl    = video.VideoLoader(self.params.filename)
         
 
     
     def onestep(self):
         logger = logging.getLogger()
-        frame0 = self.rawframe = cv2.cvtColor(np.array(self.frames[self.params.skip]), cv2.COLOR_RGB2BGR)
+        nframe, frame0 = self.vl.next()
+        self.rawframe = frame0
         h,w = frame0.shape[0:2]
         crop = [self.params.crop[0]*w//1000,
                 self.params.crop[1]*w//1000,
@@ -65,16 +66,20 @@ class ShakeReduction():
 
         dx = 0
         dy = 0
-        f = self.params.skip
+
+        self.vl.skip(self.params.skip)
         while True:
-            newframe = cv2.cvtColor(np.array(self.frames[f]), cv2.COLOR_RGB2BGR)
-            f += 1
-            if 0 < self.params.last <= f:
+            nframe, newframe = self.vl.next()
+            if nframe == 0:
+                out.release()
+                return
+            if 0 < self.params.last < nframe:
+                out.release()
                 return
             d = pass1.motion(newframe, frame0, focus=self.params.focus, maxaccel=self.params.maxaccel, delta=(dx,dy))
             if d is not None:
                 dx, dy = d
-            logger.info("{2} Delta: {0} {1}".format(dx,dy, f))
+            logger.info("{2} Delta: {0} {1}".format(dx,dy, nframe))
             affine = np.matrix(((1.0,0.0,-dx),(0.0,1.0,-dy)))
             h,w = frame0.shape[0:2]
             cv2.warpAffine(newframe, affine, (w,h), newframe)

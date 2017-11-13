@@ -6,30 +6,24 @@ Wrapper for video systems
 It does not fit the iterator framework.
 """
 
-import skvideo.io
-
+import videosequence as vs
+import numpy as np
 
 class VideoLoader(object):
     def __init__(self,filename):
-        vi = skvideo.io.FFmpegReader(filename)
-        self.iter = vi.nextFrame()
+        self.vs = vs.VideoSequence(filename)
         self.nframe = 0
 
     def next(self):
         self.nframe += 1
-        try:
-            frame = self.iter.__next__()
-        except StopIteration:
+        if self.nframe > len(self.vs):
             return 0, 0
-        return self.nframe,frame[:,:,::-1].copy()  #RGB to BGR
+        return self.nframe, np.asarray(self.vs[self.nframe-1]).copy()  #RGB to BGR
 
-    def skip(self, n=1):
-        for i in range(n):
-            self.nframe += 1
-            try:
-                frame = self.iter.__next__()
-            except StopIteration:
-                return 0
+    def skip(self,n=1):
+        self.nframe += n
+        if self.nframe > len(self.vs):
+            return 0, 0
         return self.nframe
 
 

@@ -13,7 +13,8 @@ def VideoLoader(filename):
     module = None
     ostype = sys.platform
     if ostype == "darwin":
-        module     = importlib.import_module("trainscanner.video_cv2")
+        module     = importlib.import_module("trainscanner.video_sk")
+        #module     = importlib.import_module("trainscanner.video_cv2")
     elif 0 == ostype.find("linux"):
         module     = importlib.import_module("trainscanner.video_sk") # linux's cv2 does not contain video decoders
     elif 0 == ostype.find("win"):
@@ -21,9 +22,8 @@ def VideoLoader(filename):
     return module.VideoLoader(filename)
 
 
-
-if __name__ == "__main__":
-    vl = VideoLoader("../examples/sample3.mov") #58 frames
+def main():
+    vl = VideoLoader("examples/sample3.mov") #58 frames
 
     while True:
         nframe, frame = vl.next()
@@ -31,3 +31,5 @@ if __name__ == "__main__":
             break
         print(frame.shape, nframe)
 
+if __name__ == "__main__":
+    main()
