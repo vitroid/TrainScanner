@@ -18,11 +18,14 @@ install:
 	./setup.py install
 
 uninstall:
-	pip3 uninstall -y trainscanner
+	pip uninstall -y trainscanner
 
-pypi:
+check:
 	./setup.py check
-	./setup.py sdist bdist_wheel upload
+	./setup.py sdist bdist_wheel # upload
+	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+pypi:
+	twine upload dist/*
 test1: test1.png
 test1.png: test1.tsconf
 	./stitch_gui.py @$<
