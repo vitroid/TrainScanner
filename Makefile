@@ -8,8 +8,8 @@ all: #macapp install #macapp-personally
 ##############################
 #  PyPI
 ##############################
-%.rst: %.md
-	md2rst $<
+#%.rst: %.md
+#	md2rst $<
 
 setup:
 	./setup.py build
@@ -21,7 +21,6 @@ uninstall:
 	pip3 uninstall -y trainscanner
 
 pypi:
-	make README.rst
 	./setup.py check
 	./setup.py sdist bdist_wheel upload
 test1: test1.png

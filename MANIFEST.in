@@ -1,3 +1,2 @@
-include README.rst
+include README.md
 include setup.cfg
-
