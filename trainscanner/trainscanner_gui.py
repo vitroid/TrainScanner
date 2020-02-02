@@ -672,6 +672,7 @@ class SettingsGUI(QWidget):
         file_name = stitcher.stitcher.outfilename
         stitcher.setMaximumHeight(500)
         stitcher.showMaximized()
+        stitcher.exec_()
         stitcher = None
 
     def closeEvent(self,event):
