@@ -3,7 +3,7 @@
 
 import math
 import time
-import logging
+from logging import getLogger, root, basicConfig, DEBUG, WARN
 
 #external modules
 import cv2
@@ -23,7 +23,7 @@ import os
 import subprocess
 
 #sub dialog windows
-from trainscanner import pass1_gui    
+from trainscanner import pass1_gui
 from trainscanner import stitch_gui
 
 
@@ -66,14 +66,14 @@ class AsyncImageLoader(QObject):
     to load the thumbnails for the time line
     """
     frameIncreased = pyqtSignal(list)
-    
+
     def __init__(self, parent=None, filename="", size=0):
         super(AsyncImageLoader, self).__init__(parent)
         self.isRunning = True
 
         #capture the first frame ASAP to avoid "no frame" errors.
         self.size = size
-        logger = logging.getLogger()
+        logger = getLogger()
         logger.debug("Open video: {0}".format(filename))
         self.vl = video.VideoLoader(filename)
         nframe, frame = self.vl.next()
@@ -91,7 +91,7 @@ class AsyncImageLoader(QObject):
     def task(self):
         if not self.isRunning:
             self.isRunning = True
-            
+
         while self.isRunning:
             nframe, frame = self.vl.next()
             if nframe == 0:
@@ -162,22 +162,22 @@ class MyLabel(QLabel):
                          x+w//2+self.slitpos*w//1000,  y+h//2+d)
         painter.setPen(Qt.green)
         painter.drawRect(x+w*self.focus[0]//1000,y+h*self.focus[2]//1000,w*(self.focus[1]-self.focus[0])//1000,h*(self.focus[3]-self.focus[2])//1000)
-        
+
     def mousePressEvent(self, event):
-    
+
         if event.button() == Qt.LeftButton:
-        
+
             self.origin = QPoint(event.pos())
             self.rubberBand.setGeometry(QRect(self.origin, QSize()))
             self.rubberBand.show()
-    
+
     def mouseMoveEvent(self, event):
-    
+
         if not self.origin.isNull():
             self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
-    
+
     def mouseReleaseEvent(self, event):
-    
+
         if event.button() == Qt.LeftButton:
             self.rubberBand.hide()
             self.region = QRect(self.origin, event.pos()).normalized()
@@ -203,17 +203,17 @@ class SettingsGUI(QWidget):
         #private
         # layout
         layout = QHBoxLayout()
-        
+
         #leftmost panel for specifying options
         left_layout = QVBoxLayout()
         self.btn = QPushButton(self.tr('Open a movie'))
         self.btn.clicked.connect(self.getfile)
         left_layout.addWidget(self.btn)
-    
+
         self.le = QLabel(self.tr('(File name appears here)'))
         #self.le = QLabel()
         left_layout.addWidget(self.le)
-        
+
         #self.pbar = QProgressBar()
         #self.pbar.setValue(0)
         #left_layout.addWidget(self.pbar)
@@ -225,15 +225,15 @@ class SettingsGUI(QWidget):
         #http://myenigma.hatenablog.com/entry/2016/01/24/113413
 
 
-        
+
         #Example of a slider with a label ###################################
         #the slider is in a Hbox
-        
+
         settings2_layout.addWidget(QLabel(self.tr('Slit mixing')), rows, 0, Qt.AlignRight)
-        
+
         self.slitwidth_slider_valuelabel = QLabel("{0}%".format(self.slitwidth))
         settings2_layout.addWidget(self.slitwidth_slider_valuelabel, rows, 1, Qt.AlignCenter)
-        
+
         settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2, Qt.AlignRight)
         self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.slitwidth_slider.setRange(5, 300)  # スライダの範囲
@@ -251,10 +251,10 @@ class SettingsGUI(QWidget):
         #the slider is in a Hbox
 
         settings2_layout.addWidget(QLabel(self.tr('Minimal displacement between the frames')), rows, 0, Qt.AlignRight)
-        
+
         self.antishake_slider_valuelabel = QLabel("{0} ".format(self.antishake)+self.tr("pixels"))
         settings2_layout.addWidget(self.antishake_slider_valuelabel, rows, 1, Qt.AlignCenter)
-        
+
         settings2_layout.addWidget(QLabel(self.tr('Small')), rows, 2, Qt.AlignRight)
         self.antishake_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.antishake_slider.setRange(0, 15)  # スライダの範囲
@@ -272,10 +272,10 @@ class SettingsGUI(QWidget):
         #the slider is in a Hbox
 
         settings2_layout.addWidget(QLabel(self.tr('Number of frames to estimate the velocity')), rows, 0, Qt.AlignRight)
-        
+
         self.estimate_slider_valuelabel = QLabel("{0} ".format(self.estimate)+self.tr("frames"))
         settings2_layout.addWidget(self.estimate_slider_valuelabel, rows, 1, Qt.AlignCenter)
-        
+
         settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2, Qt.AlignRight)
         self.estimate_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.estimate_slider.setRange(5, 50)  # スライダの範囲
@@ -323,10 +323,10 @@ class SettingsGUI(QWidget):
         # #the slider is in a Hbox
 
         # #settings2_layout.addWidget(QLabel(self.tr('Permit camera waggle')), rows, 0, Qt.AlignRight)
-        
+
         self.accel_slider_valuelabel = QLabel(str(self.accel))
         settings2_layout.addWidget(self.accel_slider_valuelabel, rows, 1)
-        
+
         settings2_layout.addWidget(QLabel(self.tr('Tripod')), rows, 2)
         self.accel_slider = QSlider(Qt.Horizontal)  # スライダの向き
         self.accel_slider.setRange(1, 15)  # スライダの範囲
@@ -346,7 +346,7 @@ class SettingsGUI(QWidget):
 
 
 
-        
+
         # #Example of a checkbox and slider with a label
         # #-i (identity)
 
@@ -355,11 +355,11 @@ class SettingsGUI(QWidget):
         # #self.btn_skipident = QCheckBox(self.tr('Skip identical frames'))
         # #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
         # #skipident_layout.addWidget(self.btn_skipident)
-        
-        
+
+
         # self.skipident_valuelabel = QLabel(str(self.identity))
         # settings2_layout.addWidget(self.skipident_valuelabel, rows, 1)
-    
+
         # settings2_layout.addWidget(QLabel(self.tr('Strict')), rows, 2)
         # self.identthres_slider = QSlider(Qt.Horizontal)  # スライダの向き
         # self.identthres_slider.setRange(1, 5)  # スライダの範囲
@@ -378,7 +378,7 @@ class SettingsGUI(QWidget):
         #the slider is in a Hbox
 
         settings2_layout.addWidget(QLabel(self.tr('Trailing frames')), rows,0, Qt.AlignRight)
-        
+
         self.trailing_slider_valuelabel = QLabel("{0} ".format(self.trailing)+self.tr("frames"))
         settings2_layout.addWidget(self.trailing_slider_valuelabel, rows,1, Qt.AlignCenter)
 
@@ -410,7 +410,7 @@ class SettingsGUI(QWidget):
         left_layout.addWidget(gbox_settings)
 
         #Left panel, lower pane: finish
-        
+
         finish_layout_gbox = QGroupBox(self.tr('Finish'))
         finish_layout = QVBoxLayout()
 
@@ -433,19 +433,19 @@ class SettingsGUI(QWidget):
         self.start_button.clicked.connect(self.start_process)
         finish_layout.addWidget(self.start_button)
 
-       
+
         finish_layout_gbox.setLayout(finish_layout)
         left_layout.addWidget(finish_layout_gbox)
 
 
-        
+
         #combine panels
         layout.addLayout(left_layout)
         self.setLayout(layout)
         self.setWindowTitle("Settings")
-		
+
     def dragEnterEvent(self, event):
-        logger = logging.getLogger()
+        logger = getLogger()
         event.accept()
         mimeData = event.mimeData()
         logger.debug('dragEnterEvent')
@@ -454,7 +454,7 @@ class SettingsGUI(QWidget):
             logger.debug('Data: {0}'.format(mimeData.data(mimetype)))
 
     def dropEvent(self, event):
-        logger = logging.getLogger()
+        logger = getLogger()
         event.accept()
         mimeData = event.mimeData()
         logger.debug('dropEvent')
@@ -480,20 +480,20 @@ class SettingsGUI(QWidget):
                         self.fileparser(parsed.path)
                         return
         #or just ignore
-                
-            
+
+
 
     def reset_input(self):
         self.filename = ""
         self.editor = None
         self.le.setText(self.tr('(File name appears here)'))
-        
+
     def getfile(self):
-        logger = logging.getLogger()
+        logger = getLogger()
         if self.editor is not None:
             self.editor.close()
         logger.debug("Let's select a file")
-        filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'), 
+        filename, types = QFileDialog.getOpenFileName(self, self.tr('Open file'),
             "","Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)")
         logger.debug("File: {0}".format(filename))
         if filename == "": # or if the file cannot be opened,
@@ -503,20 +503,22 @@ class SettingsGUI(QWidget):
 
 
     def fileparser(self,filename):
-        logger = logging.getLogger()
+        logger = getLogger()
         self.filename = filename
         if self.filename.rfind(".tsconf") + 7 == len(self.filename):
             #read all initial values from the file.
-            ap = argparse.ArgumentParser(fromfile_prefix_chars='@',
-                                        description='TrainScanner')
+            ap = argparse.ArgumentParser(description='TrainScanner')
             parser_stitch = pp2(ap)
             #Set priority to the path of the given tsconf
             tsconf = self.filename
             tsconfdir = os.path.dirname(tsconf)
             if tsconfdir == "":
                 tsconfdir = "."
-            
-            params,unknown = parser_stitch.parse_known_args(["@"+tsconf])
+
+            ## modified params,unknown = parser_stitch.parse_known_args(["@"+tsconf])
+            with open(tsconf) as f:
+                args = f.read().split()
+            params,unknown = parser_stitch.parse_known_args(args)
             logger.debug("Params1 {0} {1}".format(params,unknown))
             unknown += [params.filename] #supply filename for pass1 parser
             #Assume the movie file is in the same dir as the tsconf
@@ -526,7 +528,8 @@ class SettingsGUI(QWidget):
                 self.filename = params.filename
             logger.debug("Movie  {0}".format(self.filename))
             parser_pass1 = pp1()
-            params2,unknown2 = parser_pass1.parse_known_args(["@"+tsconf])
+            ## modified params2,unknown2 = parser_pass1.parse_known_args(["@"+tsconf])
+            params2,unknown2 = parser_pass1.parse_known_args(args)
             logger.debug("Params2 {0} {1}".format(params2,unknown2))
             #Only non-default values should overwrite the pp2 result.
             p1 = vars(params)
@@ -550,7 +553,7 @@ class SettingsGUI(QWidget):
             else:
                 self.btn_stall.setCheckState(Qt.Unchecked)
             self.trailing_slider.setValue(p1["trailing"])
-            
+
         else:
             self.editor = EditorGUI(self, filename=self.filename)
         #dir = os.path.dirname(self.filename)
@@ -559,7 +562,7 @@ class SettingsGUI(QWidget):
         self.editor.setMaximumHeight(826)
         self.editor.setMaximumWidth(1210)
         self.editor.show()
-        
+
         #we shall set editor's values here.
         self.editor.sliderL.setMin(0)
         self.editor.sliderL.setMax(1000)
@@ -574,21 +577,21 @@ class SettingsGUI(QWidget):
         self.editor.slit_slider.setValue(self.editor.slitpos)
         self.editor.angle_label.setText("{0} ".format(self.editor.angle_degree)+self.tr("degrees"))
         self.le.setText(self.filename)
-        
+
 
     def toggle_debug(self):
         #Once remove all the handlers
-        for handler in logging.root.handlers[:]:
-            logging.root.removeHandler(handler)
+        for handler in root.handlers[:]:
+            root.removeHandler(handler)
         if self.btn_debug.isChecked():
             print("!!!")
-            logging.basicConfig(level=logging.DEBUG,
+            basicConfig(level=DEBUG,
                             #filename='log.txt',
                             format="%(asctime)s %(levelname)s %(message)s")
         else:
-            logging.basicConfig(level=logging.WARN,
+            basicConfig(level=WARN,
                             format="%(asctime)s %(levelname)s %(message)s")
-        
+
     def trailing_slider_on_draw(self):
         self.trailing = self.trailing_slider.value()
         self.trailing_slider_valuelabel.setText("{0} ".format(self.trailing)+self.tr("frames"))
@@ -620,6 +623,7 @@ class SettingsGUI(QWidget):
 
 
     def start_process(self):
+        logger = getLogger()
         if self.editor is None:
             return
         now = int(time.time()) % 100000
@@ -658,7 +662,7 @@ class SettingsGUI(QWidget):
         for op in stitch_options:
             argv += ["-2", op]
         argv += [self.filename,]
-        
+
         matcher = pass1_gui.MatcherUI(argv, False)  #do not terminate
         matcher.exec_()
         if matcher.terminated:
@@ -666,8 +670,9 @@ class SettingsGUI(QWidget):
             return
         matcher = None
         argv = ["stitch"]
-        argv += [ "@"+logfilenamebase+".tsconf",]
-            
+        ## modified argv += [ "@"+logfilenamebase+".tsconf",]
+        argv += [ "--file", logfilenamebase+".tsconf",]
+
         stitcher = stitch_gui.StitcherUI(argv, False)
         file_name = stitcher.stitcher.outfilename
         stitcher.setMaximumHeight(500)
@@ -686,10 +691,10 @@ class EditorGUI(QWidget):
 
     def __init__(self, settings, parent = None, filename=None, params=None):
         super(EditorGUI, self).__init__(parent)
-        
+
         # options
         #self.skip       = 0
-        logger = logging.getLogger()
+        logger = getLogger()
         self.perspective = [0,0,1000,1000]
         self.angle_degree    = 0
         self.focus = [333,666,333,666]
@@ -714,7 +719,7 @@ class EditorGUI(QWidget):
         self.thread = QThread()
         self.thread.start()
         self.lastupdatethumbs = 0 #from epoch
-        
+
         self.asyncimageloader = AsyncImageLoader(filename=filename, size=self.preview_size)
         self.asyncimageloader.moveToThread(self.thread)
         self.thread_invoker.connect(self.asyncimageloader.task)
@@ -749,7 +754,7 @@ class EditorGUI(QWidget):
         thumbw = w*thumbh//h
         thumb = cv2.resize(cropped,(thumbw,thumbh),interpolation = cv2.INTER_CUBIC)
         return self.cv2toQImage(thumb)
-        
+
     def updateTimeLine(self, cv2thumbs):
         #count time and limit update
         now = time.time()
@@ -759,11 +764,11 @@ class EditorGUI(QWidget):
         self.imageselector2.imagebar.setTransformer(self.thumbtransformer)
         self.imageselector2.setThumbs(cv2thumbs)
         self.lastupdatethumbs = time.time()
-        
+
     def make_layout(self):
         # layout
         layout = QHBoxLayout()
-        
+
         #second left panel for image rotation
         rotation_layout = QHBoxLayout()
         self.btn = QPushButton(self.tr("-90"))
@@ -794,7 +799,7 @@ class EditorGUI(QWidget):
 
         crop_layout.addWidget(self.crop_slider)
 
-        
+
         self.sliderL = rs.QRangeSlider(splitterWidth=10, vertical=True)  # スライダの向き
         self.sliderL.setFixedWidth(15)
         self.sliderL.setStyleSheet(perspectiveCSS)
@@ -802,7 +807,7 @@ class EditorGUI(QWidget):
         self.sliderL.startValueChanged.connect(self.sliderTL_on_draw)
         self.sliderL.endValueChanged.connect(self.sliderBL_on_draw)
         self.sliderL.setMinimumHeight(500)
-        
+
         self.sliderR = rs.QRangeSlider(splitterWidth=10, vertical=True)  # スライダの向き
         self.sliderR.setFixedWidth(15)
         self.sliderR.setStyleSheet(perspectiveCSS)
@@ -810,7 +815,7 @@ class EditorGUI(QWidget):
         self.sliderR.startValueChanged.connect(self.sliderTR_on_draw)
         self.sliderR.endValueChanged.connect(self.sliderBR_on_draw)
         self.sliderR.setMinimumHeight(500)
-        
+
         raw_image_layout = QVBoxLayout()
         self.raw_image_pane = DrawableLabel()
         self.raw_image_pane.setAlignment(Qt.AlignCenter)
@@ -820,7 +825,7 @@ class EditorGUI(QWidget):
         raw_image_layout.addWidget(self.raw_image_pane)
         raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignHCenter)
         raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignTop)
-        
+
         processed_edit_gbox_layout = QVBoxLayout()
         processed_edit_gbox = QGroupBox(self.tr('3. Motion Detection and Slit'))
         box = QVBoxLayout()
@@ -851,7 +856,7 @@ class EditorGUI(QWidget):
         box.addLayout(slit_slider_layout)
         box.setAlignment(slit_slider_layout, Qt.AlignTop)
 
-        
+
         #combine panels
         topleft_layout = QHBoxLayout()
         topleft_layout.addWidget(self.sliderL)
@@ -873,7 +878,7 @@ class EditorGUI(QWidget):
         self.asyncimageloader.stop()
         self.thread.quit()
         self.thread.wait()
-        
+
     def angle_inc(self):
         self.angle_degree += 1
         self.angle_degree %= 360
@@ -929,7 +934,7 @@ class EditorGUI(QWidget):
     def cv2toQImage(self,cv2image):
         height,width = cv2image.shape[:2]
         return QImage(cv2image[:,:,::-1].copy().data, width, height, width*3, QImage.Format_RGB888)
-        
+
 
     def show_snapshots(self, region=None):
         """
@@ -937,7 +942,7 @@ class EditorGUI(QWidget):
         """
         if self.frame < 0:
             return
-        logger = logging.getLogger()
+        logger = getLogger()
         image = self.asyncimageloader.snapshots[self.frame]
         self.transform = trainscanner.transformation(self.angle_degree, self.perspective, [self.croptop, self.cropbottom])
         rotated, warped, cropped = self.transform.process_first_image(image)
@@ -991,9 +996,9 @@ class EditorGUI(QWidget):
             if right > 1000:
                 right = 1000
             self.focus = left,right,top,bottom
-            
+
         self.put_cv2_image(cropped, self.processed_pane)
-        
+
 
     def put_cv2_image(self, image, widget):
         height, width = image.shape[0:2]
@@ -1016,7 +1021,7 @@ class EditorGUI(QWidget):
         y = ( self.preview_size - h ) // 2
         widget.geometry = x,y,w,h
 
-        
+
     def slit_slider_on_draw(self):
         self.slitpos = self.slit_slider.value()
         self.show_snapshots()
@@ -1035,11 +1040,11 @@ class EditorGUI(QWidget):
         self.settings.reset_input()
         self.stop_thread()
     #    self.asyncimageloader.stop()
-            
+
     #This will be the trigger for the first rendering
     #def resizeEvent(self, event):
     #    self.asyncimageloader.render()
-    
+
 #for pyinstaller
 def resource_path(relative):
     return os.path.join(
@@ -1054,8 +1059,8 @@ def resource_path(relative):
 
 def main():
     #pyqt_set_trace()
-    logging.basicConfig(level=logging.WARN,
-                        format="%(asctime)s %(levelname)s %(message)s")
+    basicConfig(level=WARN,
+                format="%(asctime)s %(levelname)s %(message)s")
     app = QApplication(sys.argv)
     translator = QTranslator(app)
     path = os.path.dirname(trainscanner.__file__)
@@ -1066,6 +1071,6 @@ def main():
     se.show()
     se.raise_()
     sys.exit(app.exec_())
-	
+
 if __name__ == '__main__':
     main()

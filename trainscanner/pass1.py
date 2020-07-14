@@ -8,9 +8,9 @@ import sys
 import os
 import re
 import itertools
-import logging
+from logging import getLogger, basicConfig, DEBUG, WARN, INFO
+import argparse
 from trainscanner import trainscanner
-from trainscanner import myargparse
 from trainscanner import video
 
 def draw_focus_area(f, focus, delta=None):
@@ -23,7 +23,7 @@ def draw_focus_area(f, focus, delta=None):
     if delta is not None:
         pos = [w*focus[0]//1000+delta,w*focus[1]//1000+delta,h*focus[2]//1000,h*focus[3]//1000]
         cv2.rectangle(f, (pos[0],pos[2]),(pos[1],pos[3]), (255, 255, 0), 1)
-        
+
 
 
 def draw_slit_position(f, slitpos, dx):
@@ -47,7 +47,7 @@ def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0,0), anti
     ref画像の，focusで指定された領域内の画像と同じ画像を，image内でさがして，その変位を返す．
     maxaccelとdeltaが指定されている場合は，探索範囲を絞り高速にマッチングできる．
     """
-    logger = logging.getLogger()
+    logger = getLogger()
     hi,wi = ref.shape[0:2]
     wmin = wi*focus[0]//1000
     wmax = wi*focus[1]//1000
@@ -137,7 +137,7 @@ def canvas_size(canvas_dimen, image, x, y):
     ymax = max(cymax,iymax)
     if (xmax-xmin, ymax-ymin) != (canvas_dimen[0], canvas_dimen[1]):
         canvas_dimen = [xmax-xmin,ymax-ymin,xmin,ymin]
-    logging.getLogger().debug(canvas_dimen)
+    getLogger().debug(canvas_dimen)
     return canvas_dimen
 
 
@@ -146,7 +146,7 @@ def prepare_parser():
     """
     pass1のコマンドラインオプションのパーザ
     """
-    parser = myargparse.MyArgumentParser(description='TrainScanner matcher', fromfile_prefix_chars='@',)
+    parser = argparse.ArgumentParser(description='TrainScanner matcher',)
     parser.add_argument('--debug', action='store_true',
                         dest='debug',
                         help="Show debug info.")
@@ -172,7 +172,7 @@ def prepare_parser():
                         help="Specity perspective warp.")
     parser.add_argument('-f', '--focus', type=int,
                         nargs=4, default=[333,666,333,666],
-                        dest="focus", 
+                        dest="focus",
                         help="Motion detection area relative to the image size.")
     parser.add_argument('-a', '--antishake', type=int,
                         default=5, metavar="x",
@@ -196,7 +196,7 @@ def prepare_parser():
                         help="Decide the identity of two successive frames with the threshold.")
     parser.add_argument('-c', '--crop', type=int,
                         nargs=2, default=[0,1000],
-                        dest="crop", metavar="t,b",
+                        dest="crop", metavar="tb",
                         help="Crop the image (top and bottom).")
     parser.add_argument('-x', '--stall', action='store_true',
                         dest="stall", default=False,
@@ -217,42 +217,42 @@ def prepare_parser():
     return parser
 
 
-                
-            
+
+
 class Pass1():
     """
     ムービーを前から読んで，最終的なキャンバスの大きさと，各フレームを貼りつける位置を調べて，tsposファイルに書きだす．
     実際に大きな画像を作る作業はstitch.pyにまかせる．
     """
     def __init__(self,argv):
-        logger = logging.getLogger()
+        logger = getLogger()
         self.parser = prepare_parser()
         self.params, unknown = self.parser.parse_known_args(argv[1:])
         if self.params.debug:
-            logging.basicConfig(level=logging.DEBUG,
+            basicConfig(level=DEBUG,
                                 #filename='log.txt',
                                 format="%(asctime)s %(levelname)s %(message)s")
         else:
-            logging.basicConfig(level=logging.INFO,
+            basicConfig(level=INFO,
                                 format="%(asctime)s %(levelname)s %(message)s")
         #Assume the video is in the same dir.
         self.dirnames = []
-        if self.parser.fromfile_name is not None:
-            logger.debug("Conf filename {0}".format(self.parser.fromfile_name))
-            self.dirnames.append(os.path.dirname(self.parser.fromfile_name))
+        # if self.parser.fromfile_name is not None:
+        #     logger.debug("Conf filename {0}".format(self.parser.fromfile_name))
+        #     self.dirnames.append(os.path.dirname(self.parser.fromfile_name))
         self.dirnames.append(os.path.dirname(self.params.filename))
         #remove the dirname from the filename
         self.params.filename = os.path.basename(self.params.filename)
         logger.debug("Directory candidates: {0}".format(self.dirnames))
-        
-        
-        
+
+
+
     def before(self):
         """
         prepare for the loop
         note that it is a generator.
         """
-        logger = logging.getLogger()
+        logger = getLogger()
         ####Determine the movie file########################
         found = None
         logger.debug("Basename {0}".format(self.params.filename))
@@ -300,7 +300,7 @@ class Pass1():
         #############Open the video file #############################
         self.vl    = video.VideoLoader(found)
         # self.nframes = 0  #1 is the first frame
-    
+
         for i in range(self.params.skip):  #skip frames
             nframe = self.vl.skip()
             if nframe==0:
@@ -312,8 +312,8 @@ class Pass1():
             sys.exit(0)
         self.rawframe = frame
         self.lastnframe = nframe # just for iter()
-        
-        
+
+
 
     def _backward_match(self, absx, absy, velx, vely, precount):
         """
@@ -321,9 +321,9 @@ class Pass1():
         "postdict" the displacements
         Do not break the cache. It will be used again.
         """
-        logger = logging.getLogger()
+        logger = getLogger()
         curFrameNum, curFrameImg = self.cache.pop(-1)
-        prevFrameNum = -1 
+        prevFrameNum = -1
         curFrameAbsX = int(absx)
         curFrameAbsY = int(absy)
         newDeltas = []
@@ -353,7 +353,7 @@ class Pass1():
         #dispose cache
         self.cache = None #Dispose image cache.
         logger.debug("Disposed the image cache.")
-        
+
         #trick; by the backward matching, the first frame may not be located at the origin
         #So the first frame is specified by the abs coord.
         if prevFrameNum < 0:
@@ -364,20 +364,20 @@ class Pass1():
             s += "{0} {1} {2}\n".format(*delta)
         return s
 
-                  
+
     def iter(self):
-        logger = logging.getLogger()
+        logger = getLogger()
         #All self variables to be inherited.
         rawframe = self.rawframe
         vl       = self.vl
         params   = self.params
         nframe   = self.lastnframe
-        
+
         transform = trainscanner.transformation(angle=params.rotate, pers=params.perspective, crop=params.crop)
         rotated, warped, cropped = transform.process_first_image(rawframe)
         #Prepare a scalable self.canvas with the origin.
         self.canvas = None
-        
+
         absx,absy  = 0, 0
         velx, vely = 0, 0
         match_fail = 0
@@ -436,7 +436,7 @@ class Pass1():
                 dx,dy = delta
             else:
                 dx,dy = motion(lastframe, cropped, focus=params.focus)
-            
+
             ##### Suppress drifting.
             if params.zero:
                 dy = 0
@@ -463,7 +463,7 @@ class Pass1():
             if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
                 if not guess_mode:
                     #number of frames since the first motion is detected.
-                    precount += 1 
+                    precount += 1
                     #過去5フレームでの移動量の変化
                     ddx = max(deltax) - min(deltax)
                     ddy = max(deltay) - min(deltay)
@@ -495,14 +495,14 @@ class Pass1():
                     #not guess mode, not large motion: just ignore.
                     logger.info("Still ({0} {1} {2})".format(nframe,dx,dy))
                     continue
-                    
+
             logger.info("Scan {0} {2} {3} #{1}".format(nframe,np.amax(diff), velx, vely))
             absx += velx
             absy += vely
             self.canvas = canvas_size(self.canvas, cropped, absx, absy)
             self.tspos += "{0} {1} {2}\n".format(nframe,velx,vely)
 
-        
+
     def after(self):
         """
         Action after the loop
