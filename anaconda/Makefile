@@ -12,10 +12,10 @@ trainscanner:
 #	touch old/meta.yaml
 #	diff -up trainscanner/meta.yaml old/meta.yaml > meta.diff
 patch:
-	patch -p1 trainscanner/meta.yaml < meta.diff 
+	patch -p1 trainscanner/meta.yaml < meta.diff
 build:
 	conda build trainscanner
-VER=0.11.3-py36h6137029_0
+VER=0.12.0 #3-py36h6137029_0
 convert:
 	conda convert --platform all ~/anaconda/conda-bld/osx-64/trainscanner-$(VER).tar.bz2 -o convert/
 
@@ -49,4 +49,3 @@ anaconda-mac:
 	pip install sk-video tiledimage videosequence
 	conda env export > trainscanner-anaconda-mac.yml
 	source deactivate
-

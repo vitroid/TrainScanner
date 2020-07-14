@@ -30,12 +30,12 @@ build:
 
 requirements:
   build:
-    - python ==3.5
+    - python >=3.5
     - setuptools
     - numpy
     - pyqt >=5
   run:
-    - python ==3.5
+    - python >=3.5
     - numpy
     - pyqt >=5
 

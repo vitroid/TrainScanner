@@ -8,22 +8,34 @@ all: #macapp install #macapp-personally
 ##############################
 #  PyPI
 ##############################
-%.rst: %.md
-	md2rst $<
+prepare: # might require root privilege.
+	pip install twine
 
-setup:
-	./setup.py build
+test-deploy: build
+	twine upload -r pypitest dist/*
+test-install:
+	pip install --index-url https://test.pypi.org/simple/ trainscanner
+
+
 
 install:
 	./setup.py install
-
 uninstall:
-	pip3 uninstall -y trainscanner
+	-pip uninstall -y trainscanner
+build: README.md $(wildcard trainscanner/*.py)
+	./setup.py sdist # bdist_wheel
 
-pypi:
-	make README.rst
+
+deploy: build
+	twine upload dist/*
+check:
 	./setup.py check
-	./setup.py sdist bdist_wheel upload
+clean:
+	-rm $(ALL) *~ */*~
+	-rm -rf build dist *.egg-info
+	-find . -name __pycache__ | xargs rm -rf
+
+# old stuff
 test1: test1.png
 test1.png: test1.tsconf
 	./stitch_gui.py @$<

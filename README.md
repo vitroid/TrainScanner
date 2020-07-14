@@ -1,73 +1,258 @@
-#TrainScanner tutorial
+![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
+# TrainScannerの使い方
+## インストール
+### Anacondaから使う
+Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあまり気にしなくてよいので、当面はAnaconda上で動かすことを前提とします。
 
-This document is outdated. [README_ja.md](https://github.com/vitroid/TrainScanner/blob/master/README_ja.md) is more frequently updated.
+1. まず、[Anaconda-Navigator](https://www.continuum.io)をインストールし、起動します。
+2. Anacondaのための、trainscannerの環境ファイルの最新のものを[ここ](https://www.dropbox.com/sh/x9oeh0riyhhg6ms/AACEN0f6GbGnDeDfs-szmuVUa?dl=0)からダウンロードします。
+3. Navigatorの左メニューの"Environment"を押します。
+4. importを押し、さきほどダウンロードした環境ファイルを読み込みます。
+5. Navigatorの左メニューの"Home"を押すと、TrainScannerのタイルが追加されているはずです。
 
-##Installation
-###Requirements
-Install `PyQt5`, `OpenCV3`, `Python3` packages.  On installing OpenCV3, specify `--with-ffmpeg --with-tbb --with-python3 --HEAD` options.
-###Install by pip 
-Install the trainscanner from the PyPI with pip3 command:
+<!--
+### コマンドライン版
+OSのターミナルウィンドウからインストールし，コマンドラインで起動する場合．(これが一番標準的な方法です)
+#### Requirements
+`PyQt5`, `OpenCV3`, `Python3`をあらかじめインストールして下さい．OpenCV3をインストールする際には`--with-ffmpeg --with-tbb --with-python3 --HEAD`の各オプションを指定して下さい．
+
+(winpythonにはいずれも含まれているようです)
+#### pipでインストール
+Pythonのパッケージインストーラを使ってインストールします．事前に上記のライブラリを何らかの方法でインストールしておいて下さい．
 
     % pip3 install trainscanner
     % trainscanner
-###Install by homebrew (mac)
-It installs everything required. (PyQt5, OpenCV3 with options, Python3)
+
+#### Homebrewでインストール(Macのみ)
+Python以外のライブラリを含め，一括してインストールできます．
 
     % brew tap vitroid/homebrew-TrainScanner
     % brew install trainscanner
+    % brew link opencv3 --force
     % trainscanner
 
-##How to capture the video
-Capture the whole train from the side with a video camera.
+`brew install trainscanner`のあと、`Error: empty installation`と言われますが気にしないで下さい。
 
-* Tripod is necessary.
-* Pay attention to use tripod on the station platform.
+opencv3は自動でリンクされないため、3行目のコマンドが必要になります。
 
-Other advises are listed in the last section.
-##Open in TrainScanner
-1. Open the video file by pressing the "Open the movie" button.  If you fail to open the movie, try conversion with ffmpeg etc.
+### アプリ版
+OSのターミナルウィンドウからインストールし，OSのアプリランチャー(Finderなど)からアイコンをダブルクリックして起動する場合．
 
-![settings](https://github.com/vitroid/TrainScanner/blob/master/images_ja/settings.png?raw=true)
+いろいろ試していますが、appを生成する良い方法が見付かりません....
+#### ソースからアプリを生成する
+-->
+<!--ソースは[github](https://github.com/vitroid/TrainScanner)で配布しています．zipファイルをダウンロードして展開して下さい．
 
-1. When file is successfully opened, a large dialog window appears.  There are three panels in the window.  Top panel is the frame selector, left panel is for the deformation, and right panel is for specifying the motion detection window.
+TrainScannerはPythonで書かれているので，Windows/Linuxでも動くはずですが，開発者の手が回っていません．協力を募集しています．-->
 
-![edit1](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit1.png?raw=true)
+<!--最近更新していません．
+#### コンパイル済みアプリをもってくる
 
-1. First of all, find the first frame, that is, the frame in which the train is about to enter in the sight, by clicking the thumbnail bar. 
+[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc). でも，たぶんまだ動きません．(大変苦労しています)
 
-![edit1a](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit1a.png?raw=true)
+Windowsの実行ファイルも同じ場所に置いてありますが，こちらも開発機以外で動くのかどうか確認できていません．また，Windowsの実行ファイルは，すこしあと回しになっています．-->
 
-1. Select a frame by the slider below the thumbnail bar.
+## 撮影方法
+列車をビデオカメラで側面から撮影します。
 
-![edit1b](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit1b.png?raw=true)
+* 必ず三脚を使用して下さい。手振れすると、最終的な列車の写真がぐにゃぐにゃになります。
 
-1. If the video is captured in portrait, or the camera is a little bit slanted, rotate the photo using the buttons below the left panel.
+プラットホームでの三脚の利用を禁じている駅があります。いろいろ工夫してみて下さい。
+ほかにもいろいろアドバイスはありますが、はじめは気にしなくても大丈夫です。
+## TrainScannerで開く
+1. まず、「ムービーを開く」を押してムービーファイルを開いて下さい。主要なフォーマットであればそのまま開けますが、開けない場合は、QuickTimeやffmpegなどを利用してフォーマットを変換してから再挑戦して下さい。(以前作った時にできた`.tsconf`ファイルを読みこむこともできます) また、「ムービーを開く」を押す代わりに、ダイアログウィンドウ上に直接ビデオファイルやtsconfファイルをドラッグアンドドロップすることもできます。
 
-![edit2a](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit2a.png?raw=true)
+    ![settings](https://farm6.staticflickr.com/5756/30971812510_6aeffec942_o_d.png)
 
-1. Four sliders at the four corners of the left panel is the perspective correction.  (You can skip this step).
+1. ファイルが無事に開くと、大きなダイアログ画面が表示されます。一番上が頭出しのためのスナップショット表示窓、左が列車の歪みを修正するための窓、そして右が動きを検出する枠を指定するための窓です。この順番で作業します。
 
-![edit2b](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit2b.png?raw=true)
+1. 縦位置で撮影した場合や、カメラが傾いている(あるいはローリングシャッターで画像が傾いている)場合には、左窓下のボタンで画像を回転して、列車の窓枠が垂直になるようにして下さい。(水平は別の方法でも調節できます。)
 
-1. In the right panel, specify the location of the motion detection window.  By default, the window is at the central one third of the image.  
-1. Red lines in the right panel indicates the positions of the slit.  That is, the long image strip is made from the thin image at this red line of each video frame.  You can move the slid with the slider at the bottom.
+    ![edit2a](https://farm6.staticflickr.com/5727/30971812020_d40d7ab74d_o_d.png)
 
-![edit2c](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit2c.png?raw=true)
+1. まず、一番上の窓で、スライダーを使って、列車が視野に入りかける瞬間を指定して下さい。下の左右の窓には、指定されたフレームが表示されます。
+
+    ![edit1b](https://farm6.staticflickr.com/5599/31196800422_85fe03874b_o_d.png)
+
+1. 左窓の四隅にあるスライダーを使って、画面内の赤い線が列車に平行になるように調節して下さい。右の窓に表示される列車が、長方形になるまで調整します。この作業は省略しても構いません。
+
+    ![edit2b](https://farm6.staticflickr.com/5641/30533356873_04b912f6f0_o_d.png)
+
+1. 次に右のパネルに進みます。空や地面はあらかじめ右側のスライダーで削っておくと、あとの処理が速くなります。
+
+    ![edit3a](https://farm6.staticflickr.com/5324/30971812350_cbde46e80c_o_d.png)
+
+1. 列車の動きを検知する枠(変位検知窓)を指定します。初期設定では視野の上下左右1/3の中央部分が指定されていますが、うまく動きを検知できない場合は、枠を指定しなおして下さい。
+
+    ![edit3b](https://farm6.staticflickr.com/5509/31196800822_f4fe5920f6_o_d.png)
+
+    上の例では、やや斜めから撮影されて遠近がついていた車体に、左窓で赤い線を列車に沿わせることで、右窓では車体のパースペクティブが補正されているのがわかります。
+
+1. 赤い縦線の位置が、スリットの位置です。つまり、この赤い線に沿った細長い写真の短冊を並べることで、長い列車の写真ができます。2本の線は、右向きの列車と左向きの列車の場合のスリット位置を表しています。赤い線の位置は、右窓下のスライダーで動かせます。背景にあわせて、スリットの位置を決めて下さい。スリットの位置は、緑の変位検知枠よりも前方(右向きに進む列車なら右側)のほうが良いです。
+
+    ![edit3c](https://farm6.staticflickr.com/5631/30533357123_76b9d372e4_o_d.png)
+
+## TrainScannerでつなぐ
+ここまで終わったら、ためしにつないでみましょう。
+
+1. 小さい方のウィンドウに戻り、「開始」ボタンを押して下さい。(エディタ窓は閉じないで下さい。閉じるとファイルも閉じてしまいます)
+2. まず連結作業の途中経過を表示するウィンドウが開き、しろい奇妙な映像が表示されます。この映像は、連続する2つの画像をずらしてかさねあわせた差を表示しています。完全に重なれば真っ白ですが、写真にずれがあると色が出現します。列車の動きを正確に捉えていれば、列車は真っ白になり、背景部分に色が出現しますが、列車の動きをとらえそこねていると、逆に背景が真っ白になって列車が色付きになります。列車が移動している間、動きを検知する枠(緑の長方形)の中ができるだけ真っ白になるように、枠の位置を選ぶと、きれいなしあがりになります。
+3. 連結作業がおわったら、プレビューウィンドウが開きます。プレビューウィンドウにはスクロールバーがついていて、列車の写真が作られる過程を見られます。プレビューがおわったら、できあがった画像はもとのムービーファイルと同じフォルダに出力されます。ファイル名は、もとのムービーのファイル名にランダムな数字と拡張子 “.png”が付いたものになります。
+
+## 良い仕上りのために
+小さいほうのウィンドウには、いくつか設定項目があります。
+
+* 「スリットのつなぎ目」フレーム同士をつなぎあわせる時に、あわせめをぼかす幅を指定します。小さくするとシャープになりますが、水平のずれや、色むらが目立つことになるかもしれません。大きくすると背景がならされてスムーズになりますが、列車自体もすこしボケます。
+* 「検知できる最小の移動量」列車の動きがこの数字よりも小さい場合には、列車は動いていないものとみなされます。カメラが微妙に動いている場合には大きめに設定すると良いでしょう。
+* 「速度を見積るのに使うコマ数」TrainScannerは、列車の動きを検知してからしばらくの間、速度を見積るために時間のかかる照合を行いますが、速度を見積ったあとは、非常に高速に動作します。このコマ数を増やすと、先頭部分の移動量がより正確になります。通常は変更する必要はありません。
+* 「縦方向のずれを無視する」傾き補正を行っても、列車の動きが完全に水平ではなく、徐々に上下位置がずれていってしまう場合には、これをクリックすると、強制的に上下の動きを無視します。デフォルトではオンになっていますが、船など上下の動きが大きい物体を撮影する場合や、カメラが上下動してしまった場合にはオフにしましょう。
+* 「最初、列車は移動検知窓の中に止まっている」特殊な状況として、静止状態から撮影する場合にはこれをチェックして下さい。TrainScannerは、移動検知窓には突然列車が飛びこんでくると想定し、突然の大きな動きから列車の初速を推定します。しかし、はじめから視野に列車が静止している場合には、この推定機構がかえって邪魔になる(大きな動きになるまで無視してしまう)ので、速度推定機構をオフにします。
+* 「最大加速度」あるコマで、例えば列車が20画素進んだとしたら、次のコマでも20画素程度進む可能性が非常に高いですが、時に21画素変位するかもしれません。この差が加速度です。列車はそんなに強烈に加速しないので、通常は1のままで良いですが、例えば列車が通過する振動や風でカメラがぶれたりした場合には、すこし大きめにしたほうがうまくつながります。
+* 「列車が去ったあともスキャンを継続する」これを大きくすると、列車が去ったあとも、しばらくは列車の速度にあわせてつなぎあわせを続けます。短くすると、すぐにスキャンを打ち切ります。(この機能はあまりうまくいってません)
+* 「完成写真の幅の上限を指定」チェックすると、最大幅が指定できます。macOSのプレビュー.appでは、30000画素を越える幅の写真はうまく表示できない場合があります。また、10万画素を越える画像は、扱えるソフトウェアが限られ、メモリ必要量も莫大になります。チェックを入れない場合には、最大限の解像度の画像を生成します。
+
+## 印刷について
+
+列車の写真は非常に長くなるので，印刷には一工夫必要です．
+
+* 同梱の`converter_gui.py` (アプリケーション名は`TrainConverter.app`)を使うと、横長の写真をA4ランドスケープにちょうどおさまるように，写真の大きさを自動調整してくれます．A4用紙なら、シール紙やマグネット紙など，いろんな素材が選べるので，いろいろ用途を考えてみて下さい．
+* インクジェットプリンタのなかには，ロール紙に対応しているものがありましたが、今はないようです。今回試しに買ってみたPM-105の場合、1.1 mまでならなんとか印刷できますが、それ以上長い用紙を設定(エプソンのドライバーは紙の大きさを自由に設定できます)しても、プリンタが暴走するばかりで印刷できませんでした。残念です。今は、ポスタープリンタでも手に入れない限り、ロール紙には印刷できないのでしょうか。
+* ロール紙を現在のプリンタで使う場合に、いろんな問題が生じます。
+    * 印刷が終わると、紙の終わりまで紙送りをする機能が搭載されていますが、ロール紙にはおわりがないので、印刷が終わるとはてしなく紙を送ってしまいます。プリンタのセンサーをだませば良いのですが、センサーはヘッドのレールの下の狭いスペースにあり、改造は難しそうです。印刷が終わるタイミングをみはからって、紙をはさみで切るか、あらかじめ1 mの短冊を作っておくしかありません。
+    * 紙が入っているかどうかを感知するセンサーは、印刷幅の一箇所しかありません。紙幅ガイドを一番右に寄せて狭くした時の、左のガイドより少し右側です。紙送りローラーもこの位置にしかありません。38 mm幅とか45 mm幅のロール紙を使う場合、通常の印刷のように右寄せで用紙をセットすると、センサーが感知できず、ローラーも紙を噛まず、印刷がはじまりません。紙幅ガイドを一番狭くした上で、左側のガイドに沿わせてロール紙を入れると、ちゃんと検知するようです。
+    * 内部のローラー類も幅の広い紙にあわせてまばらに付いているため、38 mmや45 mmの薄手のロール紙を使うと、ローラーから脱線して紙が蛇行することがあります。内部のローラーの位置も考慮しながら、紙をさしこむ場所を決めて下さい。私は紙の蛇行を防ぎ、紙にテンションを与えるためのガイドを紙工作で自作しました。
+    * ロール紙は20巻で2000円ぐらいで手に入ります．
+    * もし職場にポスタープリンタがあれば、幅1 mの短冊状の紙はいくらでもゴミになっていると思います。それをもらってくると、非常に鮮明な列車写真を印刷できます。
+    * 白黒でよければ、感熱プリンタで印刷するという手があります。また、テプラで印刷すれば、長いシールを作れます。
+
+## その他のアドバイス
+
+* 暗い場所で撮影する場合は、ISO感度を大きくするなどして、シャッタースピードをできるだけ短くして下さい。
+* 視野に突然高速で入ってくる列車に対し、オートフォーカスはあまり上手く働かないようです。あらかじめ線路などで合焦して固定しておきましょう。明るさもあらかじめ固定しておきましょう。
+* 高速で動くものを、横位置(ランドスケープ)で撮影すると、動いているものだけが傾いてしまうことがあります(ローリングシャッター現象)。解像度をかせぐためにも、縦位置(ポートレート)で撮影しましょう。
+* 車体に影がうつりこまないようにしましょう。日向で撮影する場合は、逆光で撮影したほうが、車体上に影ができなくてよいようです。
+* 変位検知窓の範囲内に影や反射があると、TrainScannerは動きを検知しそこなうことがあります。特急列車のようにピカピカのボディはやっかいです。
+* 変位検知窓は、列車全体をカバーする必要はありません。特急列車などでは、つやつやなボディに映りこんだ背景を検知してしまう場合がありますし、貨物列車ではコンテナが載っていない貨車のところで動きを見失います。台車のように複雑な構造がある部分のほうがうまく検知できると思います。
+* 変位検知窓の幅は広ければ広いほど良いのですが、次のコマの照合領域が画面外にはみでないようにして下さい。具体的には、例えば左に向かっている列車の変位検知窓は、あまり右の端ぎりぎりまでひろげないですこし空間をあけて下さい。
+
+## コマンドラインからの利用
+
+`TrainScanner.app`は、`pass1.py`と`stitch.py`という2つのプログラムを呼びだすためのラッパーで、これらのプログラムは単独でも動作します。列車の移動量の検出がうまくいかなかった場合など、手直ししたい場合には、`tsconf`ファイルと`tspos`ファイルを手で修正して、より良い結果を得ることもできます。
+
+それぞれのコマンドには多数のオプションがあります。`-h`オプションを付けて、使い方を見て下さい。ほとんどのオプションは`trainscanner_gui.py` (アプリケーション名は`TrainScanner.app`, `TrainScanner.exe`)上で指定できますので、グラフィック表示ができる環境であれば、GUIを使うことをお勧めします。ただし、`tsconf`ファイルと`tspos`ファイルを手で修正した場合は`stitch.py`を使いたくなるかもしれません。
+
+### `trainscanner_pass1`: 照合プログラム
+
+ビデオを読みこみ、列車の移動を検出し、移動量を`.tspos`という名前のファイルに出力します。
+
+    trainscanner_pass1 video.mov
+
+### `trainscanner_stitch`: 結合プログラム
+
+pass1.pyの出力に従い、映像を連結して1枚の大きな写真を作ります。通常は、以下のように、pass1.pyが出力した`.tsconf`ファイルを読みこんで使用します。
+
+    trainscanner_stitch @video.mov.12345.tsconf
+
+`@`マークは、コマンドラインオプションをファイルからインクルードすることを意味します。この後ろに、さらにオプションを追加することで、スリット位置やフレーム間のぼかし幅を調節できます。例えば、あとからスリット位置と幅をそれぞれ220と1.5に変えたい場合は、
+
+    trainscanner_stitch @video.mov.12345.tsconf -s 220 -w 1.5
+
+のようにします。GUIを使う場合には、設定を変える度にpass1.pyも実行せざるをえませんが、stitch.pyを直接使えば、よりすばやく結果を得られます。
+
+### `trainscanner`: 統合ユーザーインターフェイス
+
+`trainscanner_pass1`と`trainscanner_stitch`を統合し、オプションを対話的に設定できるUIを備えたTrainScannerの本体です。WindowsのexeファイルやmacOSのAppはこれをパッケージ化したものです。
+
+### `helicify`: 長い画像をらせんにするツール
+
+長い画像を、定型用紙に入るように「円筒に巻く」プログラムです。
+
+    helicify longimage.png
+
+### `rectify`: 長い画像をらせんにするツール2
+
+長い画像を、定型用紙に入るように「円筒に巻く」プログラムです。こちらは、画像がななめにならない代わり、円筒をのりづけする時にずらす必要があります。
+
+    rectify longimage.png
+
+### `filmify`: 長い写真をフィルム風にするツール
+
+長い写真の上下にフィルム風の穴を追加するだけのツールです。
+
+    filmify longimage.png
+
+### `ts_converter`: 画像加工ツールのユーザーインターフェース
+
+上の3つのプログラムを、ドラッグアンドドロップで操作できるようにしただけのものです。
+
+###`shakereduction.py`: 手振れ補正 (試験中)
+
+TrainScannerとおなじしくみを使って，ビデオの手振れを除くツールです．列車の場所ではなく，背景の一区画を`--focus`オプションで選ぶと，その部分が動かなくなるように，各コマを縦横にずらしたしたムービーを作成します．
+
+    ./shakereduction.py -f L R T B -S skipframes filename.mov
+
+今のところコマンドラインでの利用のみです．手振れだけでなく，たとえば柱に固定して撮影したけど，列車の振動でけっこう柱が揺れた場合(この場合，けっこう大きな加速度が加わるので，手振れよりも実は修正が大変です)にも使えます．
+
+TrainScannerは基本的に三脚での撮影を前提としています．`shakereduction.py`を使っても，水平が傾いたりする場合までは対応できません．
 
 
-##Stitch in TrainScanner
-When you finished editing the frames, let's go stitching.
+## 現在わかっている問題点
 
-1. Go back to the first, small dialog.  (Do not close the large window.)  Just press the "Start" button.  Firstly, a motion detection dialog window appears, in which interframe difference is shown.  If the two successive frames are identical, the window becomes white, while difference is indicated in colors.  If the software detect the train motion correctly, the image region of the train becomes white and the background becomes colored. (Note: it takes fairly long time for now because the seeking feature in OpenCV2 is very inaccurate. Sorry for convenience.)
-1. After the motion detection is completed, a stitching dialog appears.  In the window, you can watch the making process of the long train image strip.  After completing the stitch, the product image is saved at the same folder where the original video resides.
+* seekが遅い．OpenCVにはビデオを早送りする機能がありますが，これが全く信頼できないので，頭から毎回1コマずつ読みこんでいます．
 
-##For better product photo
-...
+## 内部動作(アルゴリズム)
 
-##Advises
+TrainScannerでは，ビデオフレーム間の列車の移動距離を求めるのに，単純な比較を行っています．OpenCVを使用してはいるのですが，以下の理由により，特徴点抽出などの高度な手法は使っていません．
 
-...
+* 特徴点で比較すると，ときどき照合の失敗が起こります．特に，上に書いたように，列車の表面に影が写りこんでいたり，窓や車体が反射する場合には，失敗する可能性が高まります．
+* 列車はほぼ一定速度で走っていて，加速や減速もほとんどないので，次のフレームでの移動が極めて正確に予測でき，その結果照合する範囲もぎりぎりまで狭められます．このため，単純な照合を行っても，処理時間はごくわずかですみます．照合はあらかじめ指定された枠の中だけで行うので，写真が大きくても処理は軽いです．
 
-##Revision History
+## OSによる違い
 
+TrainScannerは主にMacOSで開発されており、ほかのOSで使う場合には若干違った動作をする可能性があります。(かなりの部分はAnacondaが吸収してくれるので助かります。)
+
+### Linux
+
+Linux (Ubuntu)では、AnacondaからインストールされるOpenCV3に、ビデオデコーダが含まれていないらしく、ビデオの取り込みができないので、読み込み部分だけsk-videoを利用しています。ただ、sk-videoのvideo readerにはコマを飛ばす機能がないため、読み飛ばす場合にもフレームをまるまる読み込むことになり、かなり速度が遅いようです。
+
+Video readerの違いはvideo.pyで吸収していますので、将来より良いビデオデコーダが使えるようになったら、随時差し替えていく予定です。
+
+### Windows
+
+Python3.6では正常動作しないので、今のところどのOSでもPython3.5を指定しています。
+
+## Raspberry PIでの使用
+
+カメラの解像度を低めにすれば、RPiの処理能力でもかなりの速度で処理できるはずです。ただし、メモリ不足が深刻でしょうね。TrainScannerの処理のなかで一番メモリを必要とするのは、`stitch.py`の行っている、一枚の大きな写真を作るプロセスです。原理的に、大きな画像全体を非圧縮のまま一旦メモリに入れない限り、その大きさの写真が作れないからです。この問題を回避するために、小さな写真の断片でおおきな写真を表現する画像フォーマットを設計するつもりです。→[tiledimage](https://github.com/vitroid/tiledimage)を製作しました。
+
+## Flickr
+
+できた写真の投稿先に迷ったら[FlickrのTrainScannerグループ](https://www.flickr.com/groups/1610349@N20/)にどうぞ．
+
+## Revision History
+
+* 2020-07-15 0.12.0 放っておいたところ動かなくなったので、いろいろ手直ししました。
+* 2017-08-17 Version 0.11.3 履歴を残すのを忘れていました。Anacondaにようやく対応できた感じ。
+* 2016-12-05 Version 0.7.1  Mac用アプリケーションを作りなおした。WindowsはPyQt5を入れる必要あり。
+* 2016-12-03 OMMFにて展示しました．
+* 2016-11-24 Version 0.4: Windowsでの動作とexeファイルの生成。
+* 2016-11-19 Version 0.2: 設定ファイルを引きつげるようにした．オプションの取り扱いを改善した．設定ファイルの出力のしかたを変更した．などなど．
 * 2016-11-11 GUI Version 0.1 is released.
+
+TrainScannerの開発は2009年にはじまりました。
+
+スリットスキャンによる列車の撮影は、相当昔にさかのぼると思うのですが、情報を見付けることができませんでした。日本でも、フィルムを一定速で巻きあげる特殊な装置を組みつけたカメラで、列車の写真を作っていた方がいらっしゃいます。しかし、フィルムカメラの場合、列車の速度をあらかじめ知って、フィルムをその速度に完全に同期させなければ、列車が伸びたり縮んだりしてしまいます。撮影には相当な苦労と経験が必要であっただろうと思います。
+
+一方で、スリットスキャンは、列車の撮影だけでなく、いろんなものを、わざとデフォルメして撮影する手法として使われてきました。また、オリンピックや競馬などで、到着順を写真判定する場合にも使われます。これらの用法では、画像が歪むのはあたりまえのことで、スリットスキャンで歪まないように撮影するという発想はあまりなかったように思います。
+
+TrainScannerは、スリットスキャンに画像処理技術を加え、列車の速度が変化したり、カメラが多少動いても、列車の姿を可能な限り忠実に再現することを目標としています。また、特殊な装備がなくても、例えばスマホでも、カメラのぶれさえおさえられれば、誰でも長ーい写真を作れるようになります。
+
+* http://www.railway-slitcamera.com/
+* http://www.flong.com/texts/lists/slit_scan/
+
+## Memo/Reference
+
+* [Python3 with OpenCV3](https://hackerslog.net/posts/softwares/opencv/opencv-install-with-python-on-mac/); downloading HEAD of openCV3 takes VERY long time.
+* [Windows/Python3/OpenCV3/PyQt4/Anaconda](http://qiita.com/sugurunatsuno/items/ce3c0d486bdc93688192)
+* [failed to build exe on Windows?](http://stackoverflow.com/questions/37815371/pyinstaller-failed-to-execute-script-pyi-rth-pkgres-and-missing-packages)
+* Flickr account for TrainScanner development: [TrainScanner](https://www.flickr.com/photos/149573560@N03)
