@@ -7,12 +7,11 @@ import math
 import sys
 import os
 import argparse
-import logging
+from logging import getLogger, basicConfig, WARN, DEBUG, INFO
 #from canvas import Canvas    #On-memory canvas
 #from canvas2 import Canvas   #Cached canvas
 from tiledimage import cachedimage as ci
 from trainscanner import trainscanner
-from trainscanner import myargparse
 from trainscanner import video
 
 class AlphaMask():
@@ -54,10 +53,11 @@ class AlphaMask():
 
 def prepare_parser(parser=None):
     if parser is None:
-        parser = myargparse.MyArgumentParser(description='TrainScanner stitcher')
+        # parser = myargparse.MyArgumentParser(description='TrainScanner stitcher')
+        parser = argparse.ArgumentParser(description='TrainScanner stitcher')
     parser.add_argument('-C', '--canvas', type=int,
                         nargs=4, default=None,
-                        dest="canvas", 
+                        dest="canvas",
                         help="Canvas size determined by pass1.")
     parser.add_argument('-s', '--slit', type=int, metavar='x',
                         default=250,
@@ -97,41 +97,30 @@ def prepare_parser(parser=None):
     return parser
 
 
-
 class Stitcher():
     """
     exclude video handling
     """
     def __init__(self, argv):
-        logger = logging.getLogger()
-        ####Avoid unknown error.
-        #myargparse does not show the usage correctly.
-        #ap0 = argparse.ArgumentParser(fromfile_prefix_chars='@',
-        #                                description='TrainScanner stitcher')
-        #prepare_parser(ap0).parse_known_args(argv[1:])
-        ####
-        ap = myargparse.MyArgumentParser(fromfile_prefix_chars='@',
-                                        description='TrainScanner stitcher')
-        self.parser  = prepare_parser(ap)
-        self.params,unknown = self.parser.parse_known_args(argv[1:])
+        logger = getLogger()
+        parser  = prepare_parser()
+        # これが一番スマートなんだが、動かないので、手動で--fileをさがして処理を行う。
+        # parser.add_argument('--file', type=open, action=LoadFromFile)
+        for i, arg in enumerate(argv):
+            if arg == "--file":
+                tsconf = argv[i+1]
+                del argv[i]
+                del argv[i]
+                with open(tsconf) as f:
+                    argv += f.read().split()
+                break
+        self.params, unknown = parser.parse_known_args(argv[1:])
         #Decide the paths
         moviepath = self.params.filename
         moviedir  = os.path.dirname(moviepath)
         moviebase = os.path.basename(moviepath)
         self.tsposfile = ""
-        
-        if self.parser.fromfile_name is not None:
-            #When the "@"file is specified,
-            #read tsconf there. (actually it is alread read.)
-            #read tspos at the same path
-            tsconfdir = os.path.dirname(self.parser.fromfile_name)
-            if tsconfdir == "":
-                tsconfdir = "."
-            tsconfbase = os.path.basename(self.parser.fromfile_name)
-            if tsconfbase[-7:] == ".tsconf":
-                tsconfbase = tsconfbase[:-7]
-            self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
-        #or tspos in the logbase
+
         if self.tsposfile == "" or not os.path.exists(self.tsposfile):
             tsconfdir = os.path.dirname(self.params.logbase)
             if tsconfdir == "":
@@ -146,7 +135,7 @@ class Stitcher():
         logger.info("TSPos  {0}".format(self.tsposfile))
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
-        
+
         self.vl = video.VideoLoader(moviefile)
         self.firstFrame = True
         self.currentFrame = 0 #1 is the first frame
@@ -185,7 +174,7 @@ class Stitcher():
         """
         is a generator.
         """
-        logger = logging.getLogger()
+        logger = getLogger()
         locations = []
         absx = 0
         absy = 0
@@ -212,7 +201,7 @@ class Stitcher():
         den = self.total_frames
         num = den - len(self.locations)
         return (num, den)
-    
+
     def add_image(self, frame, absx,absy,idx,idy):
         rotated,warped,cropped = self.transform.process_image(frame)
         if self.firstFrame:
@@ -227,7 +216,7 @@ class Stitcher():
 
 
     def stitch(self):
-        logger = logging.getLogger()
+        logger = getLogger()
         for num,den in self.before():
             pass
         for num,den in self.loop():
@@ -236,7 +225,7 @@ class Stitcher():
         #    result = self.onestep()
         self.after()
         #self.canvas.done()
-                
+
 
     def loop(self):
         while self._onestep():
@@ -267,21 +256,21 @@ class Stitcher():
         #It costs high when using the CachedImage.
         img       = self.canvas.get_image()
         cv2.imwrite(file_name, img)
-        
+
 
 
 
 if __name__ == "__main__":
     debug =False
     if debug:
-        logging.basicConfig(level=logging.DEBUG,
+        basicConfig(level=DEBUG,
                             #filename='log.txt',
                             format="%(asctime)s %(levelname)s %(message)s")
     else:
-        logging.basicConfig(level=logging.INFO,
+        basicConfig(level=INFO,
                             format="%(asctime)s %(levelname)s %(message)s")
     st = Stitcher(argv=sys.argv)
-    
+
     tilesize = (512,512) #canbe smaller for smaller machine
     cachesize = 10
     canvas = ci.CachedImage("new", dir=st.cachedir, tilesize=tilesize, cachesize=cachesize)

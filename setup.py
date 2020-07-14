@@ -32,7 +32,13 @@ setup(name='TrainScanner',
       packages=['trainscanner',
                 'ts_conv',
                 ],
-      install_requires=['numpy', "tiledimage", "sk-video", "videosequence"],#'pyqt5', ], #cv2
+      install_requires=['numpy',
+                        "tiledimage",
+                        "sk-video",
+                        "videosequence",
+                        "opencv-python-headless",
+                        "pyqt5",
+                        ],#'pyqt5', ], #cv2
       entry_points = {
               'console_scripts': [
                   'trainscanner        = trainscanner.trainscanner_gui:main',
@@ -52,4 +58,3 @@ setup(name='TrainScanner',
       'ts_conv':      ['i18n/*.qm'],
        },
       )
-

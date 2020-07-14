@@ -8,7 +8,7 @@ import math
 import numpy as np
 import cv2
 import sys
-import logging
+from logging import getLogger, basicConfig, WARN, DEBUG
 
 #from QTiledImage import QTiledImage
 from tiledimage import cachedimage as ci
@@ -32,7 +32,7 @@ class Renderer(QObject):
 
     def signal_sender(self, pos, image):
         self.tileRendered.emit(pos, image)
-                
+
     def task(self):
         if not self._isRunning:
             self._isRunning = True
@@ -41,23 +41,27 @@ class Renderer(QObject):
             self.progress.emit(num*100//den)
         for num,den in self.stitcher.loop():
             if not self._isRunning:
-                break
+                # interrupted
+                self.stitcher.after()
+                self.finished.emit()
+                return
             self.progress.emit(num*100//den)
-                        
+        # completed
+        self.progress.emit(100)
         self.stitcher.after()
         self.finished.emit()
-        
+
     def stop(self):
         self._isRunning = False
         #self.stitcher.canvas.add_hook(None)
-        
+
 
 class ExtensibleCanvasWidget(QLabel):
     def __init__(self, parent=None, preview_ratio=1.0):
         super(ExtensibleCanvasWidget, self).__init__(parent)
         self.preview = ScaledCanvas(scale = preview_ratio)
-        
-    
+
+
     def updatePixmap(self, pos, image):
         #self.count += 1
         #if self.count == 7:
@@ -95,7 +99,7 @@ class StitcherUI(QDialog):
 
         self.worker = Renderer(stitcher=stitcher)
         #it might be too early.
-        
+
         #determine the window size
         width,height = stitcher.dimen[:2]
         height = int(height*preview_ratio)
@@ -108,8 +112,7 @@ class StitcherUI(QDialog):
         #print(width,height)
         #self.worker.frameRendered.connect(self.largecanvas.updatePixmap)
         self.worker.tileRendered.connect(self.largecanvas.updatePixmap)
-        #Do not close the window when finished.
-        #self.worker.finished.connect(self.finishIt)
+        self.worker.finished.connect(self.finishIt)
         self.worker.moveToThread(self.thread)
         self.thread_invoker.connect(self.worker.task)
         self.thread_invoker.emit()
@@ -121,32 +124,32 @@ class StitcherUI(QDialog):
         self.btnStop = QPushButton('Stop')
         self.btnStop.clicked.connect(lambda: self.worker.stop())
         self.btnStop.clicked.connect(self.terminateIt)
-        
+
         self.progress = QProgressBar(self)
         self.worker.progress.connect(self.progress.setValue)
-        
+
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.btnStop)
         self.layout.addWidget(self.progress)
         self.layout.addWidget(self.scrollArea)
         self.layout.addStretch(1)
         self.setLayout(self.layout)
-        
 
-        
+
+
     def terminateIt(self):
         self.close()
         if self.terminate:
             sys.exit(1)  #terminated
-        
+
     def finishIt(self):
-        self.close()
-        
+        self.btnStop.setText('Finished')
+
     def closeEvent(self, event):
         self.stop_thread()
-        
+
     def stop_thread(self):
-        logger = logging.getLogger()
+        logger = getLogger()
         self.worker.stop()
         self.thread.quit()
         self.thread.wait()
@@ -156,12 +159,12 @@ class StitcherUI(QDialog):
 def main():
     debug =False
     if debug:
-        logging.basicConfig(level=logging.DEBUG,
-                            #filename='log.txt',
-                            format="%(asctime)s %(levelname)s %(message)s")
+        basicConfig(level=DEBUG,
+                    #filename='log.txt',
+                    format="%(asctime)s %(levelname)s %(message)s")
     else:
-        logging.basicConfig(level=logging.INFO,
-                            format="%(asctime)s %(levelname)s %(message)s")
+        basicConfig(level=INFO,
+                    format="%(asctime)s %(levelname)s %(message)s")
 
     import sys
 
