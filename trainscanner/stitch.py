@@ -112,7 +112,7 @@ class Stitcher():
                 del argv[i]
                 del argv[i]
                 with open(tsconf) as f:
-                    argv += f.read().split()
+                    argv += f.read().splitlines()
                 break
         self.params, unknown = parser.parse_known_args(argv[1:])
         #Decide the paths

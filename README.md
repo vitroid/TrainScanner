@@ -10,47 +10,14 @@ Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあ�
 4. importを押し、さきほどダウンロードした環境ファイルを読み込みます。
 5. Navigatorの左メニューの"Home"を押すと、TrainScannerのタイルが追加されているはずです。
 
-<!--
-### コマンドライン版
-OSのターミナルウィンドウからインストールし，コマンドラインで起動する場合．(これが一番標準的な方法です)
-#### Requirements
-`PyQt5`, `OpenCV3`, `Python3`をあらかじめインストールして下さい．OpenCV3をインストールする際には`--with-ffmpeg --with-tbb --with-python3 --HEAD`の各オプションを指定して下さい．
+### コマンドラインからインストールと実行
 
-(winpythonにはいずれも含まれているようです)
-#### pipでインストール
-Pythonのパッケージインストーラを使ってインストールします．事前に上記のライブラリを何らかの方法でインストールしておいて下さい．
+ターミナルを使いなれている人はこちらのほうが手軽でしょう。
 
-    % pip3 install trainscanner
-    % trainscanner
-
-#### Homebrewでインストール(Macのみ)
-Python以外のライブラリを含め，一括してインストールできます．
-
-    % brew tap vitroid/homebrew-TrainScanner
-    % brew install trainscanner
-    % brew link opencv3 --force
-    % trainscanner
-
-`brew install trainscanner`のあと、`Error: empty installation`と言われますが気にしないで下さい。
-
-opencv3は自動でリンクされないため、3行目のコマンドが必要になります。
-
-### アプリ版
-OSのターミナルウィンドウからインストールし，OSのアプリランチャー(Finderなど)からアイコンをダブルクリックして起動する場合．
-
-いろいろ試していますが、appを生成する良い方法が見付かりません....
-#### ソースからアプリを生成する
--->
-<!--ソースは[github](https://github.com/vitroid/TrainScanner)で配布しています．zipファイルをダウンロードして展開して下さい．
-
-TrainScannerはPythonで書かれているので，Windows/Linuxでも動くはずですが，開発者の手が回っていません．協力を募集しています．-->
-
-<!--最近更新していません．
-#### コンパイル済みアプリをもってくる
-
-[Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc)にてアプリを配布しています．Mac app is available at [Google Drive](https://drive.google.com/open?id=0B5GQAoVi1jGuOGZXU3A4ZXRWMmc). でも，たぶんまだ動きません．(大変苦労しています)
-
-Windowsの実行ファイルも同じ場所に置いてありますが，こちらも開発機以外で動くのかどうか確認できていません．また，Windowsの実行ファイルは，すこしあと回しになっています．-->
+```shell
+% pip install trainscanner
+% trainscanner
+```
 
 ## 撮影方法
 列車をビデオカメラで側面から撮影します。
@@ -136,6 +103,8 @@ Windowsの実行ファイルも同じ場所に置いてありますが，こち�
 * 変位検知窓の幅は広ければ広いほど良いのですが、次のコマの照合領域が画面外にはみでないようにして下さい。具体的には、例えば左に向かっている列車の変位検知窓は、あまり右の端ぎりぎりまでひろげないですこし空間をあけて下さい。
 
 ## コマンドラインからの利用
+
+*2020-7-15 最近確認していません。動くかどうか保証できません*
 
 `TrainScanner.app`は、`pass1.py`と`stitch.py`という2つのプログラムを呼びだすためのラッパーで、これらのプログラムは単独でも動作します。列車の移動量の検出がうまくいかなかった場合など、手直ししたい場合には、`tsconf`ファイルと`tspos`ファイルを手で修正して、より良い結果を得ることもできます。
 

@@ -517,7 +517,7 @@ class SettingsGUI(QWidget):
 
             ## modified params,unknown = parser_stitch.parse_known_args(["@"+tsconf])
             with open(tsconf) as f:
-                args = f.read().split()
+                args = f.read().splitlines()
             params,unknown = parser_stitch.parse_known_args(args)
             logger.debug("Params1 {0} {1}".format(params,unknown))
             unknown += [params.filename] #supply filename for pass1 parser

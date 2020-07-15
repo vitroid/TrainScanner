@@ -17,7 +17,7 @@ with codecs.open(os.path.join(os.path.dirname(__file__), 'trainscanner', '__init
 setup(name='TrainScanner',
       version=metadata['version'],
       description='Generate a long image strip from a train video',
-      long_description=open('README.md').read(),
+      long_description=open('README.md', encoding='utf-8_sig').read(),
       long_description_content_type="text/markdown",
       classifiers=[
         "Development Status :: 4 - Beta",

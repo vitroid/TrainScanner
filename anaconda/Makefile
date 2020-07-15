@@ -15,15 +15,17 @@ patch:
 	patch -p1 trainscanner/meta.yaml < meta.diff
 build:
 	conda build trainscanner
-VER=0.12.0 #3-py36h6137029_0
+VER=0.12.0-py38h39e3cac_0
+CONVERT_BASE=/usr/local/anaconda3
 convert:
-	conda convert --platform all ~/anaconda/conda-bld/osx-64/trainscanner-$(VER).tar.bz2 -o convert/
+	conda convert --platform all $(CONVERT_BASE)/conda-bld/osx-64/trainscanner-$(VER).tar.bz2 -o convert/
 
+ANACONDA=anaconda
 upload:
 #	~/anaconda/bin/anaconda login
-	~/anaconda/bin/anaconda upload convert/win-64/trainscanner-$(VER).tar.bz2
-	~/anaconda/bin/anaconda upload convert/linux-64/trainscanner-$(VER).tar.bz2
-	~/anaconda/bin/anaconda upload ~/anaconda/conda-bld/osx-64/trainscanner-$(VER).tar.bz2
+	$(ANACONDA) upload convert/win-64/trainscanner-$(VER).tar.bz2
+	$(ANACONDA) upload convert/linux-64/trainscanner-$(VER).tar.bz2
+	$(ANACONDA) upload $(CONVERT_BASE)/conda-bld/osx-64/trainscanner-$(VER).tar.bz2
 	echo restart the anaconda navigator
 clean:
 	rm *~ */*~
