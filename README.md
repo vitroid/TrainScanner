@@ -19,6 +19,65 @@ Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあ�
 % trainscanner
 ```
 
+### MacOS11 + Apple M1
+(2021-03-12更新)
+
+* homebrew 3でARMに正式に対応になりました。
+* ソースをgithubからもってきます。
+```shell
+% git clone https://github.com/vitroid/TrainScannet.git
+% cd TrainScanner
+```
+* Terminalを開く時にRosettaをoffにして下さい。
+* numpyをインストール。numpyのバージョンが新しすぎるといろいろひっかかるので、バージョンを指定する。
+```shell
+% pip3 install numpy==1.19.3
+```
+* scipyも同様に。
+```shell
+% pip3 install scipy
+```
+* pyqt5。とても時間がかかる。
+```shell
+% pip3 install pyqt5
+```
+* opencvのインストール。(https://sayak.dev/install-opencv-m1/)
+```shell
+% brew install vtk
+% pushd ~/Downloads
+% wget -O opencv.zip https://github.com/opencv/opencv/archive/4.5.1.zip
+% wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.5.1.zip
+% unzip opencv.zip
+% unzip opencv_contrib.zip
+% cd opencv-4.5.0
+% mkdir build && cd build
+% cmake \
+  -DCMAKE_SYSTEM_PROCESSOR=arm64 \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DWITH_OPENJPEG=OFF \
+  -DWITH_IPP=OFF \
+  -D CMAKE_BUILD_TYPE=RELEASE \
+  -D CMAKE_INSTALL_PREFIX=/usr/local \
+  -D OPENCV_EXTRA_MODULES_PATH=~/Downloads/opencv_contrib-4.5.1/modules \
+  -D BUILD_opencv_python2=OFF \
+  -D BUILD_opencv_python3=ON \
+  -D INSTALL_PYTHON_EXAMPLES=ON \
+  -D INSTALL_C_EXAMPLES=OFF \
+  -D OPENCV_ENABLE_NONFREE=ON \
+  -D BUILD_EXAMPLES=ON ..
+% make -j8
+% make install
+```
+* インストールしただけでは使えない。リンクする。
+```shell
+% cd ~/venvs/TrainScannerArm3/lib/python3.9/site-packages/ #(.soのあるフォルダー)
+% ln -s /usr/local/lib/python3.9/site-packages/cv2/python-3.9/cv2.cpython-39-darwin.so cv2.so
+% popd # TrainScanner/に戻る
+```
+* そしてtrainscannerのインストールを試す。
+      make install
+
+
 ## 撮影方法
 列車をビデオカメラで側面から撮影します。
 

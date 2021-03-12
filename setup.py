@@ -36,9 +36,10 @@ setup(name='TrainScanner',
       install_requires=['numpy',
                         "tiledimage",
                         "sk-video",
+                        "scikit-build",
                         "videosequence",
-                        "opencv-python-headless",
-                        "pyqt5",
+                        #"opencv-python-headless",
+                        #"pyqt5",
                         ],#'pyqt5', ], #cv2
       entry_points = {
               'console_scripts': [
