@@ -49,7 +49,7 @@ Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあ�
 % wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.5.1.zip
 % unzip opencv.zip
 % unzip opencv_contrib.zip
-% cd opencv-4.5.0
+% cd opencv-4.5.1
 % mkdir build && cd build
 % cmake \
   -DCMAKE_SYSTEM_PROCESSOR=arm64 \
