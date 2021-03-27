@@ -20,14 +20,15 @@ Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあ�
 ```
 
 ### MacOS11 + Apple M1
-(2021-03-12更新)
+(2021-03-27更新)
 
 * homebrew 3でARMに正式に対応になりました。
 * しかし、まだOpenCVがコンパイルできません。
 * そこで、mini-forgeを使ったインストールを試みます。
-* Terminalを開く時にRosettaをoffにして下さい。(→手順)
+* Terminalを開く時にRosettaをoffにして下さい。(→[手順](https://blog.looseknot.jp/mac/m1mac_terminal_rosetta.html))
 * https://github.com/conda-forge/miniforge からインストーラを入手して、解説に従いインストール。
    * `~/miniforge3/`以下にインストールされるようです。
+   * Python3もインストールされるので、HomeBrewには依存しません。
 * 仮想環境trainscannerを作ります。
 ```shell
 % conda create --name trainscanner
