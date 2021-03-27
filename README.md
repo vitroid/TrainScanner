@@ -23,60 +23,38 @@ Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあ�
 (2021-03-12更新)
 
 * homebrew 3でARMに正式に対応になりました。
-* ソースをgithubからもってきます。
+* しかし、まだOpenCVがコンパイルできません。
+* そこで、mini-forgeを使ったインストールを試みます。
+* Terminalを開く時にRosettaをoffにして下さい。(→手順)
+* https://github.com/conda-forge/miniforge からインストーラを入手して、解説に従いインストール。
+   * `~/miniforge3/`以下にインストールされるようです。
+* 仮想環境trainscannerを作ります。
 ```shell
-% git clone https://github.com/vitroid/TrainScannet.git
-% cd TrainScanner
+% conda create --name trainscanner
 ```
-* Terminalを開く時にRosettaをoffにして下さい。
-* numpyをインストール。numpyのバージョンが新しすぎるといろいろひっかかるので、バージョンを指定する。
+* 仮想環境に入ります。ARM用pythonになっているかどうか一応確認。
+```
+% conda activate trainscanner
+% file `which python3`
+/Users/xxx/miniforge3/envs/trainscanner/bin/python3: Mach-O 64-bit executable arm64
+```
+* condaでインストールできるものをまとめてインストールします。
 ```shell
-% pip3 install numpy==1.19.3
+% conda install numpy sk-video opencv
 ```
-* scipyも同様に。
+* condaにないものはpipでインストールします。
 ```shell
-% pip3 install scipy
+% pip install tiledimage videosequence
 ```
-* pyqt5。とても時間がかかる。
+* pyqt5。時間がかかるので、ちょっと小細工。恐るべき速さでコンパイルされます。
 ```shell
-% pip3 install pyqt5
+% export MAKEFLAGS=-j16
+% pip install pyqt5 --verbose
 ```
-* opencvのインストール。(https://sayak.dev/install-opencv-m1/)
+* AppleM1用のTrainScannerパッケージをインストールします。これは、上の手順でcondaでインストールしたパッケージとの依存関係を除いただけのバージョンです。
 ```shell
-% brew install vtk
-% pushd ~/Downloads
-% wget -O opencv.zip https://github.com/opencv/opencv/archive/4.5.1.zip
-% wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.5.1.zip
-% unzip opencv.zip
-% unzip opencv_contrib.zip
-% cd opencv-4.5.1
-% mkdir build && cd build
-% cmake \
-  -DCMAKE_SYSTEM_PROCESSOR=arm64 \
-  -DCMAKE_OSX_ARCHITECTURES=arm64 \
-  -DWITH_OPENJPEG=OFF \
-  -DWITH_IPP=OFF \
-  -D CMAKE_BUILD_TYPE=RELEASE \
-  -D CMAKE_INSTALL_PREFIX=/usr/local \
-  -D OPENCV_EXTRA_MODULES_PATH=~/Downloads/opencv_contrib-4.5.1/modules \
-  -D BUILD_opencv_python2=OFF \
-  -D BUILD_opencv_python3=ON \
-  -D INSTALL_PYTHON_EXAMPLES=ON \
-  -D INSTALL_C_EXAMPLES=OFF \
-  -D OPENCV_ENABLE_NONFREE=ON \
-  -D BUILD_EXAMPLES=ON ..
-% make -j8
-% make install
+% pip install git+https://github.com/vitroid/TrainScanner@AppleM1
 ```
-* インストールしただけでは使えない。リンクする。
-```shell
-% cd ~/venvs/TrainScannerArm3/lib/python3.9/site-packages/ #(.soのあるフォルダー)
-% ln -s /usr/local/lib/python3.9/site-packages/cv2/python-3.9/cv2.cpython-39-darwin.so cv2.so
-% popd # TrainScanner/に戻る
-```
-* そしてtrainscannerのインストールを試す。
-      make install
-
 
 ## 撮影方法
 列車をビデオカメラで側面から撮影します。
