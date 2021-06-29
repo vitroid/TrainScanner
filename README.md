@@ -19,6 +19,12 @@ Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあ�
 % trainscanner
 ```
 
+### Apple M1
+
+Appleシリコンで動かすには、まだ多少細工が必要です。
+[AppleM1 branch](https://github.com/vitroid/TrainScanner/tree/AppleM1)をご覧下さい。
+
+
 ## 撮影方法
 列車をビデオカメラで側面から撮影します。
 
