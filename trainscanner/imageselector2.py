@@ -22,6 +22,9 @@ class ImageSelector2(QWidget):
         
         
     def setThumbs(self, thumbs):
+        if len(thumbs) < 2:
+            return
+
         #move the slide bar and trim indicator
         lastlen = len(self.imagebar.thumbs)
         lasthead = self.slider.start()
