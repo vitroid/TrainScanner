@@ -19,11 +19,52 @@ Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあ�
 % trainscanner
 ```
 
-### Apple M1
+### MacOS11 + Apple M1
+(2023-01-03更新)
+* 特別な作業は不要です。
+* AppleM1用のTrainScannerパッケージをインストールします。これは、上の手順でcondaでインストールしたパッケージとの依存関係を除いただけのバージョンです。
+```shell
+% pip install git+https://github.com/vitroid/TrainScanner@AppleM1
+```
 
-Appleシリコンで動かすには、まだ多少細工が必要です。
-[AppleM1 branch](https://github.com/vitroid/TrainScanner/tree/AppleM1)をご覧下さい。
+<stroke>
+(2021-03-27更新)
 
+* homebrew 3でARMに正式に対応になりました。
+* しかし、まだOpenCVがコンパイルできません。
+* そこで、mini-forgeを使ったインストールを試みます。
+* Terminalを開く時にRosettaをoffにして下さい。(→[手順](https://blog.looseknot.jp/mac/m1mac_terminal_rosetta.html))
+* https://github.com/conda-forge/miniforge からインストーラを入手して、解説に従いインストール。
+   * `~/miniforge3/`以下にインストールされるようです。
+   * Python3もインストールされるので、HomeBrewには依存しません。
+* 仮想環境trainscannerを作ります。
+```shell
+% conda create --name trainscanner
+```
+* 仮想環境に入ります。ARM用pythonになっているかどうか一応確認。
+```
+% conda activate trainscanner
+% file `which python3`
+/Users/xxx/miniforge3/envs/trainscanner/bin/python3: Mach-O 64-bit executable arm64
+```
+* condaでインストールできるものをまとめてインストールします。
+```shell
+% conda install numpy sk-video opencv
+```
+* condaにないものはpipでインストールします。
+```shell
+% pip install tiledimage videosequence
+```
+* pyqt5。時間がかかるので、ちょっと小細工。恐るべき速さでコンパイルされます。
+```shell
+% export MAKEFLAGS=-j16
+% pip install pyqt5 --verbose
+```
+* AppleM1用のTrainScannerパッケージをインストールします。これは、上の手順でcondaでインストールしたパッケージとの依存関係を除いただけのバージョンです。
+```shell
+% pip install git+https://github.com/vitroid/TrainScanner@AppleM1
+```
+</stroke>
 
 ## 撮影方法
 列車をビデオカメラで側面から撮影します。

@@ -1,40 +1,37 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
+import argparse
 import math
+#File handling
+import os
+import subprocess
+#options handler
+import sys
 import time
-from logging import getLogger, root, basicConfig, DEBUG, WARN
+from logging import DEBUG, WARN, basicConfig, getLogger, root
 
 #external modules
 import cv2
 import numpy as np
-
+from PyQt6.QtCore import (QLocale, QObject, QPoint, QRect, QSize, Qt, QThread,
+                          QTranslator, pyqtSignal)
+from PyQt6.QtGui import QImage, QPainter, QPixmap
 #Core of the GUI and image process
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea, QHBoxLayout, QGroupBox, QGridLayout, QSlider, QCheckBox, QSpinBox, QFileDialog, QRubberBand
-from PyQt5.QtGui     import QImage, QPixmap, QPainter
-from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint, QTranslator, QRect, QSize, QLocale, QByteArray
-
-#private modules
-from trainscanner import trainscanner
-from trainscanner.imageselector2 import ImageSelector2
-from trainscanner import video
-#File handling
-import os
-import subprocess
-
-#sub dialog windows
-from trainscanner import pass1_gui
-from trainscanner import stitch_gui
-
-
-#options handler
-import sys
-from trainscanner.pass1  import prepare_parser as pp1
-from trainscanner.stitch import prepare_parser as pp2
-import argparse
+from PyQt6.QtWidgets import (QApplication, QCheckBox, QDialog, QFileDialog,
+                             QGridLayout, QGroupBox, QHBoxLayout, QLabel,
+                             QPushButton, QRubberBand, QSlider, QSpinBox,
+                             QVBoxLayout, QWidget)
 
 #
+#sub dialog windows
+#private modules
+from trainscanner import pass1_gui
 from trainscanner import qrangeslider as rs
+from trainscanner import stitch_gui, trainscanner, video
+from trainscanner.imageselector2 import ImageSelector2
+from trainscanner.pass1 import prepare_parser as pp1
+from trainscanner.stitch import prepare_parser as pp2
 
 perspectiveCSS="""
 QRangeSlider > QSplitter::handle {
@@ -115,7 +112,7 @@ class DrawableLabel(QLabel):
     def paintEvent(self, event):
         QLabel.paintEvent(self, event)
         painter = QPainter(self)
-        painter.setPen(Qt.blue)
+        painter.setPen(Qt.GlobalColor.blue)
         #painter.setBrush(Qt.yellow)
         #painter.drawRect(10, 10, 100, 100)
         x,y,w,h = self.geometry
@@ -136,7 +133,7 @@ class MyLabel(QLabel):
 
         self.func = func
         QLabel.__init__(self, parent)
-        self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
+        self.rubberBand = QRubberBand(QRubberBand.Shape.Rectangle, self)
         self.origin = QPoint()
         self.slitpos = 250
         self.focus = (333,666,333,666)  #xs,xe,ys,ye
@@ -145,27 +142,27 @@ class MyLabel(QLabel):
     def paintEvent(self, event):
         QLabel.paintEvent(self, event)
         painter = QPainter(self)
-        painter.setPen(Qt.red)
+        painter.setPen(Qt.GlobalColor.red)
         x,y,w,h = self.geometry
         d = 20
         painter.drawLine(x+w//2-self.slitpos*w//1000,y,
                          x+w//2-self.slitpos*w//1000,y+h)
-        painter.drawLine(x+w//2-self.slitpos*w//1000-d,y+h/2,
-                         x+w//2-self.slitpos*w//1000,  y+h/2-d)
-        painter.drawLine(x+w//2-self.slitpos*w//1000-d,y+h/2,
-                         x+w//2-self.slitpos*w//1000,  y+h/2+d)
+        painter.drawLine(x+w//2-self.slitpos*w//1000-d,y+h//2,
+                         x+w//2-self.slitpos*w//1000,  y+h//2-d)
+        painter.drawLine(x+w//2-self.slitpos*w//1000-d,y+h//2,
+                         x+w//2-self.slitpos*w//1000,  y+h//2+d)
         painter.drawLine(x+w//2+self.slitpos*w//1000,y,
                          x+w//2+self.slitpos*w//1000,y+h)
         painter.drawLine(x+w//2+self.slitpos*w//1000+d,y+h//2,
                          x+w//2+self.slitpos*w//1000,  y+h//2-d)
         painter.drawLine(x+w//2+self.slitpos*w//1000+d,y+h//2,
                          x+w//2+self.slitpos*w//1000,  y+h//2+d)
-        painter.setPen(Qt.green)
+        painter.setPen(Qt.GlobalColor.green)
         painter.drawRect(x+w*self.focus[0]//1000,y+h*self.focus[2]//1000,w*(self.focus[1]-self.focus[0])//1000,h*(self.focus[3]-self.focus[2])//1000)
 
     def mousePressEvent(self, event):
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
 
             self.origin = QPoint(event.pos())
             self.rubberBand.setGeometry(QRect(self.origin, QSize()))
@@ -178,7 +175,7 @@ class MyLabel(QLabel):
 
     def mouseReleaseEvent(self, event):
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.rubberBand.hide()
             self.region = QRect(self.origin, event.pos()).normalized()
             if self.func is not None:
@@ -229,16 +226,16 @@ class SettingsGUI(QWidget):
         #Example of a slider with a label ###################################
         #the slider is in a Hbox
 
-        settings2_layout.addWidget(QLabel(self.tr('Slit mixing')), rows, 0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('Slit mixing')), rows, 0, Qt.AlignmentFlag.AlignRight)
 
         self.slitwidth_slider_valuelabel = QLabel("{0}%".format(self.slitwidth))
-        settings2_layout.addWidget(self.slitwidth_slider_valuelabel, rows, 1, Qt.AlignCenter)
+        settings2_layout.addWidget(self.slitwidth_slider_valuelabel, rows, 1, Qt.AlignmentFlag.AlignCenter)
 
-        settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2, Qt.AlignRight)
-        self.slitwidth_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        settings2_layout.addWidget(QLabel(self.tr('Sharp')), rows, 2, Qt.AlignmentFlag.AlignRight)
+        self.slitwidth_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
         self.slitwidth_slider.setRange(5, 300)  # スライダの範囲
         self.slitwidth_slider.setValue(self.slitwidth)  # 初期値
-        self.slitwidth_slider.setTickPosition(QSlider.TicksBelow)
+        self.slitwidth_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.slitwidth_slider.valueChanged.connect(self.slitwidth_slider_on_draw)
         settings2_layout.addWidget(self.slitwidth_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Diffuse')), rows, 4)
@@ -250,17 +247,17 @@ class SettingsGUI(QWidget):
         #Example of a slider with a label ###################################
         #the slider is in a Hbox
 
-        settings2_layout.addWidget(QLabel(self.tr('Minimal displacement between the frames')), rows, 0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('Minimal displacement between the frames')), rows, 0, Qt.AlignmentFlag.AlignRight)
 
         self.antishake_slider_valuelabel = QLabel("{0} ".format(self.antishake)+self.tr("pixels"))
-        settings2_layout.addWidget(self.antishake_slider_valuelabel, rows, 1, Qt.AlignCenter)
+        settings2_layout.addWidget(self.antishake_slider_valuelabel, rows, 1, Qt.AlignmentFlag.AlignCenter)
 
-        settings2_layout.addWidget(QLabel(self.tr('Small')), rows, 2, Qt.AlignRight)
-        self.antishake_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        settings2_layout.addWidget(QLabel(self.tr('Small')), rows, 2, Qt.AlignmentFlag.AlignRight)
+        self.antishake_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
         self.antishake_slider.setRange(0, 15)  # スライダの範囲
         self.antishake_slider.setValue(5)  # 初期値
         #スライダの目盛りを両方に出す
-        self.antishake_slider.setTickPosition(QSlider.TicksBelow)
+        self.antishake_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.antishake_slider.valueChanged.connect(self.antishake_slider_on_draw)
         settings2_layout.addWidget(self.antishake_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Large')), rows, 4)
@@ -271,17 +268,17 @@ class SettingsGUI(QWidget):
         #Example of a slider with a label ###################################
         #the slider is in a Hbox
 
-        settings2_layout.addWidget(QLabel(self.tr('Number of frames to estimate the velocity')), rows, 0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('Number of frames to estimate the velocity')), rows, 0, Qt.AlignmentFlag.AlignRight)
 
         self.estimate_slider_valuelabel = QLabel("{0} ".format(self.estimate)+self.tr("frames"))
-        settings2_layout.addWidget(self.estimate_slider_valuelabel, rows, 1, Qt.AlignCenter)
+        settings2_layout.addWidget(self.estimate_slider_valuelabel, rows, 1, Qt.AlignmentFlag.AlignCenter)
 
-        settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2, Qt.AlignRight)
-        self.estimate_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2, Qt.AlignmentFlag.AlignRight)
+        self.estimate_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
         self.estimate_slider.setRange(5, 50)  # スライダの範囲
         self.estimate_slider.setValue(10)  # 初期値
         #スライダの目盛りを両方に出す
-        self.estimate_slider.setTickPosition(QSlider.TicksBelow)
+        self.estimate_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.estimate_slider.valueChanged.connect(self.estimate_slider_on_draw)
         settings2_layout.addWidget(self.estimate_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Long')), rows, 4)
@@ -291,47 +288,47 @@ class SettingsGUI(QWidget):
 
         #####################################################################
         #Example of a checkbox
-        settings2_layout.addWidget(QLabel(self.tr('Ignore vertical displacements')), rows, 0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('Ignore vertical displacements')), rows, 0, Qt.AlignmentFlag.AlignRight)
         self.btn_zerodrift = QCheckBox()
-        self.btn_zerodrift.setCheckState(Qt.Checked)
+        self.btn_zerodrift.setCheckState(Qt.CheckState.Checked)
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        settings2_layout.addWidget(self.btn_zerodrift,rows, 1, Qt.AlignCenter)
+        settings2_layout.addWidget(self.btn_zerodrift,rows, 1, Qt.AlignmentFlag.AlignCenter)
         rows += 1
         #####################################################################
 
 
         #####################################################################
         #Example of a checkbox
-        settings2_layout.addWidget(QLabel(self.tr('The train is initially stalling in the motion detection area.')), rows, 0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('The train is initially stalling in the motion detection area.')), rows, 0, Qt.AlignmentFlag.AlignRight)
         self.btn_stall = QCheckBox()
-        #self.btn_stall.setCheckState(Qt.Checked)
+        #self.btn_stall.setCheckState(Qt.CheckState.Checked)
         #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        settings2_layout.addWidget(self.btn_stall,rows, 1, Qt.AlignCenter)
+        settings2_layout.addWidget(self.btn_stall,rows, 1, Qt.AlignmentFlag.AlignCenter)
         rows += 1
         #####################################################################
 
 
         # #####################################################################
         # #Example of a checkbox
-        settings2_layout.addWidget(QLabel(self.tr('Max acceleration')), rows, 0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('Max acceleration')), rows, 0, Qt.AlignmentFlag.AlignRight)
         # self.btn_accel = QCheckBox()
-        # self.btn_accel.setCheckState(Qt.Checked)
+        # self.btn_accel.setCheckState(Qt.CheckState.Checked)
         # settings2_layout.addWidget(self.btn_accel,rows, 1)
         # rows += 1
         # #####################################################################
         # #Example of a slider with a label ###################################
         # #the slider is in a Hbox
 
-        # #settings2_layout.addWidget(QLabel(self.tr('Permit camera waggle')), rows, 0, Qt.AlignRight)
+        # #settings2_layout.addWidget(QLabel(self.tr('Permit camera waggle')), rows, 0, Qt.AlignmentFlag.AlignRight)
 
         self.accel_slider_valuelabel = QLabel(str(self.accel))
         settings2_layout.addWidget(self.accel_slider_valuelabel, rows, 1)
 
         settings2_layout.addWidget(QLabel(self.tr('Tripod')), rows, 2)
-        self.accel_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.accel_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
         self.accel_slider.setRange(1, 15)  # スライダの範囲
         self.accel_slider.setValue(1)  # 初期値
-        self.accel_slider.setTickPosition(QSlider.TicksBelow)
+        self.accel_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.accel_slider.valueChanged.connect(self.accel_slider_on_draw)
         settings2_layout.addWidget(self.accel_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Handheld')), rows, 4)
@@ -350,7 +347,7 @@ class SettingsGUI(QWidget):
         # #Example of a checkbox and slider with a label
         # #-i (identity)
 
-        # settings2_layout.addWidget(QLabel(self.tr('Skip identical frames')), rows, 0, Qt.AlignRight)
+        # settings2_layout.addWidget(QLabel(self.tr('Skip identical frames')), rows, 0, Qt.AlignmentFlag.AlignRight)
 
         # #self.btn_skipident = QCheckBox(self.tr('Skip identical frames'))
         # #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
@@ -361,11 +358,11 @@ class SettingsGUI(QWidget):
         # settings2_layout.addWidget(self.skipident_valuelabel, rows, 1)
 
         # settings2_layout.addWidget(QLabel(self.tr('Strict')), rows, 2)
-        # self.identthres_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        # self.identthres_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
         # self.identthres_slider.setRange(1, 5)  # スライダの範囲
         # self.identthres_slider.setValue(2)  # 初期値
         # #スライダの目盛りを両方に出す
-        # self.identthres_slider.setTickPosition(QSlider.TicksBelow)
+        # self.identthres_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         # self.connect(self.identthres_slider, SIGNAL('valueChanged(int)'), self.identthres_slider_on_draw)
         # #the slider is in a Hbox
         # settings2_layout.addWidget(self.identthres_slider, rows, 3)
@@ -377,17 +374,17 @@ class SettingsGUI(QWidget):
         #Example of a slider with a label ###################################
         #the slider is in a Hbox
 
-        settings2_layout.addWidget(QLabel(self.tr('Trailing frames')), rows,0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('Trailing frames')), rows,0, Qt.AlignmentFlag.AlignRight)
 
         self.trailing_slider_valuelabel = QLabel("{0} ".format(self.trailing)+self.tr("frames"))
-        settings2_layout.addWidget(self.trailing_slider_valuelabel, rows,1, Qt.AlignCenter)
+        settings2_layout.addWidget(self.trailing_slider_valuelabel, rows,1, Qt.AlignmentFlag.AlignCenter)
 
-        settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2, Qt.AlignRight)
-        self.trailing_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        settings2_layout.addWidget(QLabel(self.tr('Short')), rows, 2, Qt.AlignmentFlag.AlignRight)
+        self.trailing_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
         self.trailing_slider.setRange(1, 150)  # スライダの範囲
         self.trailing_slider.setValue(10)  # 初期値
         #スライダの目盛りを両方に出す
-        self.trailing_slider.setTickPosition(QSlider.TicksBelow)
+        self.trailing_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.trailing_slider.valueChanged.connect(self.trailing_slider_on_draw)
         settings2_layout.addWidget(self.trailing_slider, rows, 3)
         settings2_layout.addWidget(QLabel(self.tr('Long')), rows, 4)
@@ -397,11 +394,11 @@ class SettingsGUI(QWidget):
 
         #####################################################################
         #Example of a checkbox
-        settings2_layout.addWidget(QLabel(self.tr('Debug')), rows, 0, Qt.AlignRight)
+        settings2_layout.addWidget(QLabel(self.tr('Debug')), rows, 0, Qt.AlignmentFlag.AlignRight)
         self.btn_debug = QCheckBox()
-        #self.btn_stall.setCheckState(Qt.Checked)
+        #self.btn_stall.setCheckState(Qt.CheckState.Checked)
         self.btn_debug.toggled.connect(self.toggle_debug)
-        settings2_layout.addWidget(self.btn_debug,rows, 1, Qt.AlignCenter)
+        settings2_layout.addWidget(self.btn_debug,rows, 1, Qt.AlignmentFlag.AlignCenter)
         rows += 1
         #####################################################################
 
@@ -470,7 +467,7 @@ class SettingsGUI(QWidget):
             mimetype = mimeData.formats()[0]
             if mimetype == "text/uri-list":
                 data = mimeData.data(mimetype)
-                from urllib.parse import urlparse, unquote
+                from urllib.parse import unquote, urlparse
                 for line in bytes(data).decode('utf8').splitlines():
                     parsed = urlparse(unquote(line))
                     logger.debug('Data: {0}'.format(parsed))
@@ -545,11 +542,11 @@ class SettingsGUI(QWidget):
             self.antishake_slider.setValue(p1["antishake"])
             self.estimate_slider.setValue(p1["estimate"])
             if p1["zero"]:
-                self.btn_zerodrift.setCheckState(Qt.Checked)
+                self.btn_zerodrift.setCheckState(Qt.CheckState.Checked)
             else:
                 self.btn_zerodrift.setCheckState(Qt.Unchecked)
             if p1["stall"]:
-                self.btn_stall.setCheckState(Qt.Checked)
+                self.btn_stall.setCheckState(Qt.CheckState.Checked)
             else:
                 self.btn_stall.setCheckState(Qt.Unchecked)
             self.trailing_slider.setValue(p1["trailing"])
@@ -664,7 +661,7 @@ class SettingsGUI(QWidget):
         argv += [self.filename,]
 
         matcher = pass1_gui.MatcherUI(argv, False)  #do not terminate
-        matcher.exec_()
+        matcher.exec()
         if matcher.terminated:
             matcher = None
             return
@@ -677,7 +674,7 @@ class SettingsGUI(QWidget):
         file_name = stitcher.stitcher.outfilename
         stitcher.setMaximumHeight(500)
         stitcher.showMaximized()
-        stitcher.exec_()
+        stitcher.exec()
         stitcher = None
 
     def closeEvent(self,event):
@@ -818,24 +815,24 @@ class EditorGUI(QWidget):
 
         raw_image_layout = QVBoxLayout()
         self.raw_image_pane = DrawableLabel()
-        self.raw_image_pane.setAlignment(Qt.AlignCenter)
+        self.raw_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.raw_image_pane.setFixedWidth(self.preview_size)
         self.raw_image_pane.setFixedHeight(self.preview_size)
-        #raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignCenter)
+        #raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignmentFlag.AlignCenter)
         raw_image_layout.addWidget(self.raw_image_pane)
-        raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignHCenter)
-        raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignTop)
+        raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignmentFlag.AlignHCenter)
+        raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignmentFlag.AlignTop)
 
         processed_edit_gbox_layout = QVBoxLayout()
         processed_edit_gbox = QGroupBox(self.tr('3. Motion Detection and Slit'))
         box = QVBoxLayout()
         processed_image_layout = QVBoxLayout()
         self.processed_pane = MyLabel(func=self.show_snapshots)
-        self.processed_pane.setAlignment(Qt.AlignCenter)
+        self.processed_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.processed_pane.setFixedWidth(self.preview_size)
         self.processed_pane.setFixedHeight(self.preview_size)
         processed_image_layout.addWidget(self.processed_pane)
-        processed_image_layout.setAlignment(self.processed_pane, Qt.AlignTop)
+        processed_image_layout.setAlignment(self.processed_pane, Qt.AlignmentFlag.AlignTop)
 
         hbox = QHBoxLayout()
         hbox.addLayout(processed_image_layout)
@@ -845,16 +842,16 @@ class EditorGUI(QWidget):
         processed_edit_gbox_layout.addWidget(processed_edit_gbox)
 
         slit_slider_label = QLabel(self.tr('Slit position'))
-        self.slit_slider = QSlider(Qt.Horizontal)  # スライダの向き
+        self.slit_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
         self.slit_slider.setRange(-500, 500)  # スライダの範囲
         #スライダの目盛りを両方に出す
-        self.slit_slider.setTickPosition(QSlider.TicksBelow)
+        self.slit_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.slit_slider.valueChanged.connect(self.slit_slider_on_draw)
         slit_slider_layout = QHBoxLayout()
         slit_slider_layout.addWidget(slit_slider_label)
         slit_slider_layout.addWidget(self.slit_slider)
         box.addLayout(slit_slider_layout)
-        box.setAlignment(slit_slider_layout, Qt.AlignTop)
+        box.setAlignment(slit_slider_layout, Qt.AlignmentFlag.AlignTop)
 
 
         #combine panels
@@ -865,7 +862,7 @@ class EditorGUI(QWidget):
         left_layout = QVBoxLayout()
         left_layout.addLayout(topleft_layout)
         left_layout.addLayout(rotation_layout)
-        left_layout.setAlignment(rotation_layout, Qt.AlignTop)
+        left_layout.setAlignment(rotation_layout, Qt.AlignmentFlag.AlignTop)
         raw_edit_gbox = QGroupBox(self.tr('2. Repair deformation'))
         raw_edit_gbox.setLayout(left_layout)
         raw_edit_gbox_layout = QVBoxLayout()
@@ -933,7 +930,7 @@ class EditorGUI(QWidget):
 
     def cv2toQImage(self,cv2image):
         height,width = cv2image.shape[:2]
-        return QImage(cv2image[:,:,::-1].copy().data, width, height, width*3, QImage.Format_RGB888)
+        return QImage(cv2image[:,:,::-1].copy().data, width, height, width*3, QImage.Format.Format_RGB888)
 
 
     def show_snapshots(self, region=None):
@@ -1064,13 +1061,13 @@ def main():
     app = QApplication(sys.argv)
     translator = QTranslator(app)
     path = os.path.dirname(trainscanner.__file__)
-    if QLocale.system().language() == QLocale.Japanese:
+    if QLocale.system().language() == QLocale.Language.Japanese:
         translator.load(path+"/i18n/trainscanner_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()
     se.raise_()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == '__main__':
     main()

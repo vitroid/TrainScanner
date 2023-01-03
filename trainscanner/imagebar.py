@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
-from PyQt5.QtWidgets import QLabel, QApplication, QFrame
-from PyQt5.QtGui     import QPainter, QImage
-from PyQt5.QtCore    import QPoint
-
 import sys
+
+from PyQt6.QtCore import QPoint
+from PyQt6.QtGui import QImage, QPainter
+from PyQt6.QtWidgets import QApplication, QFrame, QLabel
+
 
 class ImageBar(QLabel):
     def __init__(self):
         super(ImageBar, self).__init__()
-        self.setFrameStyle(QFrame.StyledPanel)
+        self.setFrameStyle(QFrame.Shape.StyledPanel)
         self.thumbs = []
         self.setFixedHeight(100)
         self.transformer=lambda x,:x  #no conversion
@@ -21,7 +22,7 @@ class ImageBar(QLabel):
 
     def setTransformer(self, func):
         self.transformer = func
-        
+
     def _prepareImage(self):
         """
         set the pixmap here.
@@ -63,9 +64,9 @@ def cv2toQImage(cv2image):
     tmp = cv2image[:,:,0].copy()
     cv2image[:,:,0] = cv2image[:,:,2]
     cv2image[:,:,2] = tmp
-    return QImage(cv2image.data, width, height, width*3, QImage.Format_RGB888)
+    return QImage(cv2image.data, width, height, width*3, QImage.Format.Format_RGB888)
 
-        
+
 
 def main():
     import sys
@@ -75,8 +76,8 @@ def main():
     window.show()
 
     #from trainscanner import video
-    import video
     import cv2
+    import video
     vl      = video.VideoLoader("examples/sample2.mov")
     ret = True
     thumbs = []
@@ -98,11 +99,9 @@ def main():
         if terminate:
             break
     window.setThumbs(thumbs)
-        
-        
-    sys.exit(app.exec_())    
+
+
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     main()
-
-        

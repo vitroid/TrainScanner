@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout
-from PyQt5.QtGui     import QImage, QPixmap
-from PyQt5.QtCore    import QObject, pyqtSignal, QThread
 import sys
 import time
+
 import numpy as np
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtWidgets import (QApplication, QDialog, QLabel, QProgressBar,
+                             QPushButton, QVBoxLayout, QWidget)
+
 from trainscanner import pass1
+
 
 def cv2toQImage(cv2image):
     """
@@ -17,7 +21,7 @@ def cv2toQImage(cv2image):
     tmp = cv2image[:,:,0].copy()
     cv2image[:,:,0] = cv2image[:,:,2]
     cv2image[:,:,2] = tmp
-    return QImage(cv2image.data, width, height, width*3, QImage.Format_RGB888)
+    return QImage(cv2image.data, width, height, width*3, QImage.Format.Format_RGB888)
 
 class Worker(QObject):
 
@@ -38,7 +42,7 @@ class Worker(QObject):
         for num,den in self.pass1.before():
             if den:
                 self.progress.emit(num*100//den)
-        
+
         for img in self.pass1.iter():
             if not self._isRunning:
                 break
@@ -53,7 +57,7 @@ class Worker(QObject):
 
 class MatcherUI(QDialog):
     thread_invoker = pyqtSignal()
-    
+
     def __init__(self, argv, terminate=False):
         super(MatcherUI, self).__init__()
 
@@ -61,7 +65,7 @@ class MatcherUI(QDialog):
         self.image_pane = QLabel()
 
         self.progress = QProgressBar(self)
-        
+
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.btnStop)
         self.layout.addWidget(self.progress)
@@ -75,7 +79,7 @@ class MatcherUI(QDialog):
         self.worker.moveToThread(self.thread)
         self.thread_invoker.connect(self.worker.task)
         self.thread_invoker.emit()
-        
+
         self.worker.frameRendered.connect(self.updatePixmap)
         self.worker.finished.connect(self.finishIt)
         self.worker.progress.connect(self.progress.setValue)
@@ -84,7 +88,7 @@ class MatcherUI(QDialog):
         self.btnStop.clicked.connect(lambda: self.worker.stop())
         self.btnStop.clicked.connect(self.terminateIt)
         self.terminated = False
-        
+
     def updatePixmap(self, image):
         #it is called only when the pixmap is really updated by the thread.
         #resize image in advance.
@@ -100,13 +104,13 @@ class MatcherUI(QDialog):
         if self.terminate:
             sys.exit(1)  #terminated
         self.terminated = True
-        
+
     def finishIt(self):
         self.close()
-        
+
     def closeEvent(self, event):
         self.stop_thread()
-        
+
     def stop_thread(self):
         self.worker.stop()
         self.thread.quit()
