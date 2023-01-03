@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-from setuptools import setup
-import os
 import codecs
+import os
 import re
+
+from setuptools import setup
 
 #Copied from wheel package
 here = os.path.abspath(os.path.dirname(__file__))
@@ -39,7 +40,7 @@ setup(name='TrainScanner',
                         "scikit-build",
                         "videosequence",
       #                  "opencv-python-headless",
-                        "pyqt5",
+                        "pyqt6",
                         ],#'pyqt5', ], #cv2
       entry_points = {
               'console_scripts': [
