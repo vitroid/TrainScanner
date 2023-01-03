@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-from PyQt5.QtWidgets import QWidget, QSlider, QVBoxLayout, QApplication
-from PyQt5.QtGui     import QPainter, QImage
-from PyQt5.QtCore    import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QImage, QPainter
+from PyQt6.QtWidgets import QApplication, QSlider, QVBoxLayout, QWidget
 
-from trainscanner.imagebar import ImageBar
 from trainscanner import qrangeslider as rs
+from trainscanner.imagebar import ImageBar
+
 
 class ImageSelector2(QWidget):
     resized = pyqtSignal(int)
@@ -19,8 +20,8 @@ class ImageSelector2(QWidget):
         layout.addWidget(self.slider)
         layout.setSpacing(0)
         self.setLayout(layout)
-        
-        
+
+
     def setThumbs(self, thumbs):
         if len(thumbs) < 2:
             return
@@ -39,7 +40,7 @@ class ImageSelector2(QWidget):
             self.slider.setEnd(len(thumbs)-1)
         else:
             self.slider.setEnd(lasttail)
-    
+
 
 def cv2toQImage(cv2image):
     """
@@ -50,7 +51,7 @@ def cv2toQImage(cv2image):
     tmp = cv2image[:,:,0].copy()
     cv2image[:,:,0] = cv2image[:,:,2]
     cv2image[:,:,2] = tmp
-    return QImage(cv2image.data, width, height, width*3, QImage.Format_RGB888)
+    return QImage(cv2image.data, width, height, width*3, QImage.Format.Format_RGB888)
 
 
 
@@ -61,8 +62,9 @@ def main():
     window.resize(300,50)
     window.show()
 
-    from trainscanner import video
     import cv2
+
+    from trainscanner import video
     vl  = video.VideoLoader("examples/sample2.mov")
     ret = True
     thumbs = []
@@ -84,11 +86,9 @@ def main():
         if terminate:
             break
     window.setThumbs(thumbs)
-        
-        
-    sys.exit(app.exec_())    
+
+
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     main()
-
-        

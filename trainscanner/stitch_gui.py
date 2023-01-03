@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QDialog, QApplication, QProgressBar, QVBoxLayout, QScrollArea
-from PyQt5.QtGui     import QImage, QPixmap, QPainter
-from PyQt5.QtCore    import QObject, pyqtSignal, QThread, Qt, QPoint
-
 import math
-import numpy as np
-import cv2
 import sys
-from logging import getLogger, basicConfig, WARN, DEBUG
+from logging import DEBUG, WARN, basicConfig, getLogger
 
+import cv2
+import numpy as np
+from PyQt6.QtCore import QObject, QPoint, Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QImage, QPainter, QPixmap
+from PyQt6.QtWidgets import (QApplication, QDialog, QLabel, QProgressBar,
+                             QPushButton, QScrollArea, QVBoxLayout, QWidget)
 #from QTiledImage import QTiledImage
 from tiledimage import cachedimage as ci
-from trainscanner.scaledcanvas import ScaledCanvas
+
 from trainscanner import stitch
+from trainscanner.scaledcanvas import ScaledCanvas
 
 
 #It is run in the thread.
@@ -70,7 +71,7 @@ class ExtensibleCanvasWidget(QLabel):
         fullimage = self.preview.get_image()[:,:,::-1].copy()  #reverse order
         h,w = fullimage.shape[:2]
         self.resize(w, h)
-        qimage = QImage(fullimage.data, w, h, w*3, QImage.Format_RGB888)
+        qimage = QImage(fullimage.data, w, h, w*3, QImage.Format.Format_RGB888)
         self.setPixmap(QPixmap.fromImage(qimage))
         self.update()
 
@@ -119,7 +120,7 @@ class StitcherUI(QDialog):
 
         self.scrollArea.setWidget(self.largecanvas)
         self.scrollArea.setMinimumHeight(500) #self.largecanvas.sizeHint().height())
-        self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         self.btnStop = QPushButton('Stop')
         self.btnStop.clicked.connect(lambda: self.worker.stop())

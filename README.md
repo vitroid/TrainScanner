@@ -20,6 +20,14 @@ Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあ�
 ```
 
 ### MacOS11 + Apple M1
+(2023-01-03更新)
+* 特別な作業は不要です。
+* AppleM1用のTrainScannerパッケージをインストールします。これは、上の手順でcondaでインストールしたパッケージとの依存関係を除いただけのバージョンです。
+```shell
+% pip install git+https://github.com/vitroid/TrainScanner@AppleM1
+```
+
+<stroke>
 (2021-03-27更新)
 
 * homebrew 3でARMに正式に対応になりました。
@@ -56,6 +64,7 @@ Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあ�
 ```shell
 % pip install git+https://github.com/vitroid/TrainScanner@AppleM1
 ```
+</stroke>
 
 ## 撮影方法
 列車をビデオカメラで側面から撮影します。
