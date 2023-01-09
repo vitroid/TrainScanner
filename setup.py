@@ -39,7 +39,7 @@ setup(name='TrainScanner',
                         #"sk-video",
                         "scikit-build",
                         "videosequence",
-      #                  "opencv-python-headless",
+                        "opencv-python-headless",
                         "pyqt6",
                         ],#'pyqt5', ], #cv2
       entry_points = {

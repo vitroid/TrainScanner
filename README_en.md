@@ -3,20 +3,11 @@
 This document is outdated. [README_ja.md](https://github.com/vitroid/TrainScanner/blob/master/README_ja.md) is more frequently updated.
 
 ## Installation
-### Requirements
-Install `PyQt5`, `OpenCV3`, `Python3` packages.  On installing OpenCV3, specify `--with-ffmpeg --with-tbb --with-python3 --HEAD` options.
 ### Install by pip
 Install the trainscanner from the PyPI with pip3 command:
 
     % pip3 install trainscanner
     % trainscanner
-### Install by homebrew (mac)
-It installs everything required. (PyQt5, OpenCV3 with options, Python3)
-
-    % brew tap vitroid/homebrew-TrainScanner
-    % brew install trainscanner
-    % trainscanner
-
 ## How to capture the video
 Capture the whole train from the side with a video camera.
 
@@ -49,7 +40,7 @@ Other advises are listed in the last section.
 
 ![edit2b](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit2b.png?raw=true)
 
-1. In the right panel, specify the location of the motion detection window.  By default, the window is at the central one third of the image.  
+1. In the right panel, specify the location of the motion detection window.  By default, the window is at the central one third of the image.
 1. Red lines in the right panel indicates the positions of the slit.  That is, the long image strip is made from the thin image at this red line of each video frame.  You can move the slid with the slider at the bottom.
 
 ![edit2c](https://github.com/vitroid/TrainScanner/blob/master/images_ja/edit2c.png?raw=true)

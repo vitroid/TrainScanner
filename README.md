@@ -1,70 +1,13 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 # TrainScannerの使い方
 ## インストール
-### Anacondaから使う
-Anacondaをつかうと、いろいろ手間が省けるし、OSの違いをあまり気にしなくてよいので、当面はAnaconda上で動かすことを前提とします。
-
-1. まず、[Anaconda-Navigator](https://www.continuum.io)をインストールし、起動します。
-2. Anacondaのための、trainscannerの環境ファイルの最新のものを[ここ](https://www.dropbox.com/sh/x9oeh0riyhhg6ms/AACEN0f6GbGnDeDfs-szmuVUa?dl=0)からダウンロードします。
-3. Navigatorの左メニューの"Environment"を押します。
-4. importを押し、さきほどダウンロードした環境ファイルを読み込みます。
-5. Navigatorの左メニューの"Home"を押すと、TrainScannerのタイルが追加されているはずです。
 
 ### コマンドラインからインストールと実行
-
-ターミナルを使いなれている人はこちらのほうが手軽でしょう。
 
 ```shell
 % pip install trainscanner
 % trainscanner
 ```
-
-### MacOS11 + Apple M1
-(2023-01-03更新)
-* 特別な作業は不要です。
-* AppleM1用のTrainScannerパッケージをインストールします。これは、上の手順でcondaでインストールしたパッケージとの依存関係を除いただけのバージョンです。
-```shell
-% pip install git+https://github.com/vitroid/TrainScanner@AppleM1
-```
-
-<stroke>
-(2021-03-27更新)
-
-* homebrew 3でARMに正式に対応になりました。
-* しかし、まだOpenCVがコンパイルできません。
-* そこで、mini-forgeを使ったインストールを試みます。
-* Terminalを開く時にRosettaをoffにして下さい。(→[手順](https://blog.looseknot.jp/mac/m1mac_terminal_rosetta.html))
-* https://github.com/conda-forge/miniforge からインストーラを入手して、解説に従いインストール。
-   * `~/miniforge3/`以下にインストールされるようです。
-   * Python3もインストールされるので、HomeBrewには依存しません。
-* 仮想環境trainscannerを作ります。
-```shell
-% conda create --name trainscanner
-```
-* 仮想環境に入ります。ARM用pythonになっているかどうか一応確認。
-```
-% conda activate trainscanner
-% file `which python3`
-/Users/xxx/miniforge3/envs/trainscanner/bin/python3: Mach-O 64-bit executable arm64
-```
-* condaでインストールできるものをまとめてインストールします。
-```shell
-% conda install numpy sk-video opencv
-```
-* condaにないものはpipでインストールします。
-```shell
-% pip install tiledimage videosequence
-```
-* pyqt5。時間がかかるので、ちょっと小細工。恐るべき速さでコンパイルされます。
-```shell
-% export MAKEFLAGS=-j16
-% pip install pyqt5 --verbose
-```
-* AppleM1用のTrainScannerパッケージをインストールします。これは、上の手順でcondaでインストールしたパッケージとの依存関係を除いただけのバージョンです。
-```shell
-% pip install git+https://github.com/vitroid/TrainScanner@AppleM1
-```
-</stroke>
 
 ## 撮影方法
 列車をビデオカメラで側面から撮影します。
