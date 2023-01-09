@@ -544,11 +544,11 @@ class SettingsGUI(QWidget):
             if p1["zero"]:
                 self.btn_zerodrift.setCheckState(Qt.CheckState.Checked)
             else:
-                self.btn_zerodrift.setCheckState(Qt.Unchecked)
+                self.btn_zerodrift.setCheckState(Qt.CheckState.Unchecked)
             if p1["stall"]:
                 self.btn_stall.setCheckState(Qt.CheckState.Checked)
             else:
-                self.btn_stall.setCheckState(Qt.Unchecked)
+                self.btn_stall.setCheckState(Qt.CheckState.Unchecked)
             self.trailing_slider.setValue(p1["trailing"])
 
         else:
