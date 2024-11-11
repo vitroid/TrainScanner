@@ -4,7 +4,7 @@ import codecs
 import os
 import re
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 #Copied from wheel package
 here = os.path.abspath(os.path.dirname(__file__))
@@ -31,9 +31,10 @@ setup(name='TrainScanner',
       url='https://github.com/vitroid/TrainScanner/',
       keywords=['trainscanner',],
       license='MIT',
-      packages=['trainscanner',
-                'ts_conv',
-                ],
+      packages=find_packages(
+        include=['trainscanner', 'ts_conv', ], 
+        exclude=['trainscanner.i18n', ],
+      ),
       install_requires=[# 'numpy==1.19.3',
                         "tiledimage",
                         #"sk-video",
