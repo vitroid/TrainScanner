@@ -46,3 +46,5 @@ anaconda/old2/
 
 anaconda/old/
 Pipfile.lock
+
+venv/

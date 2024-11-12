@@ -414,7 +414,7 @@ class Pass1():
             diff = cv2.absdiff(rawframe,lastrawframe)
             #When the raw frame is not changed at all, ignore the frame.
             #It happens in the frame rate adjustment between PAL and NTSC
-            diff = np.sum(diff) / np.product(diff.shape)
+            diff = np.sum(diff) / np.prod(diff.shape)
             if diff < params.identity:
                 logger.info("skip identical frame #{0}".format(diff))
                 continue
