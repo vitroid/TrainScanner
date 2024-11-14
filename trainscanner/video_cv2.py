@@ -8,8 +8,9 @@ It does not fit the iterator framework.
 
 import cv2
 
+
 class VideoLoader(object):
-    def __init__(self,filename):
+    def __init__(self, filename):
         self.cap = cv2.VideoCapture(filename)
         self.nframe = 0
 
@@ -18,7 +19,7 @@ class VideoLoader(object):
         self.nframe += 1
         if ret == False:
             return 0, frame
-        return self.nframe,frame
+        return self.nframe, frame
 
     def skip(self):
         ret = self.cap.grab()
@@ -36,4 +37,3 @@ if __name__ == "__main__":
         if nframe == 0:
             break
         print(frame.shape, nframe)
-

@@ -10,7 +10,7 @@ import skvideo.io
 
 
 class VideoLoader(object):
-    def __init__(self,filename):
+    def __init__(self, filename):
         vi = skvideo.io.FFmpegReader(filename)
         self.iter = vi.nextFrame()
         self.nframe = 0
@@ -21,7 +21,7 @@ class VideoLoader(object):
             frame = self.iter.__next__()
         except StopIteration:
             return 0, 0
-        return self.nframe,frame[:,:,::-1].copy()  #RGB to BGR
+        return self.nframe, frame[:, :, ::-1].copy()  # RGB to BGR
 
     def skip(self):
         self.nframe += 1
@@ -32,7 +32,6 @@ class VideoLoader(object):
         return self.nframe
 
 
-
 if __name__ == "__main__":
     vl = VideoLoader("../examples/sample3.mov")
 
@@ -41,4 +40,3 @@ if __name__ == "__main__":
         if nframe == 0:
             break
         print(frame.shape, nframe)
-
