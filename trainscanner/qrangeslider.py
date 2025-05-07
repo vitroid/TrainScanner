@@ -223,9 +223,9 @@ class Handle(RangeSliderElement):
         #When the range is dragged
         event.accept()
         if self.vertical:
-            mx = event.globalY()
+            mx = int(event.globalPosition().y())
         else:
-            mx = event.globalX()
+            mx = int(event.globalPosition().x())
         #last value
         _mx = getattr(self, '__mx', None)
 
