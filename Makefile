@@ -9,11 +9,8 @@ all: #macapp install #macapp-personally
 ##############################
 #  PyPI
 ##############################
-prepare: # might require root privilege.
-	$(PIP) install twine
-
 test-deploy: build
-	poetry publish -r pypitest
+	poetry publish -r testpypi
 test-install:
 	$(PIP) install --index-url https://test.pypi.org/simple/ trainscanner
 
@@ -22,7 +19,7 @@ test-install:
 uninstall:
 	-$(PIP) uninstall -y trainscanner
 build: README.md $(wildcard trainscanner/*.py)
-	poetry build -f bdist_wheel
+	poetry build -f wheel
 
 
 deploy: build
