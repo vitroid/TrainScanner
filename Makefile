@@ -40,3 +40,6 @@ clean:
 distclean:
 	-rm -rf dist build *.egg-info __pycache__ *.pyc
 	make -C examples distclean
+
+app:
+	pyinstaller --onedir --windowed --name TrainScanner --add-binary "/usr/local/Cellar/mpdecimal/4.0.1/lib/libmpdec.4.0.1.dylib:." --hidden-import cv2 --hidden-import numpy --hidden-import PyQt6 --hidden-import trainscanner.video_cv2 --collect-all trainscanner --collect-all opencv-python-headless trainscanner.x
