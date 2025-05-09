@@ -3,9 +3,7 @@
 
 import cv2
 import numpy as np
-import math
-import sys
-import argparse
+import click
 
 
 def rectify(img, rows=None, gap=3):  # gap in percent
@@ -70,16 +68,18 @@ def prepare_parser():
     return parser
 
 
-def main():
-    parser = prepare_parser()
-    params = parser.parse_args(sys.argv[1:])
-    print(params.filename)
-    img = cv2.imread(params.filename)
-    canvas = rectify(img, params.rows, gap=params.gap)
-    if params.output == "":
-        cv2.imwrite("{0}.rect.jpg".format(params.filename), canvas)
+@click.command()
+@click.argument("image_path")
+@click.option("--output", "-o", help="出力ファイルのパス")
+@click.option("--rows", "-r", type=int, default=None, help="行数")
+@click.option("--gap", "-g", type=int, default=0, help="マージン")
+def main(image_path, output, rows, gap):
+    img = cv2.imread(image_path)
+    canvas = rectify(img, rows, gap)
+    if output:
+        cv2.imwrite(output, canvas)
     else:
-        cv2.imwrite(params.output, canvas)
+        cv2.imwrite(f"{image_path}.rect.png", canvas)
 
 
 if __name__ == "__main__":

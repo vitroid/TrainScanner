@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 import cv2
 import numpy as np
-import math
-import argparse
-import sys
+import click
 
 
 def roundbox(img, p1, p2, r, color):
@@ -92,43 +90,17 @@ def filmify(img, label=""):
     return canvas
 
 
-def prepare_parser():
-    parser = argparse.ArgumentParser(
-        description="Filmify",
-        fromfile_prefix_chars="@",
-    )
-    parser.add_argument(
-        "-c",
-        "--creative_commons_sign",
-        type=str,
-        metavar="string",
-        default="",
-        dest="creative_commons_sign",
-        help="Add Creative Commons sign.",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        metavar="outfilename",
-        default="",
-        dest="output",
-        help="Output file name.",
-    )
-    parser.add_argument("filename", type=str, help="Image file name.")
-    return parser
-
-
-def main():
-    parser = prepare_parser()
-    params = parser.parse_args(sys.argv[1:])
-    print(params.filename)
-    img = cv2.imread(params.filename)
-    canvas = filmify(img, label=params.creative_commons_sign)
-    if params.output == "":
-        cv2.imwrite("{0}.film.png".format(params.filename), canvas)
+@click.command()
+@click.argument("image_path")
+@click.option("--output", "-o", help="出力ファイルのパス")
+@click.option("--creative_commons_sign", "-c", help="Creative Commons sign")
+def main(image_path, output, creative_commons_sign):
+    img = cv2.imread(image_path)
+    canvas = filmify(img, label=creative_commons_sign)
+    if output:
+        cv2.imwrite(output, canvas)
     else:
-        cv2.imwrite(params.output, canvas)
+        cv2.imwrite(f"{image_path}.film.png", canvas)
 
 
 if __name__ == "__main__":

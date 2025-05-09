@@ -4,8 +4,8 @@
 import cv2
 import numpy as np
 import math
-import argparse
-import sys
+import click
+import logging
 
 
 # Determine tilt angle by Newton-Raphson method
@@ -39,6 +39,8 @@ def helicify(img, aspect=2.0**0.5):
     Helicify and project on a A-size paper proportion.
     Note: it fails when the strip is too short.
     """
+    logger = logging.getLogger(__name__)
+
     h, w = img.shape[0:2]
     # height with a gap
     hg = int(h * 1.03)
@@ -73,6 +75,9 @@ def helicify(img, aspect=2.0**0.5):
         canvas[i * hg + pady : i * hg + h + pady, padx : padx + ww, :] = img[
             0:h, x0 : x0 + ww, :
         ]
+    if img.shape[1] < canw:
+        logger.warning(f"Image width is too short: {img.shape[1]} < {canw}")
+        return img
     canvas[pady : h + pady, padx : canw + padx, :] = img[0:h, 0:canw, :]
     residue = w - (row - row0) * (N - 1)
     canvas[(N - 1) * hg + pady : (N - 1) * hg + h + pady, padx : residue + padx, :] = (
@@ -105,54 +110,21 @@ def add_margin(img, margin):
     return canvas2
 
 
-def prepare_parser():
-    parser = argparse.ArgumentParser(
-        description="Helicify",
-        fromfile_prefix_chars="@",
-    )
-    parser.add_argument(
-        "-m",
-        "--margin",
-        type=float,
-        metavar="x",
-        default=0,
-        dest="margin",
-        help="Add margin of x %% of the wider edge around the image.",
-    )
-    parser.add_argument(
-        "-a",
-        "--aspect",
-        type=float,
-        metavar="x",
-        default=2.0**0.5,
-        dest="aspect",
-        help="Specify the aspect ratio (default=1.414).",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        metavar="outfilename",
-        default="",
-        dest="output",
-        help="Output file name.",
-    )
-    parser.add_argument("filename", type=str, help="Image file name.")
-    return parser
-
-
-def main():
-    parser = prepare_parser()
-    params = parser.parse_args(sys.argv[1:])
-    print(params.filename)
-    img = cv2.imread(params.filename)
-    canvas2 = helicify(img, aspect=params.aspect)
-    if params.margin != 0:
-        canvas2 = add_margin(canvas2, params.margin)
-    if params.output == "":
-        cv2.imwrite("{0}.helix.jpg".format(params.filename), canvas2)
+@click.command()
+@click.argument("image_path")
+@click.option("--output", "-o", help="出力ファイルのパス")
+@click.option("--margin", "-m", type=float, default=0, help="マージン")
+@click.option("--aspect", "-a", type=float, default=2.0**0.5, help="アスペクト比")
+def main(image_path, output, margin, aspect):
+    logging.basicConfig(level=logging.INFO)
+    img = cv2.imread(image_path)
+    canvas2 = helicify(img, aspect=aspect)
+    if margin != 0:
+        canvas2 = add_margin(canvas2, margin)
+    if output:
+        cv2.imwrite(output, canvas2)
     else:
-        cv2.imwrite(params.output, canvas2)
+        cv2.imwrite(f"{image_path}.helix.png", canvas2)
 
 
 if __name__ == "__main__":

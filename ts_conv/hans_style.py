@@ -3,9 +3,7 @@
 
 import cv2
 import numpy as np
-import math
-import sys
-import argparse
+import click
 
 
 def hansify(img, rows=3, overlap=10):
@@ -37,52 +35,18 @@ def hansify(img, rows=3, overlap=10):
     return canvas
 
 
-def prepare_parser():
-    parser = argparse.ArgumentParser(
-        description="Helicify",
-        fromfile_prefix_chars="@",
-    )
-    parser.add_argument(
-        "-l",
-        "--overlap",
-        type=int,
-        metavar="x",
-        default=5,
-        dest="overlap",
-        help="Overlaps between rows in percent.",
-    )
-    parser.add_argument(
-        "-r",
-        "--rows",
-        type=int,
-        metavar="x",
-        default=3,
-        dest="rows",
-        help="Number of rows.",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        metavar="outfilename",
-        default="",
-        dest="output",
-        help="Output file name.",
-    )
-    parser.add_argument("filename", type=str, help="Image file name.")
-    return parser
-
-
-def main():
-    parser = prepare_parser()
-    params = parser.parse_args(sys.argv[1:])
-    print(params.filename)
-    img = cv2.imread(params.filename)
-    canvas = hansify(img, params.rows, overlap=params.overlap)
-    if params.output == "":
-        cv2.imwrite("{0}.hans.jpg".format(params.filename), canvas)
+@click.command()
+@click.argument("image_path")
+@click.option("--output", "-o", help="出力ファイルのパス")
+@click.option("--rows", "-r", type=int, default=3, help="行数")
+@click.option("--overlap", "-l", type=int, default=5, help="重複率")
+def main(image_path, output, rows, overlap):
+    img = cv2.imread(image_path)
+    canvas = hansify(img, rows, overlap)
+    if output:
+        cv2.imwrite(output, canvas)
     else:
-        cv2.imwrite(params.output, canvas)
+        cv2.imwrite(f"{image_path}.hans.png", canvas)
 
 
 if __name__ == "__main__":

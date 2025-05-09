@@ -10,6 +10,9 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QProgressBar,
+    QRadioButton,
+    QButtonGroup,
+    QLabel,
 )
 from PyQt6.QtGui import QPalette, QPainter
 from PyQt6.QtCore import QTranslator, QLocale, Qt
@@ -27,7 +30,9 @@ import subprocess
 from ts_conv import film
 from ts_conv import helix
 from ts_conv import rect
+from ts_conv import hans_style as hans
 from tiledimage.cachedimage import CachedImage
+from ts_conv import movie
 
 # options handler
 import sys
@@ -43,19 +48,40 @@ class SettingsGUI(QWidget):
         self.setAcceptDrops(True)
 
         finish_layout = QVBoxLayout()
+
+        # 説明文を追加
+        instruction = QLabel(self.tr("Drag & drop an image strip"))
+        instruction.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        finish_layout.addWidget(instruction)
+
         self.btn_finish_perf = QCheckBox(self.tr("Add the film perforations"))
         finish_layout.addWidget(self.btn_finish_perf)
-        self.btn_finish_helix = QCheckBox(self.tr("Make a helical image"))
+
+        # ラジオボタングループの作成
+        self.image_type_group = QButtonGroup(self)
+        self.btn_finish_none = QRadioButton(self.tr("Do nothing"))
+        self.btn_finish_helix = QRadioButton(self.tr("Make a helical image"))
+        self.btn_finish_rect = QRadioButton(self.tr("Make a rectangular image"))
+        self.btn_finish_hans = QRadioButton(self.tr("Make a Hans-style image"))
+        self.btn_finish_movie = QRadioButton(self.tr("Make a scrolling movie"))
+        self.image_type_group.addButton(self.btn_finish_none)
+        self.image_type_group.addButton(self.btn_finish_helix)
+        self.image_type_group.addButton(self.btn_finish_rect)
+        self.image_type_group.addButton(self.btn_finish_hans)
+        self.image_type_group.addButton(self.btn_finish_movie)
+        finish_layout.addWidget(self.btn_finish_none)
         finish_layout.addWidget(self.btn_finish_helix)
-        self.btn_finish_rect = QCheckBox(self.tr("Make a rectangular image"))
         finish_layout.addWidget(self.btn_finish_rect)
+        finish_layout.addWidget(self.btn_finish_hans)
+        finish_layout.addWidget(self.btn_finish_movie)
+
         self.pbar = QProgressBar()
         self.pbar.setValue(0)
-        self.pbar.setRange(0, 8)
+        self.pbar.setRange(0, 6)
         finish_layout.addWidget(self.pbar)
 
         self.setLayout(finish_layout)
-        self.setWindowTitle("Drag&Drop files")
+        self.setWindowTitle("Converter")
 
     def start_process(self):
         logger = logging.getLogger()
@@ -80,12 +106,24 @@ class SettingsGUI(QWidget):
             himg = helix.helicify(img)
             self.pbar.setValue(5)
             cv2.imwrite(file_name + ".helix.png", himg)
-        if self.btn_finish_rect.isChecked():
-            self.pbar.setValue(6)
+        elif self.btn_finish_rect.isChecked():
+            self.pbar.setValue(4)
             rimg = rect.rectify(img)
-            self.pbar.setValue(7)
+            self.pbar.setValue(5)
             cv2.imwrite(file_name + ".rect.png", rimg)
-        self.pbar.setValue(8)
+        elif self.btn_finish_movie.isChecked():
+            self.pbar.setValue(4)
+            movie.make_movie(file_name)
+            self.pbar.setValue(5)
+        elif self.btn_finish_hans.isChecked():
+            self.pbar.setValue(4)
+            hansimg = hans.hansify(img)
+            self.pbar.setValue(5)
+            cv2.imwrite(file_name + ".hans.png", hansimg)
+        elif self.btn_finish_none.isChecked():
+            self.pbar.setValue(4)
+            self.pbar.setValue(5)
+        self.pbar.setValue(6)
 
     def dragEnterEvent(self, event):
         logger = logging.getLogger()
