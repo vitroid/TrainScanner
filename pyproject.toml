@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trainscanner"
-version = "0.14.3"
+version = "0.15.0"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]
@@ -19,11 +19,11 @@ trainscanner        = 'trainscanner.trainscanner_gui:main'
 trainscanner_pass1  = 'trainscanner.pass1_gui:main'
 trainscanner_stitch = 'trainscanner.stitch_gui:main'
 trainscanner_shakereduction = 'trainscanner.shakereduction:main'
-filmify             = 'ts_conv.film:main'
-rectify             = 'ts_conv.rect:main'
-helicify            = 'ts_conv.helix:main'
-hansify             = 'ts_conv.hans_style:main'
-ts_converter        = 'ts_conv.converter_gui:main'
+filmify             = 'trainscanner.converter.film:main'
+rectify             = 'trainscanner.converter.rect:main'
+helicify            = 'trainscanner.converter.helix:main'
+hansify             = 'trainscanner.converter.hans_style:main'
+ts_converter        = 'trainscanner.converter.converter_gui:main'
 
 [build-system]
 requires = ["poetry-core"]

@@ -22,6 +22,8 @@ def make_movie(image_path, output=None, duration=None, height=1080, width=1920):
         movie_w = int(width * (ih / height))
         if movie_w % 2 == 1:
             movie_w += 1
+        if movie_h % 2 == 1:
+            movie_h -= 1
     else:
         # 画像の高さが目標以上の場合、高さを目標に制限
         movie_h = height
