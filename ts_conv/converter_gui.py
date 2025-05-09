@@ -25,6 +25,7 @@ import logging
 # File handling
 import os
 import subprocess
+import shutil
 
 # final image tranformation
 from ts_conv import film
@@ -64,6 +65,17 @@ class SettingsGUI(QWidget):
         self.btn_finish_rect = QRadioButton(self.tr("Make a rectangular image"))
         self.btn_finish_hans = QRadioButton(self.tr("Make a Hans-style image"))
         self.btn_finish_movie = QRadioButton(self.tr("Make a scrolling movie"))
+
+        # ffmpegの確認
+        self.has_ffmpeg = shutil.which("ffmpeg") is not None
+        self.btn_finish_movie.setEnabled(self.has_ffmpeg)
+        if not self.has_ffmpeg:
+            self.btn_finish_movie.setToolTip(
+                self.tr(
+                    "ffmpeg is not installed. Please install ffmpeg to use this feature."
+                )
+            )
+
         self.image_type_group.addButton(self.btn_finish_none)
         self.image_type_group.addButton(self.btn_finish_helix)
         self.image_type_group.addButton(self.btn_finish_rect)
