@@ -28,12 +28,12 @@ import subprocess
 import shutil
 
 # final image tranformation
-from ts_conv import film
-from ts_conv import helix
-from ts_conv import rect
-from ts_conv import hans_style as hans
+from trainscanner.converter import film
+from trainscanner.converter import helix
+from trainscanner.converter import rect
+from trainscanner.converter import hans_style as hans
+from trainscanner.converter import movie
 from tiledimage.cachedimage import CachedImage
-from ts_conv import movie
 
 # options handler
 import sys
@@ -191,7 +191,7 @@ def main():
     translator = QTranslator(app)
     path = os.path.dirname(rect.__file__)
     if QLocale.system().language() == QLocale("ja"):
-        translator.load(path + "/i18n/trainscanner_ja")
+        translator.load(path + "/../i18n/trainscanner_ja")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()
