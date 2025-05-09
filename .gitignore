@@ -12,3 +12,6 @@ __pycache__
 dist/
 
 OLD/
+build/
+
+trainscanner.spec
