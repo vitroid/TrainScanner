@@ -5,6 +5,7 @@
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QApplication,
     QPushButton,
     QCheckBox,
@@ -13,8 +14,9 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QButtonGroup,
     QLabel,
+    QFrame,
 )
-from PyQt6.QtGui import QPalette, QPainter
+from PyQt6.QtGui import QPalette, QPainter, QIcon
 from PyQt6.QtCore import QTranslator, QLocale, Qt
 import cv2
 import numpy as np
@@ -32,7 +34,7 @@ from trainscanner.converter import film
 from trainscanner.converter import helix
 from trainscanner.converter import rect
 from trainscanner.converter import hans_style as hans
-from trainscanner.converter import movie
+from trainscanner.converter import movie, movie2
 from tiledimage.cachedimage import CachedImage
 
 # options handler
@@ -61,14 +63,19 @@ class SettingsGUI(QWidget):
         # ラジオボタングループの作成
         self.image_type_group = QButtonGroup(self)
         self.btn_finish_none = QRadioButton(self.tr("Do nothing"))
+        self.btn_finish_none.setChecked(True)  # デフォルトでチェック
         self.btn_finish_helix = QRadioButton(self.tr("Make a helical image"))
         self.btn_finish_rect = QRadioButton(self.tr("Make a rectangular image"))
         self.btn_finish_hans = QRadioButton(self.tr("Make a Hans-style image"))
         self.btn_finish_movie = QRadioButton(self.tr("Make a scrolling movie"))
+        self.btn_finish_movie2 = QRadioButton(
+            self.tr("Make a scrolling movie (Yamako style)")
+        )
 
         # ffmpegの確認
         self.has_ffmpeg = shutil.which("ffmpeg") is not None
         self.btn_finish_movie.setEnabled(self.has_ffmpeg)
+        self.btn_finish_movie2.setEnabled(self.has_ffmpeg)
         if not self.has_ffmpeg:
             self.btn_finish_movie.setToolTip(
                 self.tr(
@@ -81,11 +88,46 @@ class SettingsGUI(QWidget):
         self.image_type_group.addButton(self.btn_finish_rect)
         self.image_type_group.addButton(self.btn_finish_hans)
         self.image_type_group.addButton(self.btn_finish_movie)
+        self.image_type_group.addButton(self.btn_finish_movie2)
         finish_layout.addWidget(self.btn_finish_none)
         finish_layout.addWidget(self.btn_finish_helix)
         finish_layout.addWidget(self.btn_finish_rect)
         finish_layout.addWidget(self.btn_finish_hans)
         finish_layout.addWidget(self.btn_finish_movie)
+        finish_layout.addWidget(self.btn_finish_movie2)
+        # 水平線を追加
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
+        finish_layout.addWidget(line)
+
+        # 矢印ボタンとテキストのレイアウト
+        arrow_layout = QHBoxLayout()
+
+        # 矢印ラジオボタングループの作成
+        self.arrow_group = QButtonGroup(self)
+
+        # 左向き矢印ボタン
+        self.btn_left = QPushButton("←")
+        self.btn_left.setFixedWidth(50)
+        self.btn_left.setCheckable(True)  # チェック可能なボタンに
+        self.btn_left.setChecked(True)  # デフォルトで選択
+        self.arrow_group.addButton(self.btn_left)
+        arrow_layout.addWidget(self.btn_left)
+
+        # "Go"テキスト
+        go_label = QLabel(self.tr("Direction"))
+        go_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        arrow_layout.addWidget(go_label)
+
+        # 右向き矢印ボタン
+        self.btn_right = QPushButton("→")
+        self.btn_right.setFixedWidth(50)
+        self.btn_right.setCheckable(True)  # チェック可能なボタンに
+        self.arrow_group.addButton(self.btn_right)
+        arrow_layout.addWidget(self.btn_right)
+
+        finish_layout.addLayout(arrow_layout)
 
         self.pbar = QProgressBar()
         self.pbar.setValue(0)
@@ -97,6 +139,7 @@ class SettingsGUI(QWidget):
 
     def start_process(self):
         logger = logging.getLogger()
+        head_right = self.btn_right.isChecked()
         self.pbar.setValue(0)
         if self.filename[-6:] == ".pngs/":
             self.filename = self.filename[:-1]
@@ -120,16 +163,20 @@ class SettingsGUI(QWidget):
             cv2.imwrite(file_name + ".helix.png", himg)
         elif self.btn_finish_rect.isChecked():
             self.pbar.setValue(4)
-            rimg = rect.rectify(img)
+            rimg = rect.rectify(img, head_right=head_right)
             self.pbar.setValue(5)
             cv2.imwrite(file_name + ".rect.png", rimg)
         elif self.btn_finish_movie.isChecked():
             self.pbar.setValue(4)
-            movie.make_movie(file_name)
+            movie.make_movie(file_name, head_right=head_right)
+            self.pbar.setValue(5)
+        elif self.btn_finish_movie2.isChecked():
+            self.pbar.setValue(4)
+            movie2.make_movie(file_name, head_right=head_right)
             self.pbar.setValue(5)
         elif self.btn_finish_hans.isChecked():
             self.pbar.setValue(4)
-            hansimg = hans.hansify(img)
+            hansimg = hans.hansify(img, head_right=head_right)
             self.pbar.setValue(5)
             cv2.imwrite(file_name + ".hans.png", hansimg)
         elif self.btn_finish_none.isChecked():
@@ -185,7 +232,7 @@ import pkgutil
 
 def main():
     logging.basicConfig(
-        level=logging.WARN, format="%(asctime)s %(levelname)s %(message)s"
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
     app = QApplication(sys.argv)
     translator = QTranslator(app)
