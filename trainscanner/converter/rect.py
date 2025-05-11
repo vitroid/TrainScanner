@@ -6,7 +6,7 @@ import numpy as np
 import click
 
 
-def rectify(img, rows=None, gap=3):  # gap in percent
+def rectify(img, rows=None, gap=3, head_right=True):  # gap in percent
     h, w = img.shape[0:2]
 
     if rows is not None:
@@ -25,47 +25,16 @@ def rectify(img, rows=None, gap=3):  # gap in percent
     canvas = np.zeros((hg * rows, ww, 3))
     canvas[:, :, :] = 255  # white
     for i in range(rows):
-        we = (i + 1) * ww
+        if head_right:
+            ws = (rows - i - 1) * ww
+            we = (rows - i) * ww
+        else:
+            ws = i * ww
+            we = (i + 1) * ww
         if w < we:
             we = w
-        canvas[i * hg : i * hg + h, 0:, :] = img[:, i * ww : we, :]
+        canvas[i * hg : i * hg + h, 0:, :] = img[:, ws:we, :]
     return canvas
-
-
-def prepare_parser():
-    parser = argparse.ArgumentParser(
-        description="Helicify",
-        fromfile_prefix_chars="@",
-    )
-    parser.add_argument(
-        "-g",
-        "--gap",
-        type=int,
-        metavar="x",
-        default=0,
-        dest="gap",
-        help="Add gaps of x %% between the rows.",
-    )
-    parser.add_argument(
-        "-r",
-        "--rows",
-        type=int,
-        metavar="x",
-        default=None,
-        dest="rows",
-        help="Number of rows.",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        metavar="outfilename",
-        default="",
-        dest="output",
-        help="Output file name.",
-    )
-    parser.add_argument("filename", type=str, help="Image file name.")
-    return parser
 
 
 @click.command()
@@ -73,9 +42,10 @@ def prepare_parser():
 @click.option("--output", "-o", help="出力ファイルのパス")
 @click.option("--rows", "-r", type=int, default=None, help="行数")
 @click.option("--gap", "-g", type=int, default=0, help="マージン")
-def main(image_path, output, rows, gap):
+@click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
+def main(image_path, output, rows, gap, head_right):
     img = cv2.imread(image_path)
-    canvas = rectify(img, rows, gap)
+    canvas = rectify(img, rows, gap, head_right)
     if output:
         cv2.imwrite(output, canvas)
     else:
