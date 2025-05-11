@@ -3,6 +3,9 @@
 PIP=pip3
 PYTHON=python3
 
+# バージョン番号を取得
+VERSION := $(shell poetry version -s)
+
 all: #macapp install #macapp-personally
 	echo There is no 'all' to be built for now.
 
@@ -14,16 +17,16 @@ test-deploy: build
 test-install:
 	$(PIP) install --index-url https://test.pypi.org/simple/ trainscanner
 
-
-
 uninstall:
 	-$(PIP) uninstall -y trainscanner
 build: README.md $(wildcard trainscanner/*.py)
 	poetry build -f wheel
 
-
 deploy: build
 	poetry publish
+	git tag -a v$(VERSION) -m "Release version $(VERSION)"
+	git push origin v$(VERSION)
+
 check:
 	poetry check
 clean:
