@@ -37,7 +37,7 @@ def make_movie(image_path, output=None, duration=None, height=1080, width=1920):
     scroll_per_second = total_scroll / duration
 
     # 横スクロール用のffmpegコマンド
-    cmd = f'ffmpeg -loop 1 -r 30 -y -i {image_path} -vf "crop={movie_w}:{movie_h}:{scroll_per_second}*t:0,scale={movie_w}:{movie_h}" -pix_fmt yuv420p -t {duration} {output}'
+    cmd = f'ffmpeg -loop 1 -r 30 -y -i "{image_path}" -vf "crop={movie_w}:{movie_h}:{scroll_per_second}*t:0,scale={movie_w}:{movie_h}" -pix_fmt yuv420p -t {duration} "{output}"'
     print(cmd)
 
     subprocess.run(cmd, shell=True)
