@@ -7,7 +7,7 @@ from logging import DEBUG, WARN, basicConfig, getLogger, INFO
 import cv2
 import numpy as np
 from PyQt6.QtCore import QObject, QPoint, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QImage, QPainter, QPixmap
+from PyQt6.QtGui import QImage, QPainter, QPixmap, QPen
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -16,7 +16,9 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QVBoxLayout,
+    QHBoxLayout,
     QWidget,
+    QGroupBox,
 )
 
 # from QTiledImage import QTiledImage
@@ -70,11 +72,15 @@ class ExtensibleCanvasWidget(QLabel):
     def __init__(self, parent=None, preview_ratio=1.0):
         super(ExtensibleCanvasWidget, self).__init__(parent)
         self.preview = ScaledCanvas(scale=preview_ratio)
+        self.draw_complete = False
+        self.left_edge = 0
+        self.right_edge = 0
+        self.dragging = False
+        self.drag_edge = None
+        self.setMouseTracking(True)
+        self.drag_threshold = 20  # ドラッグ可能な領域の幅
 
     def updatePixmap(self, pos, image):
-        # self.count += 1
-        # if self.count == 7:
-        #    self.count = 0
         self.preview.put_image(pos, image)
         fullimage = self.preview.get_image()[:, :, ::-1].copy()  # reverse order
         h, w = fullimage.shape[:2]
@@ -82,6 +88,72 @@ class ExtensibleCanvasWidget(QLabel):
         qimage = QImage(fullimage.data, w, h, w * 3, QImage.Format.Format_RGB888)
         self.setPixmap(QPixmap.fromImage(qimage))
         self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.draw_complete and self.pixmap():
+            painter = QPainter(self)
+            # 長方形を描画
+            painter.setPen(QPen(Qt.GlobalColor.red, 2))
+            painter.drawRect(
+                int(self.left_edge),
+                0,
+                int(self.right_edge - self.left_edge),
+                self.height(),
+            )
+            # 垂直線を太く描画
+            painter.setPen(QPen(Qt.GlobalColor.red, 4))
+            painter.drawLine(int(self.left_edge), 0, int(self.left_edge), self.height())
+            painter.drawLine(
+                int(self.right_edge), 0, int(self.right_edge), self.height()
+            )
+            painter.end()
+
+    def setDrawComplete(self, complete):
+        self.draw_complete = complete
+        if complete:
+            self.left_edge = 0
+            self.right_edge = self.width()
+        self.update()
+
+    def mousePressEvent(self, event):
+        if not self.draw_complete:
+            return
+        x = int(event.position().x())
+        # 左端の近くをクリックした場合
+        if abs(x - self.left_edge) < self.drag_threshold:
+            self.dragging = True
+            self.drag_edge = "left"
+        # 右端の近くをクリックした場合
+        elif abs(x - self.right_edge) < self.drag_threshold:
+            self.dragging = True
+            self.drag_edge = "right"
+
+    def mouseMoveEvent(self, event):
+        if not self.draw_complete:
+            return
+        x = int(event.position().x())
+        if self.dragging:
+            if self.drag_edge == "left":
+                self.left_edge = max(0, min(x, self.right_edge - self.drag_threshold))
+            else:  # right
+                self.right_edge = min(
+                    self.width(), max(x, self.left_edge + self.drag_threshold)
+                )
+            self.update()
+        else:
+            # カーソル形状の変更
+            if (
+                abs(x - self.left_edge) < self.drag_threshold
+                or abs(x - self.right_edge) < self.drag_threshold
+            ):
+                self.setCursor(Qt.CursorShape.SizeHorCursor)
+            else:
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+
+    def mouseReleaseEvent(self, event):
+        self.dragging = False
+        self.drag_edge = None
 
 
 class StitcherUI(QDialog):
@@ -91,7 +163,7 @@ class StitcherUI(QDialog):
         super(StitcherUI, self).__init__(parent)
         self.setWindowTitle("Stitcher Preview")
         stitcher = stitch.Stitcher(argv=argv)
-        tilesize = (128, 512)  # can be smaller for smaller machine
+        tilesize = (128, 512)  # can be smaller for smaller working memory
         cachesize = 10
         stitcher.set_canvas(
             ci.CachedImage(
@@ -155,7 +227,8 @@ class StitcherUI(QDialog):
             sys.exit(1)  # terminated
 
     def finishIt(self):
-        self.btnStop.setText("Finished")
+        self.btnStop.setText("Crop + Finish")
+        self.largecanvas.setDrawComplete(True)
 
     def closeEvent(self, event):
         self.stop_thread()
