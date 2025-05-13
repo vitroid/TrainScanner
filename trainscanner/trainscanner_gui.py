@@ -664,8 +664,6 @@ class SettingsGUI(QWidget):
         # dir = os.path.dirname(self.filename)
         # base = os.path.basename(self.filename)
         # self.filename = "sample3.mov"
-        self.editor.setMaximumHeight(826)
-        self.editor.setMaximumWidth(1210)
         self.editor.show()
 
         # we shall set editor's values here.
@@ -803,7 +801,7 @@ class SettingsGUI(QWidget):
         ]
 
         matcher = pass1_gui.MatcherUI(argv, False)  # do not terminate
-        matcher.exec()
+        matcher.exec_()
         if matcher.terminated:
             matcher = None
             return
@@ -819,7 +817,7 @@ class SettingsGUI(QWidget):
         file_name = stitcher.stitcher.outfilename
         stitcher.setMaximumHeight(500)
         stitcher.showMaximized()
-        stitcher.exec()
+        stitcher.exec_()
         stitcher = None
 
     def closeEvent(self, event):
@@ -887,6 +885,10 @@ class EditorGUI(QWidget):
         glayout.addLayout(layout)
         self.setLayout(glayout)
         self.setWindowTitle("Editor")
+        
+        # Set minimum size instead of fixed size
+        self.setMinimumSize(800, 600)
+        
         self.show_snapshots()
 
     def thumbtransformer(self, cv2image):
@@ -934,7 +936,7 @@ class EditorGUI(QWidget):
         self.crop_slider = rs.QRangeSlider(
             splitterWidth=10, vertical=True
         )  # スライダの向き
-        self.crop_slider.setFixedWidth(15)
+        self.crop_slider.setMinimumWidth(15)
         self.crop_slider.setStyleSheet(cropCSS)
         self.crop_slider.setDrawValues(False)
         self.crop_slider.startValueChanged.connect(self.croptop_slider_on_draw)
@@ -946,7 +948,7 @@ class EditorGUI(QWidget):
         self.sliderL = rs.QRangeSlider(
             splitterWidth=10, vertical=True
         )  # スライダの向き
-        self.sliderL.setFixedWidth(15)
+        self.sliderL.setMinimumWidth(15)
         self.sliderL.setStyleSheet(perspectiveCSS)
         self.sliderL.setDrawValues(False)
         self.sliderL.startValueChanged.connect(self.sliderTL_on_draw)
@@ -956,7 +958,7 @@ class EditorGUI(QWidget):
         self.sliderR = rs.QRangeSlider(
             splitterWidth=10, vertical=True
         )  # スライダの向き
-        self.sliderR.setFixedWidth(15)
+        self.sliderR.setMinimumWidth(15)
         self.sliderR.setStyleSheet(perspectiveCSS)
         self.sliderR.setDrawValues(False)
         self.sliderR.startValueChanged.connect(self.sliderTR_on_draw)
@@ -966,9 +968,7 @@ class EditorGUI(QWidget):
         raw_image_layout = QVBoxLayout()
         self.raw_image_pane = DrawableLabel()
         self.raw_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.raw_image_pane.setFixedWidth(self.preview_size)
-        self.raw_image_pane.setFixedHeight(self.preview_size)
-        # raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignmentFlag.AlignCenter)
+        self.raw_image_pane.setMinimumSize(self.preview_size, self.preview_size)
         raw_image_layout.addWidget(self.raw_image_pane)
         raw_image_layout.setAlignment(
             self.raw_image_pane, Qt.AlignmentFlag.AlignHCenter
@@ -981,8 +981,7 @@ class EditorGUI(QWidget):
         processed_image_layout = QVBoxLayout()
         self.processed_pane = MyLabel(func=self.show_snapshots)
         self.processed_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.processed_pane.setFixedWidth(self.preview_size)
-        self.processed_pane.setFixedHeight(self.preview_size)
+        self.processed_pane.setMinimumSize(self.preview_size, self.preview_size)
         processed_image_layout.addWidget(self.processed_pane)
         processed_image_layout.setAlignment(
             self.processed_pane, Qt.AlignmentFlag.AlignTop
@@ -1165,12 +1164,19 @@ class EditorGUI(QWidget):
         height, width = image.shape[0:2]
         qImg = self.cv2toQImage(image)
         pixmap = QPixmap(qImg)
+        
+        # Get the current widget size
+        widget_width = widget.width()
+        widget_height = widget.height()
+        
+        # Scale the image to fit the widget while maintaining aspect ratio
         if height > width:
-            if height > self.preview_size:
-                pixmap = pixmap.scaledToHeight(self.preview_size)
+            if height > widget_height:
+                pixmap = pixmap.scaledToHeight(widget_height, Qt.TransformationMode.SmoothTransformation)
         else:
-            if width > self.preview_size:
-                pixmap = pixmap.scaledToWidth(self.preview_size)
+            if width > widget_width:
+                pixmap = pixmap.scaledToWidth(widget_width, Qt.TransformationMode.SmoothTransformation)
+                
         widget.setPixmap(pixmap)
         # give hints to DrawableLabel() and MyLabel()
         widget.perspective = self.perspective
@@ -1178,8 +1184,8 @@ class EditorGUI(QWidget):
         widget.slitpos = self.slitpos
         w = pixmap.width()
         h = pixmap.height()
-        x = (self.preview_size - w) // 2
-        y = (self.preview_size - h) // 2
+        x = (widget_width - w) // 2
+        y = (widget_height - h) // 2
         widget.geometry = x, y, w, h
 
     def slit_slider_on_draw(self):
@@ -1200,6 +1206,10 @@ class EditorGUI(QWidget):
         self.settings.reset_input()
         self.stop_thread()
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.show_snapshots()
+        
     #    self.asyncimageloader.stop()
 
     # This will be the trigger for the first rendering
@@ -1235,7 +1245,7 @@ def main():
     se = SettingsGUI()
     se.show()
     se.raise_()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
