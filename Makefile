@@ -25,9 +25,11 @@ uninstall:
 build: README.md $(wildcard trainscanner/*.py)
 	poetry build -f wheel
 
-deploy: build
+tag:
+	-git tag -a v$(VERSION) -m "Release version $(VERSION)"
+
+deploy: build tag
 	poetry publish
-	git tag -a v$(VERSION) -m "Release version $(VERSION)"
 	git push origin v$(VERSION)
 
 check:
