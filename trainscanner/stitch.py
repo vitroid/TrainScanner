@@ -268,7 +268,6 @@ class Stitcher:
             logger.info(num / den)
         # while result is None:
         #    result = self.onestep()
-        self.after()
         # self.canvas.done()
 
     def loop(self):
@@ -291,7 +290,7 @@ class Stitcher:
             return False
         return True  # not end
 
-    def after(self):
+    def make_a_big_picture(self):
         """
         This is an optional process.
         """
@@ -321,3 +320,4 @@ if __name__ == "__main__":
     st.set_canvas(canvas)
 
     st.stitch()
+    st.make_a_big_picture()

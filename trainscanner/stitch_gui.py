@@ -60,7 +60,7 @@ class Renderer(QObject):
             self.progress.emit(num * 100 // den)
         # completed
         self.progress.emit(100)
-        self.stitcher.after()
+        # self.stitcher.after()
         self.finished.emit()
 
     def stop(self):
@@ -71,22 +71,44 @@ class Renderer(QObject):
 class ExtensibleCanvasWidget(QLabel):
     def __init__(self, parent=None, preview_ratio=1.0):
         super(ExtensibleCanvasWidget, self).__init__(parent)
-        self.preview = ScaledCanvas(scale=preview_ratio)
-        self.draw_complete = False
+        self.scaled_canvas = ScaledCanvas(scale=preview_ratio)
+
+    def updatePixmap(self, pos, image):
+        self.scaled_canvas.put_image(pos, image)
+        fullimage = self.scaled_canvas.get_image()[:, :, ::-1].copy()  # reverse order
+        h, w = fullimage.shape[:2]
+        self.resize(w, h)
+        qimage = QImage(fullimage.data, w, h, w * 3, QImage.Format.Format_RGB888)
+        self.setPixmap(QPixmap.fromImage(qimage))
+        self.update()
+
+
+class ExtensiblecroppingCanvasWidget(ExtensibleCanvasWidget):
+    def __init__(self, parent=None, preview_ratio=1.0):
+        super(ExtensiblecroppingCanvasWidget, self).__init__(parent)
         self.left_edge = 0
         self.right_edge = 0
         self.dragging = False
         self.drag_edge = None
         self.setMouseTracking(True)
         self.drag_threshold = 20  # ドラッグ可能な領域の幅
+        self.draw_complete = False
 
-    def updatePixmap(self, pos, image):
-        self.preview.put_image(pos, image)
-        fullimage = self.preview.get_image()[:, :, ::-1].copy()  # reverse order
-        h, w = fullimage.shape[:2]
-        self.resize(w, h)
-        qimage = QImage(fullimage.data, w, h, w * 3, QImage.Format.Format_RGB888)
-        self.setPixmap(QPixmap.fromImage(qimage))
+    def setDrawComplete(self, final_image=None):
+        self.draw_complete = True
+        if final_image is not None:
+            h, w = final_image.shape[:2]
+            self.resize(w, h)
+            # BGRからRGBに変換し、メモリを連続したバイト列に変換
+            rgb_image = cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB)
+            bytes_per_line = 3 * w
+            qimage = QImage(
+                rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888
+            )
+            self.setPixmap(QPixmap.fromImage(qimage))
+
+        self.left_edge = 0
+        self.right_edge = self.width()
         self.update()
 
     def paintEvent(self, event):
@@ -108,13 +130,6 @@ class ExtensibleCanvasWidget(QLabel):
                 int(self.right_edge), 0, int(self.right_edge), self.height()
             )
             painter.end()
-
-    def setDrawComplete(self, complete):
-        self.draw_complete = complete
-        if complete:
-            self.left_edge = 0
-            self.right_edge = self.width()
-        self.update()
 
     def mousePressEvent(self, event):
         if not self.draw_complete:
@@ -172,11 +187,11 @@ class StitcherUI(QDialog):
         )
         self.stitcher = stitcher
         # determine the shrink ratio to avoid too huge preview
-        preview_ratio = 1.0
+        self.preview_ratio = 1.0
         if stitcher.dimen[0] > 10000:
-            preview_ratio = 10000.0 / stitcher.dimen[0]
-        if stitcher.dimen[1] * preview_ratio > 500:
-            preview_ratio = 500.0 / stitcher.dimen[1]
+            self.preview_ratio = 10000.0 / stitcher.dimen[0]
+        if stitcher.dimen[1] * self.preview_ratio > 500:
+            self.preview_ratio = 500.0 / stitcher.dimen[1]
         self.terminate = terminate
         self.thread = QThread()
         self.thread.start()
@@ -186,17 +201,19 @@ class StitcherUI(QDialog):
 
         # determine the window size
         width, height = stitcher.dimen[:2]
-        height = int(height * preview_ratio)
+        height = int(height * self.preview_ratio)
         # determine the preview area size
-        width = int(width * preview_ratio)
+        width = int(width * self.preview_ratio)
 
         self.scrollArea = QScrollArea()
         # self.scrollArea.setMaximumHeight(1000)
-        self.largecanvas = ExtensibleCanvasWidget(preview_ratio=preview_ratio)
+        self.largecanvas = ExtensiblecroppingCanvasWidget(
+            preview_ratio=self.preview_ratio
+        )
         # print(width,height)
         # self.worker.frameRendered.connect(self.largecanvas.updatePixmap)
         self.worker.tileRendered.connect(self.largecanvas.updatePixmap)
-        self.worker.finished.connect(self.finishIt)
+        self.worker.finished.connect(self.stitch_finished)
         self.worker.moveToThread(self.thread)
         self.thread_invoker.connect(self.worker.task)
         self.thread_invoker.emit()
@@ -209,7 +226,7 @@ class StitcherUI(QDialog):
 
         self.btnStop = QPushButton("Stop")
         self.btnStop.clicked.connect(lambda: self.worker.stop())
-        self.btnStop.clicked.connect(self.terminateIt)
+        self.btnStop.clicked.connect(self.stopbutton_pressed)
 
         self.progress = QProgressBar(self)
         self.worker.progress.connect(self.progress.setValue)
@@ -221,14 +238,43 @@ class StitcherUI(QDialog):
         self.layout.addStretch(1)
         self.setLayout(self.layout)
 
-    def terminateIt(self):
+    def crop_finished(self):
+        # save the final image
+        left_edge = int(self.largecanvas.left_edge / self.preview_ratio)
+        right_edge = int(self.largecanvas.right_edge / self.preview_ratio)
+        # 読みなおす
+        big_image = self.stitcher.canvas.get_image()
+        cropped_image = big_image[:, left_edge:right_edge]
+        file_name = self.stitcher.outfilename
+        cv2.imwrite(file_name, cropped_image)
+
+        self.stopbutton_pressed()
+
+    def stopbutton_pressed(self):
         self.close()
         if self.terminate:
             sys.exit(1)  # terminated
 
-    def finishIt(self):
+    def stitch_finished(self):
+        # ボタンの機能を変える。
         self.btnStop.setText("Crop + Finish")
-        self.largecanvas.setDrawComplete(True)
+        self.btnStop.clicked.connect(self.crop_finished)
+
+        # ここで、tiledimageを読みこみ、スケールし、canvasをさしかえる。
+        # ただ、cropping枠を変形した時にどこでそれを保存するのか。
+        file_name = self.stitcher.outfilename
+        # It costs high when using the CachedImage.
+        big_image = self.stitcher.canvas.get_image()
+        cv2.imwrite(file_name, big_image)
+        scaled_img = cv2.resize(
+            big_image,
+            None,
+            fx=self.preview_ratio,
+            fy=self.preview_ratio,
+        )
+        self.largecanvas.setDrawComplete(scaled_img)
+
+        self.stop_thread()
 
     def closeEvent(self, event):
         self.stop_thread()
@@ -238,7 +284,7 @@ class StitcherUI(QDialog):
         self.worker.stop()
         self.thread.quit()
         self.thread.wait()
-        logger.debug("Stitch_gui thread stopped.")
+        logger.info("Stitch_gui thread stopped.")
 
 
 def main():
