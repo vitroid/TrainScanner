@@ -13,6 +13,12 @@ pip install trainscanner
 trainscanner
 ```
 
+開発中の版を試してみたい場合はこちら。
+
+```
+pip install git+https://github.com/vitroid/TrainScanner.git
+```
+
 ## ドキュメント
 
 [Wiki](https://github.com/vitroid/TrainScanner/wiki)

@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.18.0
+Version 0.19.0
 
 # TrainScanner の使い方
 
@@ -11,6 +11,12 @@ Terminal から以下のコマンドでインストール・起動して下さ�
 ```shell
 pip install trainscanner
 trainscanner
+```
+
+開発中の版を試してみたい場合はこちら。
+
+```
+pip install git+https://github.com/vitroid/TrainScanner.git
 ```
 
 ## ドキュメント
