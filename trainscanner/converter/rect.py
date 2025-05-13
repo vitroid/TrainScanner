@@ -44,6 +44,9 @@ def rectify(img, rows=None, gap=3, head_right=True):  # gap in percent
 @click.option("--gap", "-g", type=int, default=0, help="マージン")
 @click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
 def main(image_path, output, rows, gap, head_right):
+    """
+    Fold a train image into a stack of images
+    """
     img = cv2.imread(image_path)
     canvas = rectify(img, rows, gap, head_right)
     if output:

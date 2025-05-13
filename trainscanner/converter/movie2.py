@@ -8,12 +8,23 @@ import logging
 
 
 def make_movie(
-    image_path, head_right=False, output=None, duration=None, height=1080, width=1920
+    image_path: str,
+    head_right: bool = False,
+    output: str = None,
+    duration: float = None,
+    height: int = 1080,
+    width: int = 1920,
+    fps: int = 30,
+    alternating: bool = False,
+    png: bool = False,
+    bitrate: int = 8000000,
+    accel: bool = False,
 ):
-    logger = logging.getLogger()
     """横スクロール動画を生成します。"""
+    logger = logging.getLogger()
+
     if not output:
-        output = image_path.replace(".png", ".mp4")
+        output = image_path.replace(".png", ".ymk.mp4")
 
     image = Image.open(image_path)
     iw, ih = image.size
@@ -37,27 +48,47 @@ def make_movie(
 
     # スクロールの総移動量を計算
     total_scroll = scaled_iw - width
-    # 1秒あたりの移動量を計算
-    scroll_per_second = total_scroll / duration
+    # 全フレーム数
+    total_frames = int(duration * fps)
 
     single_frame = Image.new("RGB", (width, height), (255, 255, 255))
+
+    if png:
+        ext = "png"
+    else:
+        ext = "jpg"
+
+    frame_pointers = [0] * total_frames
+    if accel:
+
+        # 等加速度
+        # 加速度aとすると、a (total_frames/2)**2 = total_scroll/2
+        # よって、
+        a = total_scroll / (total_frames / 2) ** 2 / 2
+        for frame in range(total_frames // 2):
+            current_scroll = int(a * frame**2)
+            frame_pointers[frame] = current_scroll
+            frame_pointers[total_frames - 1 - frame] = total_scroll - current_scroll
+    else:
+        scroll_per_frame = total_scroll / total_frames
+        for frame in range(total_frames):
+            # 左から右へスクロールする場合
+            current_scroll = int(frame * scroll_per_frame)
+            frame_pointers[frame] = current_scroll
+
+    if head_right:
+        frame_pointers = frame_pointers[::-1]
 
     # 一時ディレクトリを作成して管理
     with tempfile.TemporaryDirectory() as temp_dir:
         # フレームレート
-        fps = 30
         total_frames = int(duration * fps)
 
         # 各フレームを生成
         for frame in range(total_frames):
             logger.info(f"Processing frame {frame} of {total_frames}")
             # 現在のスクロール位置を計算
-            if head_right:
-                # 右から左へスクロールする場合
-                current_scroll = total_scroll - int(scroll_per_second * (frame / fps))
-            else:
-                # 左から右へスクロールする場合
-                current_scroll = int(scroll_per_second * (frame / fps))
+            current_scroll = frame_pointers[frame]
 
             single_frame.paste(thumbnail, (0, 0))
 
@@ -80,11 +111,30 @@ def make_movie(
             )
 
             # フレームを保存
-            frame_path = os.path.join(temp_dir, f"frame_{frame:06d}.png")
+            frame_path = os.path.join(temp_dir, f"frame_{frame:06d}.{ext}")
             single_frame.save(frame_path)
 
-        # ffmpegで動画を生成
-        cmd = f'ffmpeg -y -framerate {fps} -i "{temp_dir}/frame_%06d.png" -c:v libx264 -pix_fmt yuv420p "{output}"'
+            # -loop_alternateの場合は、テンポラリ画像フォルダーに逆順の画像を作成する。
+            # 実際に作成するのではなく、シンボリックリンクを作成する。
+            if alternating:
+                os.symlink(
+                    frame_path,
+                    os.path.join(
+                        temp_dir, f"frame_{total_frames*2-1 - frame:06d}.{ext}"
+                    ),
+                )
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            f"-framerate {fps}",
+            f"-i {temp_dir}/frame_%06d.{ext}",
+            "-c:v libx264",
+            "-pix_fmt yuv420p",
+            f"-b:v {bitrate}",
+            output,
+        ]
+        cmd = " ".join(cmd)
         print(cmd)
         subprocess.run(cmd, shell=True)
 
@@ -96,8 +146,40 @@ def make_movie(
 @click.option("--height", "-h", type=int, default=1080, help="目標の高さ")
 @click.option("--width", "-w", type=int, default=1920, help="目標の幅")
 @click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
-def main(image_path, head_right, output, duration, height, width):
-    make_movie(image_path, head_right, output, duration, height, width)
+@click.option("--fps", "-r", type=int, default=30, help="フレームレート")
+@click.option("--bitrate", "-b", type=int, default=8000000, help="ビットレート")
+@click.option("--png", "-p", is_flag=True, help="中間ファイルをpngにする")
+@click.option("--alternating", "-a", is_flag=True, help="前進+後退")
+@click.option("--accel", "-A", is_flag=True, help="加速")
+def main(
+    image_path,
+    head_right,
+    output,
+    duration,
+    height,
+    width,
+    fps,
+    alternating,
+    png,
+    bitrate,
+    accel,
+):
+    """
+    Make a movie with a thumbnailfrom a train image
+    """
+    make_movie(
+        image_path,
+        head_right,
+        output,
+        duration,
+        height,
+        width,
+        fps,
+        alternating,
+        png,
+        bitrate,
+        accel,
+    )
 
 
 if __name__ == "__main__":

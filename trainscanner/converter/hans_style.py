@@ -56,6 +56,9 @@ def hansify(img, head_right=True, rows=0, overlap=10):
 @click.option("--overlap", "-l", type=int, default=5, help="重複率")
 @click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
 def main(image_path, output, rows, overlap, head_right):
+    """
+    Fold a train image into a stack of images like Hans Ruijter's style
+    """
     img = cv2.imread(image_path)
     canvas = hansify(img, head_right, rows, overlap)
     if output:

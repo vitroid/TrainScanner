@@ -30,11 +30,11 @@ import subprocess
 import shutil
 
 # final image tranformation
-from trainscanner.converter import film
+from trainscanner.converter import film, scroll
 from trainscanner.converter import helix
 from trainscanner.converter import rect
 from trainscanner.converter import hans_style as hans
-from trainscanner.converter import movie, movie2
+from trainscanner.converter import movie2
 from tiledimage.cachedimage import CachedImage
 
 # options handler
@@ -168,7 +168,7 @@ class SettingsGUI(QWidget):
             cv2.imwrite(file_name + ".rect.png", rimg)
         elif self.btn_finish_movie.isChecked():
             self.pbar.setValue(4)
-            movie.make_movie(file_name, head_right=head_right)
+            scroll.make_movie(file_name, head_right=head_right)
             self.pbar.setValue(5)
         elif self.btn_finish_movie2.isChecked():
             self.pbar.setValue(4)

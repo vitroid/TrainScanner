@@ -4,11 +4,18 @@ import click
 
 
 def make_movie(
-    image_path, head_right=False, output=None, duration=None, height=1080, width=1920
+    image_path,
+    head_right=False,
+    output=None,
+    duration=None,
+    height=1080,
+    width=1920,
+    fps=30,
+    bitrate=8000000,
 ):
     """横スクロール動画を生成します。"""
     if not output:
-        output = image_path.replace(".png", ".mp4")
+        output = image_path.replace(".png", ".scroll.mp4")
 
     image = Image.open(image_path)
     iw, ih = image.size
@@ -41,7 +48,20 @@ def make_movie(
         scroll_expression = f"{scroll_per_second}*t"
 
     # 横スクロール用のffmpegコマンド
-    cmd = f'ffmpeg -loop 1 -r 30 -y -i "{image_path}" -vf "scale={virtual_width}:{movie_h},crop={movie_w}:{movie_h}:{scroll_expression}:0" -pix_fmt yuv420p -t {duration} "{output}"'
+    cmd = [
+        "ffmpeg",
+        "-loop 1",
+        f"-r {fps}",
+        "-y",
+        f"-i {image_path}",
+        f"-vf scale={virtual_width}:{movie_h},crop={movie_w}:{movie_h}:{scroll_expression}:0",
+        "-pix_fmt yuv420p",
+        f"-b:v {bitrate}",
+        f"-c:v libx264",
+        f"-t {duration}",
+        output,
+    ]
+    cmd = " ".join(cmd)
     print(cmd)
 
     subprocess.run(cmd, shell=True)
@@ -54,8 +74,13 @@ def make_movie(
 @click.option("--height", "-h", type=int, default=1080, help="目標の高さ")
 @click.option("--width", "-w", type=int, default=1920, help="目標の幅")
 @click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
-def main(image_path, head_right, output, duration, height, width):
-    make_movie(image_path, head_right, output, duration, height, width)
+@click.option("--fps", "-r", type=int, default=30, help="フレームレート")
+@click.option("--bitrate", "-b", type=int, default=8000000, help="ビットレート")
+def main(image_path, head_right, output, duration, height, width, fps, bitrate):
+    """
+    Make a movie from a train image
+    """
+    make_movie(image_path, head_right, output, duration, height, width, fps, bitrate)
 
 
 if __name__ == "__main__":

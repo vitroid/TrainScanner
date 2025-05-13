@@ -95,6 +95,9 @@ def filmify(img, label=""):
 @click.option("--output", "-o", help="出力ファイルのパス")
 @click.option("--creative_commons_sign", "-c", help="Creative Commons sign")
 def main(image_path, output, creative_commons_sign):
+    """
+    Add film perforations to the image
+    """
     img = cv2.imread(image_path)
     canvas = filmify(img, label=creative_commons_sign)
     if output:

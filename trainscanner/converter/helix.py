@@ -116,6 +116,9 @@ def add_margin(img, margin):
 @click.option("--margin", "-m", type=float, default=0, help="マージン")
 @click.option("--aspect", "-a", type=float, default=2.0**0.5, help="アスペクト比")
 def main(image_path, output, margin, aspect):
+    """
+    Make a helical strip from a train image
+    """
     logging.basicConfig(level=logging.INFO)
     img = cv2.imread(image_path)
     canvas2 = helicify(img, aspect=aspect)
