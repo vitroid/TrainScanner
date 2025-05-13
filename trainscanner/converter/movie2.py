@@ -5,6 +5,7 @@ import os
 import tempfile
 import shutil
 import logging
+from tqdm import tqdm
 
 
 def make_movie(
@@ -17,7 +18,7 @@ def make_movie(
     fps: int = 30,
     alternating: bool = False,
     png: bool = False,
-    bitrate: int = 8000000,
+    bitrate: int = None,
     accel: bool = False,
 ):
     """横スクロール動画を生成します。"""
@@ -85,7 +86,7 @@ def make_movie(
         total_frames = int(duration * fps)
 
         # 各フレームを生成
-        for frame in range(total_frames):
+        for frame in tqdm(range(total_frames)):
             logger.info(f"Processing frame {frame} of {total_frames}")
             # 現在のスクロール位置を計算
             current_scroll = frame_pointers[frame]
@@ -128,11 +129,11 @@ def make_movie(
             "ffmpeg",
             "-y",
             f"-framerate {fps}",
-            f"-i {temp_dir}/frame_%06d.{ext}",
+            f"-i '{temp_dir}/frame_%06d.{ext}'",
             "-c:v libx264",
             "-pix_fmt yuv420p",
-            f"-b:v {bitrate}",
-            output,
+            f"-b:v {bitrate}" if bitrate else "",
+            f"'{output}'",
         ]
         cmd = " ".join(cmd)
         print(cmd)
@@ -147,7 +148,7 @@ def make_movie(
 @click.option("--width", "-w", type=int, default=1920, help="目標の幅")
 @click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
 @click.option("--fps", "-r", type=int, default=30, help="フレームレート")
-@click.option("--bitrate", "-b", type=int, default=8000000, help="ビットレート")
+@click.option("--bitrate", "-b", type=int, default=None, help="ビットレート")
 @click.option("--png", "-p", is_flag=True, help="中間ファイルをpngにする")
 @click.option("--alternating", "-a", is_flag=True, help="前進+後退")
 @click.option("--accel", "-A", is_flag=True, help="加速")

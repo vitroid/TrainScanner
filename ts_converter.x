@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
 
-from trainscanner.converter.converter_gui import main
+from trainscanner.converter.gui import main
 
 main()

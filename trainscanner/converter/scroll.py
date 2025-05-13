@@ -11,7 +11,7 @@ def make_movie(
     height=1080,
     width=1920,
     fps=30,
-    bitrate=8000000,
+    bitrate=None,
 ):
     """横スクロール動画を生成します。"""
     if not output:
@@ -53,13 +53,13 @@ def make_movie(
         "-loop 1",
         f"-r {fps}",
         "-y",
-        f"-i {image_path}",
+        f"-i '{image_path}'",
         f"-vf scale={virtual_width}:{movie_h},crop={movie_w}:{movie_h}:{scroll_expression}:0",
         "-pix_fmt yuv420p",
-        f"-b:v {bitrate}",
+        f"-b:v {bitrate}" if bitrate else "",
         f"-c:v libx264",
         f"-t {duration}",
-        output,
+        f"'{output}'",
     ]
     cmd = " ".join(cmd)
     print(cmd)
@@ -75,7 +75,7 @@ def make_movie(
 @click.option("--width", "-w", type=int, default=1920, help="目標の幅")
 @click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
 @click.option("--fps", "-r", type=int, default=30, help="フレームレート")
-@click.option("--bitrate", "-b", type=int, default=8000000, help="ビットレート")
+@click.option("--bitrate", "-b", type=int, default=None, help="ビットレート")
 def main(image_path, head_right, output, duration, height, width, fps, bitrate):
     """
     Make a movie from a train image
