@@ -38,7 +38,7 @@ helicify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.helix [OPTIONS] IMAGE_PATH
+Usage: helicify [OPTIONS] IMAGE_PATH
 
   Make a helical strip from a train image
 
@@ -59,7 +59,7 @@ rectify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.rect [OPTIONS] IMAGE_PATH
+Usage: rectify [OPTIONS] IMAGE_PATH
 
   Fold a train image into a stack of images
 
@@ -81,7 +81,7 @@ filmify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.film [OPTIONS] IMAGE_PATH
+Usage: filmify [OPTIONS] IMAGE_PATH
 
   Add film perforations to the image
 
@@ -102,7 +102,7 @@ hansify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.hans_style [OPTIONS] IMAGE_PATH
+Usage: hansify [OPTIONS] IMAGE_PATH
 
   Fold a train image into a stack of images like Hans Ruijter's style
 
@@ -124,7 +124,7 @@ movify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.scroll [OPTIONS] IMAGE_PATH
+Usage: movify [OPTIONS] IMAGE_PATH
 
   Make a movie from a train image
 
@@ -149,7 +149,7 @@ movify2 longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.movie2 [OPTIONS] IMAGE_PATH
+Usage: movify2 [OPTIONS] IMAGE_PATH
 
   Make a movie with a thumbnailfrom a train image
 

@@ -19,27 +19,21 @@ def add_prefix(L: list[str], prefix: str = "    "):
     return prefix + ("\n" + prefix).join(L) + "\n"
 
 
+def get_usage(command: str, short_command: str):
+    return "".join(
+        os.popen(f"python -m trainscanner.converter.{command} --help").readlines()
+    ).replace(f"python -m trainscanner.converter.{command}", short_command)
+
+
 project = toml.load("pyproject.toml")
 
 project |= {
-    "usage_hansify": "".join(
-        os.popen("python -m trainscanner.converter.hans_style --help").readlines()
-    ),
-    "usage_helicify": "".join(
-        os.popen("python -m trainscanner.converter.helix --help").readlines()
-    ),
-    "usage_filmify": "".join(
-        os.popen("python -m trainscanner.converter.film --help").readlines()
-    ),
-    "usage_rectify": "".join(
-        os.popen("python -m trainscanner.converter.rect --help").readlines()
-    ),
-    "usage_movify": "".join(
-        os.popen("python -m trainscanner.converter.scroll --help").readlines()
-    ),
-    "usage_movify2": "".join(
-        os.popen("python -m trainscanner.converter.movie2 --help").readlines()
-    ),
+    "usage_hansify": get_usage("hans_style", "hansify"),
+    "usage_helicify": get_usage("helix", "helicify"),
+    "usage_filmify": get_usage("film", "filmify"),
+    "usage_rectify": get_usage("rect", "rectify"),
+    "usage_movify": get_usage("scroll", "movify"),
+    "usage_movify2": get_usage("movie2", "movify2"),
 }
 
 # テンプレートの内容を標準入力から読み込む
