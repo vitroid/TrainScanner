@@ -116,13 +116,13 @@ class ExtensiblecroppingCanvasWidget(ExtensibleCanvasWidget):
         if self.draw_complete and self.pixmap():
             painter = QPainter(self)
             # 長方形を描画
-            painter.setPen(QPen(Qt.GlobalColor.red, 2))
-            painter.drawRect(
-                int(self.left_edge),
-                0,
-                int(self.right_edge - self.left_edge),
-                self.height(),
-            )
+            # painter.setPen(QPen(Qt.GlobalColor.red, 2))
+            # painter.drawRect(
+            #     int(self.left_edge),
+            #     0,
+            #     int(self.right_edge - self.left_edge),
+            #     self.height(),
+            # )
             # 垂直線を太く描画
             painter.setPen(QPen(Qt.GlobalColor.red, 4))
             painter.drawLine(int(self.left_edge), 0, int(self.left_edge), self.height())

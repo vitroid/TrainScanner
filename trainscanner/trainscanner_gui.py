@@ -1219,8 +1219,14 @@ def main():
     translator = QTranslator(app)
     path = os.path.dirname(trainscanner.__file__)
 
-    # 環境変数LANGから言語を取得
+    # まずLANG環境変数を確認
     lang = os.environ.get("LANG", "").split("_")[0]
+
+    # LANGが設定されていない場合はQLocaleを使用
+    if not lang:
+        locale = QLocale()
+        lang = locale.name().split("_")[0]
+
     if lang == "ja":
         translator.load(path + "/i18n/trainscanner_ja")
     elif lang == "fr":

@@ -38,6 +38,8 @@ def make_movie(
     thumbnail = image.resize((width, tn_height), Image.Resampling.LANCZOS)
 
     viewport_height = height - tn_height
+    if viewport_height < tn_height:
+        raise ValueError("viewport_height is too small")
 
     scaled_iw = iw * viewport_height // ih
 
@@ -87,7 +89,6 @@ def make_movie(
 
         # 各フレームを生成
         for frame in tqdm(range(total_frames)):
-            logger.info(f"Processing frame {frame} of {total_frames}")
             # 現在のスクロール位置を計算
             current_scroll = frame_pointers[frame]
 
