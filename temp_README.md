@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.17.0
+Version {{tool.poetry.version}}
 
 # TrainScanner の使い方
 
@@ -38,16 +38,7 @@ helicify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.helix [OPTIONS] IMAGE_PATH
-
-  Make a helical strip from a train image
-
-Options:
-  -o, --output TEXT   出力ファイルのパス
-  -m, --margin FLOAT  マージン
-  -a, --aspect FLOAT  アスペクト比
-  --help              Show this message and exit.
-
+{{ usage_helicify }}
 ```
 
 ### `rectify`: 長い画像をらせんにするツール 2
@@ -59,17 +50,7 @@ rectify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.rect [OPTIONS] IMAGE_PATH
-
-  Fold a train image into a stack of images
-
-Options:
-  -o, --output TEXT   出力ファイルのパス
-  -r, --rows INTEGER  行数
-  -g, --gap INTEGER   マージン
-  -R, --head-right    右端が先頭
-  --help              Show this message and exit.
-}}
+{{ usage_rectify }}}}
 ```
 
 ### `filmify`: 長い写真をフィルム風にするツール
@@ -81,16 +62,7 @@ filmify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.film [OPTIONS] IMAGE_PATH
-
-  Add film perforations to the image
-
-Options:
-  -o, --output TEXT               出力ファイルのパス
-  -c, --creative_commons_sign TEXT
-                                  Creative Commons sign
-  --help                          Show this message and exit.
-
+{{ usage_filmify }}
 ```
 
 ### `hansify`: 長い画像を切ってみやすくするツール
@@ -102,17 +74,7 @@ hansify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.hans_style [OPTIONS] IMAGE_PATH
-
-  Fold a train image into a stack of images like Hans Ruijter's style
-
-Options:
-  -o, --output TEXT      出力ファイルのパス
-  -r, --rows INTEGER     行数 (0で自動)
-  -l, --overlap INTEGER  重複率
-  -R, --head-right       右端が先頭
-  --help                 Show this message and exit.
-
+{{ usage_hansify }}
 ```
 
 ### `movify`: スクロール動画を生成するツール
@@ -124,20 +86,7 @@ movify longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.scroll [OPTIONS] IMAGE_PATH
-
-  Make a movie from a train image
-
-Options:
-  -o, --output TEXT      出力ファイルのパス
-  -d, --duration FLOAT   動画の長さ（秒）
-  -h, --height INTEGER   目標の高さ
-  -w, --width INTEGER    目標の幅
-  -R, --head-right       右端が先頭
-  -r, --fps INTEGER      フレームレート
-  -b, --bitrate INTEGER  ビットレート
-  --help                 Show this message and exit.
-
+{{ usage_movify }}
 ```
 
 ### `movify2`: スクロール動画を生成するツール 2
@@ -149,23 +98,7 @@ movify2 longimage.png
 ```
 
 ```
-Usage: python -m trainscanner.converter.movie2 [OPTIONS] IMAGE_PATH
-
-  Make a movie with a thumbnailfrom a train image
-
-Options:
-  -o, --output TEXT      出力ファイルのパス
-  -d, --duration FLOAT   動画の長さ（秒）
-  -h, --height INTEGER   目標の高さ
-  -w, --width INTEGER    目標の幅
-  -R, --head-right       右端が先頭
-  -r, --fps INTEGER      フレームレート
-  -b, --bitrate INTEGER  ビットレート
-  -p, --png              中間ファイルをpngにする
-  -a, --alternating      前進+後退
-  -A, --accel            加速
-  --help                 Show this message and exit.
-
+{{ usage_movify2 }}
 ```
 
 <!-- ### `shakereduction.py`: 手振れ補正 (試験中)
@@ -220,144 +153,7 @@ trainscanner_stitch @video.mov.12345.tsconf -s 220 -w 1.5
 
 ## Revision History
 
-# 変更履歴
-
-## [0.16.1] - 2025-05-12
-
-### 追加
-
-- movify および movify2 のエントリを追加
-
-## [0.16.0] - 2025-05-12
-
-### 追加
-
-- GUI に新しいラジオボタンを追加
-- 横スクロール動画の生成機能を強化
-- 画像処理のオプションに右端を先頭にする機能を追加
-- 進捗バーの更新を改善
-- ffmpeg の存在確認に基づいてボタンの有効/無効を制御するロジックを調整
-
-## [0.15.0] - 2025-05-09
-
-### 変更
-
-- converter のパスを ts_conv から trainscanner.converter に変更
-- 動画生成機能の高さ調整ロジックを改善
-
-## [0.14.3] - 2025-05-08
-
-### 変更
-
-- Python の依存関係を 3.11 に変更
-- ホームページの URL を追加
-
-## [0.14.2] - 2025-05-08
-
-### 変更
-
-- Python の依存関係を 3.10 に変更
-- Linux 環境でのビデオモジュールのインポートを修正
-
-## [0.14.1] - 2025-05-08
-
-### 追加
-
-- scikit-video パッケージを追加
-
-### 修正
-
-- qrangeslider.py でのイベント処理において、座標を整数に変換する修正
-
-## [0.13.2] - 2023-01-09
-
-### 修正
-
-- tsconf ファイルを開くときに発生するエラーを修正
-- Apple M1 対応の改善
-
-## [0.13] - 2023-01-04
-
-### 変更
-
-- PyQt6 への移行
-
-## [0.12.0] - 2020-07-15
-
-### 修正
-
-- パスに空白が含まれる場合のバグを修正
-
-### 変更
-
-- コマンドラインオプションの更新
-
-## [0.10] - 2017-04-13
-
-### 追加
-
-- Hansify コマンドを追加
-
-## [0.7.3] - 2016-12-29
-
-### 追加
-
-- QRangeSlider の実装
-
-### 修正
-
-- 後半の thumbnail が無視される問題を解決
-
-## [0.5.1] - 2016-11-27
-
-### 変更
-
-- スライダーの高さを変更
-
-## [0.5.0] - 2016-11-25
-
-### 追加
-
-- 矩形フォーマットの導入
-
-### 変更
-
-- Python3 へのアップグレード
-- Windows 対応の改善
-
-## [0.4.0] - 2016-11-20
-
-### 追加
-
-- tsconf ファイルから設定を継承する機能
-
-### 変更
-
-- ジェネレーターの簡略化
-
-## [0.3.0] - 2016-11-13
-
-### 追加
-
-- アルファ版リリース
-
-### 変更
-
-- チュートリアルの更新
-
-## [0.2.0] - 2016-10-16
-
-### 追加
-
-- モーション検出エリア（フォーカスエリア）の指定機能
-- スクロールバー付き GUI プロトタイプ
-- 上下のクロップ機能
-
-## [0.1.0] - 2016-08-31
-
-### 追加
-
-- Python2+OpenCV2 による完全な書き直し
+{% include "CHANGELOG.md" %}
 
 ## Memo/Reference
 

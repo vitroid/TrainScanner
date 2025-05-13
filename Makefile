@@ -9,6 +9,9 @@ VERSION := $(shell poetry version -s)
 all: #macapp install #macapp-personally
 	echo There is no 'all' to be built for now.
 
+%.md: temp_%.md Makefile pyproject.toml replacer.py
+	python replacer.py < $< > $@
+
 ##############################
 #  PyPI
 ##############################
