@@ -30,6 +30,7 @@ import subprocess
 import shutil
 
 # final image tranformation
+import trainscanner
 from trainscanner.converter import film, scroll
 from trainscanner.converter import helix
 from trainscanner.converter import rect
@@ -236,9 +237,13 @@ def main():
     )
     app = QApplication(sys.argv)
     translator = QTranslator(app)
-    path = os.path.dirname(rect.__file__)
-    if QLocale.system().language() == QLocale("ja"):
-        translator.load(path + "/../i18n/trainscanner_ja")
+    path = os.path.dirname(trainscanner.__file__)
+    print(path)
+    lang = os.environ.get("LANG", "").split("_")[0]
+    if lang == "ja":
+        translator.load(path + "/i18n/trainscanner_ja")
+    elif lang == "fr":
+        translator.load(path + "/i18n/trainscanner_fr")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()

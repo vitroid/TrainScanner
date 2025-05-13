@@ -598,7 +598,7 @@ class SettingsGUI(QWidget):
         logger.debug("Let's select a file")
         filename, types = QFileDialog.getOpenFileName(
             self,
-            self.tr("Open file"),
+            self.tr("Open a movie file"),
             "",
             "Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)",
         )
@@ -1218,8 +1218,13 @@ def main():
     app = QApplication(sys.argv)
     translator = QTranslator(app)
     path = os.path.dirname(trainscanner.__file__)
-    if QLocale.system().language() == QLocale.Language.Japanese:
+
+    # 環境変数LANGから言語を取得
+    lang = os.environ.get("LANG", "").split("_")[0]
+    if lang == "ja":
         translator.load(path + "/i18n/trainscanner_ja")
+    elif lang == "fr":
+        translator.load(path + "/i18n/trainscanner_fr")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()
