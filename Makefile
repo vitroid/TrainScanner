@@ -9,6 +9,9 @@ VERSION := $(shell poetry version -s)
 all: #macapp install #macapp-personally
 	echo There is no 'all' to be built for now.
 
+%.md: temp_%.md Makefile pyproject.toml replacer.py
+	python replacer.py < $< > $@
+
 ##############################
 #  PyPI
 ##############################
@@ -22,9 +25,11 @@ uninstall:
 build: README.md $(wildcard trainscanner/*.py)
 	poetry build -f wheel
 
-deploy: build
+tag:
+	-git tag -a v$(VERSION) -m "Release version $(VERSION)"
+
+deploy: build tag
 	poetry publish
-	git tag -a v$(VERSION) -m "Release version $(VERSION)"
 	git push origin v$(VERSION)
 
 check:

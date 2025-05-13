@@ -190,8 +190,8 @@
     </message>
     <message>
       <location filename="../trainscanner_gui.py" line="601" />
-      <source>Open file</source>
-      <translation>ファイルを開く</translation>
+      <source>Open a movie file</source>
+      <translation type="unfinished" />
     </message>
     <message>
       <location filename="../trainscanner_gui.py" line="692" />
@@ -199,39 +199,58 @@
       <translation>度</translation>
     </message>
     <message>
-      <location filename="../../ts_conv/converter_gui.py" line="53" />
+      <location filename="../converter/gui.py" line="56" />
       <source>Drag &amp; drop an image strip</source>
       <translation>長い画像をドラッグ&amp;ドロップ</translation>
     </message>
     <message>
-      <location filename="../../ts_conv/converter_gui.py" line="57" />
+      <location filename="../converter/gui.py" line="60" />
       <source>Add the film perforations</source>
       <translation>フィルムの縁をつける</translation>
     </message>
     <message>
-      <location filename="../../ts_conv/converter_gui.py" line="62" />
+      <location filename="../converter/gui.py" line="65" />
       <source>Do nothing</source>
       <translation>何もしない</translation>
     </message>
     <message>
-      <location filename="../../ts_conv/converter_gui.py" line="63" />
+      <location filename="../converter/gui.py" line="67" />
       <source>Make a helical image</source>
       <translation>らせん画像を作る</translation>
     </message>
     <message>
-      <location filename="../../ts_conv/converter_gui.py" line="64" />
+      <location filename="../converter/gui.py" line="68" />
       <source>Make a rectangular image</source>
       <translation>長方形画像を作る</translation>
     </message>
     <message>
-      <location filename="../../ts_conv/converter_gui.py" line="65" />
+      <location filename="../converter/gui.py" line="69" />
       <source>Make a Hans-style image</source>
       <translation>Hans式のイメージを作成</translation>
     </message>
     <message>
-      <location filename="../../ts_conv/converter_gui.py" line="66" />
+      <location filename="../converter/gui.py" line="70" />
       <source>Make a scrolling movie</source>
       <translation>スクロール動画を生成</translation>
+    </message>
+    <message>
+      <location filename="../converter/gui.py" line="72" />
+      <source>Make a scrolling movie (Yamako style)</source>
+      <translation type="unfinished">スクロール動画を生成 (Yamako-style)</translation>
+    </message>
+    <message>
+      <location filename="../converter/gui.py" line="81" />
+      <source>ffmpeg is not installed. Please install ffmpeg to use this feature.</source>
+      <translation type="unfinished">動画を作るにはffmpegが必要です.</translation>
+    </message>
+    <message>
+      <location filename="../converter/gui.py" line="119" />
+      <source>Direction</source>
+      <translation type="unfinished">進行方向</translation>
+    </message>
+    <message>
+      <source>Open file</source>
+      <translation type="vanished">ファイルを開く</translation>
     </message>
     <message>
       <source>Stitch to a long image strip</source>

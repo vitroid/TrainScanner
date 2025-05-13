@@ -30,11 +30,12 @@ import subprocess
 import shutil
 
 # final image tranformation
-from trainscanner.converter import film
+import trainscanner
+from trainscanner.converter import film, scroll
 from trainscanner.converter import helix
 from trainscanner.converter import rect
 from trainscanner.converter import hans_style as hans
-from trainscanner.converter import movie, movie2
+from trainscanner.converter import movie2
 from tiledimage.cachedimage import CachedImage
 
 # options handler
@@ -168,7 +169,7 @@ class SettingsGUI(QWidget):
             cv2.imwrite(file_name + ".rect.png", rimg)
         elif self.btn_finish_movie.isChecked():
             self.pbar.setValue(4)
-            movie.make_movie(file_name, head_right=head_right)
+            scroll.make_movie(file_name, head_right=head_right)
             self.pbar.setValue(5)
         elif self.btn_finish_movie2.isChecked():
             self.pbar.setValue(4)
@@ -236,9 +237,13 @@ def main():
     )
     app = QApplication(sys.argv)
     translator = QTranslator(app)
-    path = os.path.dirname(rect.__file__)
-    if QLocale.system().language() == QLocale("ja"):
-        translator.load(path + "/../i18n/trainscanner_ja")
+    path = os.path.dirname(trainscanner.__file__)
+    print(path)
+    lang = os.environ.get("LANG", "").split("_")[0]
+    if lang == "ja":
+        translator.load(path + "/i18n/trainscanner_ja")
+    elif lang == "fr":
+        translator.load(path + "/i18n/trainscanner_fr")
     app.installTranslator(translator)
     se = SettingsGUI()
     se.show()
