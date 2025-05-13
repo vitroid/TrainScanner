@@ -23,7 +23,7 @@ filmify             = 'trainscanner.converter.film:main'
 rectify             = 'trainscanner.converter.rect:main'
 helicify            = 'trainscanner.converter.helix:main'
 hansify             = 'trainscanner.converter.hans_style:main'
-ts_converter        = 'trainscanner.converter.converter_gui:main'
+ts_converter        = 'trainscanner.converter.gui:main'
 movify              = 'trainscanner.converter.scroll:main'
 movify2             = 'trainscanner.converter.movie2:main'
 
