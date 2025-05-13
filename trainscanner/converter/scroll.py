@@ -1,7 +1,7 @@
 from PIL import Image
 import subprocess
 import click
-
+import sys
 
 def make_movie(
     image_path,
@@ -47,6 +47,12 @@ def make_movie(
         # 左から右へスクロールする場合、開始位置を左端に設定
         scroll_expression = f"{scroll_per_second}*t"
 
+    ostype = sys.platform
+    if 0 == ostype.find("win"):
+        libx264 = "h264"
+    else:
+        libx264 = "libx264"
+
     # 横スクロール用のffmpegコマンド
     cmd = [
         "ffmpeg",
@@ -57,7 +63,7 @@ def make_movie(
         f"-vf scale={virtual_width}:{movie_h},crop={movie_w}:{movie_h}:{scroll_expression}:0",
         "-pix_fmt yuv420p",
         f"-b:v {bitrate}" if bitrate else "",
-        f"-c:v libx264",
+        f"-c:v {libx264}",
         f"-t {duration}",
         f"'{output}'",
     ]

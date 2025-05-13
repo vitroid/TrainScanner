@@ -6,7 +6,7 @@ import tempfile
 import shutil
 import logging
 from tqdm import tqdm
-
+import sys
 
 def make_movie(
     image_path: str,
@@ -125,13 +125,18 @@ def make_movie(
                         temp_dir, f"frame_{total_frames*2-1 - frame:06d}.{ext}"
                     ),
                 )
+        ostype = sys.platform
+        if 0 == ostype.find("win"):
+            libx264 = "h264"
+        else:
+            libx264 = "libx264"
 
         cmd = [
             "ffmpeg",
             "-y",
             f"-framerate {fps}",
-            f"-i '{temp_dir}/frame_%06d.{ext}'",
-            "-c:v libx264",
+            f'-i "{temp_dir}/frame_%06d.{ext}"',
+            f"-c:v {libx264}",
             "-pix_fmt yuv420p",
             f"-b:v {bitrate}" if bitrate else "",
             f"'{output}'",
