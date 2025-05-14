@@ -136,7 +136,7 @@ def make_movie(
             f"-c:v {encoder}",
             "-pix_fmt yuv420p",
             f"-b:v {bitrate}" if bitrate else "",
-            f"'{output}'",
+            f'"{output}"',
         ]
         cmd = " ".join(cmd)
         print(cmd)

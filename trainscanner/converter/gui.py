@@ -207,19 +207,19 @@ class SettingsGUI(QWidget):
         # 3. and the mimetipe is text/uri-list
         # 2. That has the regular extension.
         logger.debug("len:{0}".format(len(mimeData.formats())))
-        if len(mimeData.formats()) == 1:
-            mimetype = mimeData.formats()[0]
-            if mimetype == "text/uri-list":
-                data = mimeData.data(mimetype)
-                from urllib.parse import urlparse, unquote
+        mimetypes = [mimetype for mimetype in mimeData.formats() if mimetype == "text/uri-list"]
+        if mimetypes:
+            data = mimeData.data(mimetypes[0])
+            from urllib.parse import urlparse, unquote
+            from urllib.request import url2pathname
 
-                for line in bytes(data).decode("utf8").splitlines():
-                    parsed = urlparse(unquote(line))
-                    logger.debug("Data: {0}".format(parsed))
-                    if parsed.scheme == "file":
-                        self.filename = parsed.path
-                        # Start immediately
-                        self.start_process()
+            for line in bytes(data).decode("utf8").splitlines():
+                parsed = urlparse(unquote(line))
+                logger.debug("Data: {0}".format(parsed))
+                if parsed.scheme == "file":
+                    self.filename = url2pathname(parsed.path)
+                    # Start immediately
+                    self.start_process()
         # or just ignore
 
 
