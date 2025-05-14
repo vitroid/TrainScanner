@@ -102,7 +102,7 @@ def main():
             break
     window.setThumbs(thumbs)
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
