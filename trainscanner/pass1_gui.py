@@ -4,9 +4,9 @@ import sys
 import time
 
 import numpy as np
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
-from PyQt6.QtGui import QImage, QPixmap
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import (
     QApplication,
     QDialog,
     QLabel,

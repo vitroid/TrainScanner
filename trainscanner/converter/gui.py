@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Core of the GUI and image process
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -16,8 +16,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QFrame,
 )
-from PyQt6.QtGui import QPalette, QPainter, QIcon
-from PyQt6.QtCore import QTranslator, QLocale, Qt
+from PyQt5.QtGui import QPalette, QPainter, QIcon
+from PyQt5.QtCore import QTranslator, QLocale, Qt
 import cv2
 import numpy as np
 import math

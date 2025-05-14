@@ -2,9 +2,9 @@
 
 import sys
 
-from PyQt6.QtCore import QPoint
-from PyQt6.QtGui import QImage, QPainter
-from PyQt6.QtWidgets import QApplication, QFrame, QLabel
+from PyQt5.QtCore import QPoint
+from PyQt5.QtGui import QImage, QPainter
+from PyQt5.QtWidgets import QApplication, QFrame, QLabel
 
 
 class ImageBar(QLabel):

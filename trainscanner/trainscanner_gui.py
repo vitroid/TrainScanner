@@ -16,7 +16,7 @@ from logging import DEBUG, WARN, basicConfig, getLogger, root
 # external modules
 import cv2
 import numpy as np
-from PyQt6.QtCore import (
+from PyQt5.QtCore import (
     QLocale,
     QObject,
     QPoint,
@@ -27,10 +27,10 @@ from PyQt6.QtCore import (
     QTranslator,
     pyqtSignal,
 )
-from PyQt6.QtGui import QImage, QPainter, QPixmap
+from PyQt5.QtGui import QImage, QPainter, QPixmap
 
 # Core of the GUI and image process
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
     QDialog,
