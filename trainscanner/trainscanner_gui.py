@@ -885,10 +885,10 @@ class EditorGUI(QWidget):
         glayout.addLayout(layout)
         self.setLayout(glayout)
         self.setWindowTitle("Editor")
-        
+
         # Set minimum size instead of fixed size
         self.setMinimumSize(800, 600)
-        
+
         self.show_snapshots()
 
     def thumbtransformer(self, cv2image):
@@ -1164,19 +1164,23 @@ class EditorGUI(QWidget):
         height, width = image.shape[0:2]
         qImg = self.cv2toQImage(image)
         pixmap = QPixmap(qImg)
-        
+
         # Get the current widget size
         widget_width = widget.width()
         widget_height = widget.height()
-        
+
         # Scale the image to fit the widget while maintaining aspect ratio
         if height > width:
             if height > widget_height:
-                pixmap = pixmap.scaledToHeight(widget_height, Qt.TransformationMode.SmoothTransformation)
+                pixmap = pixmap.scaledToHeight(
+                    widget_height, Qt.TransformationMode.SmoothTransformation
+                )
         else:
             if width > widget_width:
-                pixmap = pixmap.scaledToWidth(widget_width, Qt.TransformationMode.SmoothTransformation)
-                
+                pixmap = pixmap.scaledToWidth(
+                    widget_width, Qt.TransformationMode.SmoothTransformation
+                )
+
         widget.setPixmap(pixmap)
         # give hints to DrawableLabel() and MyLabel()
         widget.perspective = self.perspective
@@ -1209,7 +1213,7 @@ class EditorGUI(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.show_snapshots()
-        
+
     #    self.asyncimageloader.stop()
 
     # This will be the trigger for the first rendering
@@ -1245,7 +1249,7 @@ def main():
     se = SettingsGUI()
     se.show()
     se.raise_()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
