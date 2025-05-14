@@ -872,17 +872,17 @@ class EditorGUI(QWidget):
         # close on quit
         # http://stackoverflow.com/questions/27420338/how-to-clear-child-window-reference-stored-in-parent-application-when-child-wind
         # self.setAttribute(Qt.WA_DeleteOnClose)
-        layout = self.make_layout()
+        bottom_pane = self.bottom_pane_layout()
         self.imageselector2 = ImageSelector2()
         self.imageselector2.slider.startValueChanged.connect(self.frameChanged)
         self.imageselector2.slider.endValueChanged.connect(self.frameChanged)
         imageselector_layout = QHBoxLayout()
         imageselector_layout.addWidget(self.imageselector2)
-        imageselector_gbox = QGroupBox(self.tr("1. Seek the first video frame"))
+        imageselector_gbox = QGroupBox(self.tr("1. Specify the frame range"))
         imageselector_gbox.setLayout(imageselector_layout)
         glayout = QVBoxLayout()
         glayout.addWidget(imageselector_gbox)
-        glayout.addLayout(layout)
+        glayout.addLayout(bottom_pane)
         self.setLayout(glayout)
         self.setWindowTitle("Editor")
 
@@ -909,118 +909,143 @@ class EditorGUI(QWidget):
         self.imageselector2.setThumbs(cv2thumbs)
         self.lastupdatethumbs = time.time()
 
-    def make_layout(self):
-        # layout
-        layout = QHBoxLayout()
+    def deformation_rangeslider_widget(self):
+        rangeslider = rs.QRangeSlider(splitterWidth=10, vertical=True)  # スライダの向き
+        rangeslider.setFixedWidth(15)
+        rangeslider.setStyleSheet(perspectiveCSS)
+        rangeslider.setDrawValues(False)
+        rangeslider.startValueChanged.connect(self.sliderTL_on_draw)
+        rangeslider.endValueChanged.connect(self.sliderBL_on_draw)
+        # self.sliderL.setMinimumHeight(500)
+        return rangeslider
 
-        # second left panel for image rotation
-        rotation_layout = QHBoxLayout()
+    def rotation_deformation_control(self):
+        layout = QHBoxLayout()
         self.btn = QPushButton(self.tr("-90"))
         self.btn.clicked.connect(self.angle_sub90)
-        rotation_layout.addWidget(self.btn)
+        layout.addWidget(self.btn)
         self.btn = QPushButton(self.tr("-1"))
         self.btn.clicked.connect(self.angle_dec)
-        rotation_layout.addWidget(self.btn)
-        rotation_layout.addWidget(QLabel(self.tr("rotation")))
+        layout.addWidget(self.btn)
+        layout.addWidget(QLabel(self.tr("rotation")))
         self.angle_label = QLabel("0 " + self.tr("degrees"))
-        rotation_layout.addWidget(self.angle_label)
+        layout.addWidget(self.angle_label)
         self.btn = QPushButton(self.tr("+1"))
         self.btn.clicked.connect(self.angle_inc)
-        rotation_layout.addWidget(self.btn)
+        layout.addWidget(self.btn)
         self.btn = QPushButton(self.tr("+90"))
         self.btn.clicked.connect(self.angle_add90)
-        rotation_layout.addWidget(self.btn)
+        layout.addWidget(self.btn)
+        return layout
 
-        #
-        crop_layout = QVBoxLayout()
-        self.crop_slider = rs.QRangeSlider(
-            splitterWidth=10, vertical=True
-        )  # スライダの向き
-        self.crop_slider.setMinimumWidth(15)
-        self.crop_slider.setStyleSheet(cropCSS)
-        self.crop_slider.setDrawValues(False)
-        self.crop_slider.startValueChanged.connect(self.croptop_slider_on_draw)
-        self.crop_slider.endValueChanged.connect(self.cropbottom_slider_on_draw)
+    def crop_rangeslider_widget(self):
+        # crop_layout = QVBoxLayout()
+        slider = rs.QRangeSlider(splitterWidth=10, vertical=True)  # スライダの向き
+        slider.setFixedWidth(15)
+        slider.setStyleSheet(cropCSS)
+        slider.setDrawValues(False)
+        slider.startValueChanged.connect(self.croptop_slider_on_draw)
+        slider.endValueChanged.connect(self.cropbottom_slider_on_draw)
         # self.crop_slider.setMinimumHeight(500)
+        return slider
 
-        crop_layout.addWidget(self.crop_slider)
+        # crop_layout.addWidget(self.crop_slider)
+        # return crop_layout
 
-        self.sliderL = rs.QRangeSlider(
-            splitterWidth=10, vertical=True
-        )  # スライダの向き
-        self.sliderL.setMinimumWidth(15)
-        self.sliderL.setStyleSheet(perspectiveCSS)
-        self.sliderL.setDrawValues(False)
-        self.sliderL.startValueChanged.connect(self.sliderTL_on_draw)
-        self.sliderL.endValueChanged.connect(self.sliderBL_on_draw)
-        # self.sliderL.setMinimumHeight(500)
-
-        self.sliderR = rs.QRangeSlider(
-            splitterWidth=10, vertical=True
-        )  # スライダの向き
-        self.sliderR.setMinimumWidth(15)
-        self.sliderR.setStyleSheet(perspectiveCSS)
-        self.sliderR.setDrawValues(False)
-        self.sliderR.startValueChanged.connect(self.sliderTR_on_draw)
-        self.sliderR.endValueChanged.connect(self.sliderBR_on_draw)
-        # self.sliderR.setMinimumHeight(500)
-
-        raw_image_layout = QVBoxLayout()
+    def deformation_image_layout(self):
+        layout = QVBoxLayout()
         self.raw_image_pane = DrawableLabel()
         self.raw_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.raw_image_pane.setMinimumSize(self.preview_size, self.preview_size)
-        raw_image_layout.addWidget(self.raw_image_pane)
-        raw_image_layout.setAlignment(
-            self.raw_image_pane, Qt.AlignmentFlag.AlignHCenter
-        )
-        raw_image_layout.setAlignment(self.raw_image_pane, Qt.AlignmentFlag.AlignTop)
+        layout.addWidget(self.raw_image_pane)
+        layout.setAlignment(self.raw_image_pane, Qt.AlignmentFlag.AlignHCenter)
+        layout.setAlignment(self.raw_image_pane, Qt.AlignmentFlag.AlignTop)
+        return layout
 
-        processed_edit_gbox_layout = QVBoxLayout()
-        processed_edit_gbox = QGroupBox(self.tr("3. Motion Detection and Slit"))
-        box = QVBoxLayout()
-        processed_image_layout = QVBoxLayout()
+    def crop_image_layout(self):
+        layout = QVBoxLayout()
         self.processed_pane = MyLabel(func=self.show_snapshots)
         self.processed_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.processed_pane.setMinimumSize(self.preview_size, self.preview_size)
-        processed_image_layout.addWidget(self.processed_pane)
-        processed_image_layout.setAlignment(
-            self.processed_pane, Qt.AlignmentFlag.AlignTop
+        layout.addWidget(self.processed_pane)
+        layout.setAlignment(self.processed_pane, Qt.AlignmentFlag.AlignHCenter)
+        layout.setAlignment(self.processed_pane, Qt.AlignmentFlag.AlignTop)
+        return layout
+
+    def slit_slider_widget(self):
+        slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
+        slider.setRange(-500, 500)  # スライダの範囲
+        # スライダの目盛りを両方に出す
+        slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        slider.valueChanged.connect(self.slit_slider_on_draw)
+        return slider
+
+    def left_pane_layout(self):
+
+        self.sliderL = self.deformation_rangeslider_widget()
+        self.sliderR = self.deformation_rangeslider_widget()
+
+        # left_paneのレイアウト
+        left_pane_layout = QVBoxLayout()
+        left_pane_title = QGroupBox(self.tr("2. Repair deformation"))
+        left_pane_layout.addWidget(left_pane_title)
+
+        # 左上段
+        first_box = QHBoxLayout()
+        first_box.addWidget(self.sliderL)
+        first_box.addLayout(self.deformation_image_layout())
+        first_box.addWidget(self.sliderR)
+
+        # 左下段
+        rotation_deformation_layout = self.rotation_deformation_control()
+
+        combined_box = QVBoxLayout()
+        combined_box.addLayout(first_box)
+        combined_box.addLayout(rotation_deformation_layout)
+        combined_box.setAlignment(
+            rotation_deformation_layout, Qt.AlignmentFlag.AlignTop
         )
 
-        hbox = QHBoxLayout()
-        hbox.addLayout(processed_image_layout)
-        hbox.addLayout(crop_layout)
-        box.addLayout(hbox)
-        processed_edit_gbox.setLayout(box)
-        processed_edit_gbox_layout.addWidget(processed_edit_gbox)
+        left_pane_title.setLayout(combined_box)
+        return left_pane_layout
 
+    def right_pane_layout(self):
+
+        self.crop_slider = self.crop_rangeslider_widget()
+        self.slit_slider = self.slit_slider_widget()
+
+        right_pane_layout = QVBoxLayout()
+        # 右側のパネルのタイトル
+        right_pane_title = QGroupBox(self.tr("3. Motion Detection and Slit"))
+        right_pane_layout.addWidget(right_pane_title)
+
+        # crop_image_layoutとcrop_sliderを横に並べ
+        first_box = QHBoxLayout()
+        crop_image_layout = self.crop_image_layout()
+        first_box.addLayout(crop_image_layout)
+        first_box.addWidget(self.crop_slider)
+
+        # slit_sliderのラベルと本体を横に並べ、
+        second_box = QHBoxLayout()
         slit_slider_label = QLabel(self.tr("Slit position"))
-        self.slit_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
-        self.slit_slider.setRange(-500, 500)  # スライダの範囲
-        # スライダの目盛りを両方に出す
-        self.slit_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.slit_slider.valueChanged.connect(self.slit_slider_on_draw)
-        slit_slider_layout = QHBoxLayout()
-        slit_slider_layout.addWidget(slit_slider_label)
-        slit_slider_layout.addWidget(self.slit_slider)
-        box.addLayout(slit_slider_layout)
-        box.setAlignment(slit_slider_layout, Qt.AlignmentFlag.AlignTop)
+        second_box.addWidget(slit_slider_label)
+        second_box.addWidget(self.slit_slider)
 
-        # combine panels
-        topleft_layout = QHBoxLayout()
-        topleft_layout.addWidget(self.sliderL)
-        topleft_layout.addLayout(raw_image_layout)
-        topleft_layout.addWidget(self.sliderR)
-        left_layout = QVBoxLayout()
-        left_layout.addLayout(topleft_layout)
-        left_layout.addLayout(rotation_layout)
-        left_layout.setAlignment(rotation_layout, Qt.AlignmentFlag.AlignTop)
-        raw_edit_gbox = QGroupBox(self.tr("2. Repair deformation"))
-        raw_edit_gbox.setLayout(left_layout)
-        raw_edit_gbox_layout = QVBoxLayout()
-        raw_edit_gbox_layout.addWidget(raw_edit_gbox)
-        layout.addLayout(raw_edit_gbox_layout)
-        layout.addLayout(processed_edit_gbox_layout)
+        # これら2つを縦に積み
+        right_combined_box = QVBoxLayout()
+        right_combined_box.addLayout(first_box)
+        right_combined_box.addLayout(second_box)
+        right_combined_box.setAlignment(second_box, Qt.AlignmentFlag.AlignTop)
+
+        right_pane_title.setLayout(right_combined_box)
+        return right_pane_layout
+
+    def bottom_pane_layout(self):
+        layout = QHBoxLayout()
+        left = self.left_pane_layout()
+        right = self.right_pane_layout()
+        layout.addLayout(left)
+        layout.addLayout(right)
+        layout.setStretch(0, 1)  # 左ペイン
+        layout.setStretch(1, 1)  # 右ペイン
         return layout
 
     def stop_thread(self):
