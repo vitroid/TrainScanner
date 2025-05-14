@@ -3,6 +3,7 @@ import subprocess
 import click
 import sys
 
+
 def make_movie(
     image_path,
     head_right=False,
@@ -12,6 +13,7 @@ def make_movie(
     width=1920,
     fps=30,
     bitrate=None,
+    encoder="libx264",
 ):
     """横スクロール動画を生成します。"""
     if not output:
@@ -47,12 +49,6 @@ def make_movie(
         # 左から右へスクロールする場合、開始位置を左端に設定
         scroll_expression = f"{scroll_per_second}*t"
 
-    ostype = sys.platform
-    if 0 == ostype.find("win"):
-        libx264 = "h264"
-    else:
-        libx264 = "libx264"
-
     # 横スクロール用のffmpegコマンド
     cmd = [
         "ffmpeg",
@@ -63,7 +59,7 @@ def make_movie(
         f"-vf scale={virtual_width}:{movie_h},crop={movie_w}:{movie_h}:{scroll_expression}:0",
         "-pix_fmt yuv420p",
         f"-b:v {bitrate}" if bitrate else "",
-        f"-c:v {libx264}",
+        f"-c:v {encoder}",
         f"-t {duration}",
         f"'{output}'",
     ]
@@ -82,11 +78,16 @@ def make_movie(
 @click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
 @click.option("--fps", "-r", type=int, default=30, help="フレームレート")
 @click.option("--bitrate", "-b", type=int, default=None, help="ビットレート")
-def main(image_path, head_right, output, duration, height, width, fps, bitrate):
+@click.option("--encoder", "-e", type=str, default="libx264", help="mp4エンコーダー")
+def main(
+    image_path, head_right, output, duration, height, width, fps, bitrate, encoder
+):
     """
     Make a movie from a train image
     """
-    make_movie(image_path, head_right, output, duration, height, width, fps, bitrate)
+    make_movie(
+        image_path, head_right, output, duration, height, width, fps, bitrate, encoder
+    )
 
 
 if __name__ == "__main__":

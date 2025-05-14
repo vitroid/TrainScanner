@@ -21,6 +21,7 @@ def make_movie(
     png: bool = False,
     bitrate: int = None,
     accel: bool = False,
+    encoder: str = "libx264",
 ):
     """横スクロール動画を生成します。"""
     logger = logging.getLogger()
@@ -126,18 +127,13 @@ def make_movie(
                         temp_dir, f"frame_{total_frames*2-1 - frame:06d}.{ext}"
                     ),
                 )
-        ostype = sys.platform
-        if 0 == ostype.find("win"):
-            libx264 = "h264"
-        else:
-            libx264 = "libx264"
 
         cmd = [
             "ffmpeg",
             "-y",
             f"-framerate {fps}",
             f'-i "{temp_dir}/frame_%06d.{ext}"',
-            f"-c:v {libx264}",
+            f"-c:v {encoder}",
             "-pix_fmt yuv420p",
             f"-b:v {bitrate}" if bitrate else "",
             f"'{output}'",
@@ -159,6 +155,7 @@ def make_movie(
 @click.option("--png", "-p", is_flag=True, help="中間ファイルをpngにする")
 @click.option("--alternating", "-a", is_flag=True, help="前進+後退")
 @click.option("--accel", "-A", is_flag=True, help="加速")
+@click.option("--encoder", "-e", type=str, default="libx264", help="mp4エンコーダー")
 def main(
     image_path,
     head_right,
@@ -171,6 +168,7 @@ def main(
     png,
     bitrate,
     accel,
+    encoder,
 ):
     """
     Make a movie with a thumbnailfrom a train image
@@ -187,6 +185,7 @@ def main(
         png,
         bitrate,
         accel,
+        encoder,
     )
 
 
