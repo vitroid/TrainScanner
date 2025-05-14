@@ -24,17 +24,23 @@ def cv2toQImage(cv2image):
     It breaks the original image
     """
     height, width = cv2image.shape[0:2]
-    tmp = np.zeros_like(cv2image[:, :, 0])
-    tmp = cv2image[:, :, 0].copy()
-    cv2image[:, :, 0] = cv2image[:, :, 2]
-    cv2image[:, :, 2] = tmp
-    return QImage(cv2image.data, width, height, width * 3, QImage.Format.Format_RGB888)
+    # tmp = np.zeros_like(cv2image[:, :, 0])
+    # tmp = cv2image[:, :, 0].copy()
+    # cv2image[:, :, 0] = cv2image[:, :, 2]
+    # cv2image[:, :, 2] = tmp
+    return QImage(
+        cv2image[:, :, ::-1].copy().data,
+        width,
+        height,
+        width * 3,
+        QImage.Format.Format_RGB888,
+    )
 
 
 class Worker(QObject):
 
     frameRendered = pyqtSignal(QImage)
-    finished = pyqtSignal()
+    finished = pyqtSignal(bool)
     progress = pyqtSignal(int)
 
     def __init__(self, argv):
@@ -56,8 +62,9 @@ class Worker(QObject):
                 break
             self.frameRendered.emit(cv2toQImage(img))
 
+        successful = self.pass1.canvas is not None
         self.pass1.after()
-        self.finished.emit()
+        self.finished.emit(successful)
 
     def stop(self):
         self._isRunning = False
@@ -113,8 +120,9 @@ class MatcherUI(QDialog):
             sys.exit(1)  # terminated
         self.terminated = True
 
-    def finishIt(self):
+    def finishIt(self, successful: bool):
         self.close()
+        self.success = successful
 
     def closeEvent(self, event):
         self.stop_thread()

@@ -615,7 +615,9 @@ class Pass1:
         """
         Action after the loop
         """
+        logger = getLogger()
         if self.canvas is None:
+            logger.error("No motion detected.")
             return
         self.tsconf += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
         if self.params.log is None:

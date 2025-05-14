@@ -802,7 +802,7 @@ class SettingsGUI(QWidget):
 
         matcher = pass1_gui.MatcherUI(argv, False)  # do not terminate
         matcher.exec()
-        if matcher.terminated:
+        if matcher.terminated or not matcher.success:
             matcher = None
             return
         matcher = None
