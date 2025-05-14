@@ -175,9 +175,11 @@ class StitcherUI(QDialog):
     thread_invoker = pyqtSignal()
 
     def __init__(self, argv, terminate, parent=None):
+        logger = getLogger()
         super(StitcherUI, self).__init__(parent)
         self.setWindowTitle("Stitcher Preview")
         stitcher = stitch.Stitcher(argv=argv)
+        print(f"Parameters: {argv}")
         tilesize = (128, 512)  # can be smaller for smaller working memory
         cachesize = 10
         stitcher.set_canvas(
@@ -186,12 +188,15 @@ class StitcherUI(QDialog):
             )
         )
         self.stitcher = stitcher
+        # stitcherの幅
+        width, height = stitcher.dimen[:2]
+
         # determine the shrink ratio to avoid too huge preview
         self.preview_ratio = 1.0
-        if stitcher.dimen[0] > 10000:
-            self.preview_ratio = 10000.0 / stitcher.dimen[0]
-        if stitcher.dimen[1] * self.preview_ratio > 500:
-            self.preview_ratio = 500.0 / stitcher.dimen[1]
+        if width > 10000:
+            self.preview_ratio = 10000.0 / width
+        # if height * self.preview_ratio > 500:
+        #     self.preview_ratio = 500.0 / height
         self.terminate = terminate
         self.thread = QThread()
         self.thread.start()
@@ -201,6 +206,7 @@ class StitcherUI(QDialog):
 
         # determine the window size
         width, height = stitcher.dimen[:2]
+        print(width, height, self.preview_ratio)
         height = int(height * self.preview_ratio)
         # determine the preview area size
         width = int(width * self.preview_ratio)
