@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.19.5
+Version 0.19.6
 
 # TrainScanner の使い方
 

@@ -8,6 +8,7 @@ import logging
 from tqdm import tqdm
 import sys
 
+
 def make_movie(
     image_path: str,
     head_right: bool = False,
@@ -119,7 +120,7 @@ def make_movie(
             # -loop_alternateの場合は、テンポラリ画像フォルダーに逆順の画像を作成する。
             # 実際に作成するのではなく、シンボリックリンクを作成する。
             if alternating:
-                os.symlink(
+                os.link(
                     frame_path,
                     os.path.join(
                         temp_dir, f"frame_{total_frames*2-1 - frame:06d}.{ext}"
