@@ -909,13 +909,13 @@ class EditorGUI(QWidget):
         self.imageselector2.setThumbs(cv2thumbs)
         self.lastupdatethumbs = time.time()
 
-    def deformation_rangeslider_widget(self):
+    def deformation_rangeslider_widget(self, top_on_draw, bottom_on_draw):
         rangeslider = rs.QRangeSlider(splitterWidth=10, vertical=True)  # スライダの向き
         rangeslider.setFixedWidth(15)
         rangeslider.setStyleSheet(perspectiveCSS)
         rangeslider.setDrawValues(False)
-        rangeslider.startValueChanged.connect(self.sliderTL_on_draw)
-        rangeslider.endValueChanged.connect(self.sliderBL_on_draw)
+        rangeslider.startValueChanged.connect(top_on_draw)
+        rangeslider.endValueChanged.connect(bottom_on_draw)
         # self.sliderL.setMinimumHeight(500)
         return rangeslider
 
@@ -954,20 +954,20 @@ class EditorGUI(QWidget):
 
     def deformation_image_layout(self):
         layout = QVBoxLayout()
-        self.raw_image_pane = DrawableLabel()
-        self.raw_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.raw_image_pane)
-        layout.setAlignment(self.raw_image_pane, Qt.AlignmentFlag.AlignHCenter)
-        layout.setAlignment(self.raw_image_pane, Qt.AlignmentFlag.AlignTop)
+        self.left_image_pane = DrawableLabel()
+        self.left_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.left_image_pane)
+        layout.setAlignment(self.left_image_pane, Qt.AlignmentFlag.AlignHCenter)
+        layout.setAlignment(self.left_image_pane, Qt.AlignmentFlag.AlignTop)
         return layout
 
     def crop_image_layout(self):
         layout = QVBoxLayout()
-        self.processed_pane = MyLabel(func=self.show_snapshots)
-        self.processed_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.processed_pane)
-        layout.setAlignment(self.processed_pane, Qt.AlignmentFlag.AlignHCenter)
-        layout.setAlignment(self.processed_pane, Qt.AlignmentFlag.AlignTop)
+        self.right_image_pane = MyLabel(func=self.show_snapshots)
+        self.right_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.right_image_pane)
+        layout.setAlignment(self.right_image_pane, Qt.AlignmentFlag.AlignHCenter)
+        layout.setAlignment(self.right_image_pane, Qt.AlignmentFlag.AlignTop)
         return layout
 
     def slit_slider_widget(self):
@@ -980,8 +980,12 @@ class EditorGUI(QWidget):
 
     def left_pane_layout(self):
 
-        self.sliderL = self.deformation_rangeslider_widget()
-        self.sliderR = self.deformation_rangeslider_widget()
+        self.sliderL = self.deformation_rangeslider_widget(
+            self.sliderTL_on_draw, self.sliderBL_on_draw
+        )
+        self.sliderR = self.deformation_rangeslider_widget(
+            self.sliderTR_on_draw, self.sliderBR_on_draw
+        )
 
         # left_paneのレイアウト
         left_pane_layout = QVBoxLayout()
@@ -1115,7 +1119,7 @@ class EditorGUI(QWidget):
             QImage.Format.Format_RGB888,
         )
 
-    def show_snapshots(self, region=None):
+    def show_snapshots(self):
         """
         put the snapshots in the preview panes
         """
@@ -1127,63 +1131,63 @@ class EditorGUI(QWidget):
             self.angle_degree, self.perspective, [self.croptop, self.cropbottom]
         )
         rotated, warped, cropped = self.transform.process_first_image(image)
-        self.put_cv2_image(rotated, self.raw_image_pane)
-        if region is not None:
-            logger.debug("show_snapshot region {0}".format(region))
-            # assume the QLabel size is square preview_size x preview_size
-            top, left, bottom, right = (
-                region.top(),
-                region.left(),
-                region.bottom(),
-                region.right(),
-            )
-            if top < 0:
-                top = 0
-            if left < 0:
-                left = 0
-            if right > self.preview_size:
-                right = self.preview_size
-            if bottom > self.preview_size:
-                bottom = self.preview_size
-            # and also assume that the cropped image is centered and sometimes shrinked.
-            top -= self.preview_size // 2
-            bottom -= self.preview_size // 2
-            left -= self.preview_size // 2
-            right -= self.preview_size // 2
-            # expected image size in the window
-            height, width = cropped.shape[0:2]
-            if height > width:
-                if height > self.preview_size:
-                    width = width * self.preview_size // height
-                    height = self.preview_size
-            else:
-                if width > self.preview_size:
-                    height = height * self.preview_size // width
-                    width = self.preview_size
-            # indicate the region size relative to the image size
-            top = top * 1000 // height + 500
-            bottom = bottom * 1000 // height + 500
-            left = left * 1000 // width + 500
-            right = right * 1000 // width + 500
-            if top < 0:
-                top = 0
-            if top > 1000:
-                top = 1000
-            if bottom < 0:
-                bottom = 0
-            if bottom > 1000:
-                bottom = 1000
-            if left < 0:
-                left = 0
-            if left > 1000:
-                left = 1000
-            if right < 0:
-                right = 0
-            if right > 1000:
-                right = 1000
-            self.focus = left, right, top, bottom
+        self.put_cv2_image(rotated, self.left_image_pane)
+        # if region is not None:
+        #     logger.debug("show_snapshot region {0}".format(region))
+        #     # assume the QLabel size is square preview_size x preview_size
+        #     top, left, bottom, right = (
+        #         region.top(),
+        #         region.left(),
+        #         region.bottom(),
+        #         region.right(),
+        #     )
+        #     if top < 0:
+        #         top = 0
+        #     if left < 0:
+        #         left = 0
+        #     if right > self.preview_size:
+        #         right = self.preview_size
+        #     if bottom > self.preview_size:
+        #         bottom = self.preview_size
+        #     # and also assume that the cropped image is centered and sometimes shrinked.
+        #     top -= self.preview_size // 2
+        #     bottom -= self.preview_size // 2
+        #     left -= self.preview_size // 2
+        #     right -= self.preview_size // 2
+        #     # expected image size in the window
+        #     height, width = cropped.shape[0:2]
+        #     if height > width:
+        #         if height > self.preview_size:
+        #             width = width * self.preview_size // height
+        #             height = self.preview_size
+        #     else:
+        #         if width > self.preview_size:
+        #             height = height * self.preview_size // width
+        #             width = self.preview_size
+        #     # indicate the region size relative to the image size
+        #     top = top * 1000 // height + 500
+        #     bottom = bottom * 1000 // height + 500
+        #     left = left * 1000 // width + 500
+        #     right = right * 1000 // width + 500
+        #     if top < 0:
+        #         top = 0
+        #     if top > 1000:
+        #         top = 1000
+        #     if bottom < 0:
+        #         bottom = 0
+        #     if bottom > 1000:
+        #         bottom = 1000
+        #     if left < 0:
+        #         left = 0
+        #     if left > 1000:
+        #         left = 1000
+        #     if right < 0:
+        #         right = 0
+        #     if right > 1000:
+        #         right = 1000
+        #     self.focus = left, right, top, bottom
 
-        self.put_cv2_image(cropped, self.processed_pane)
+        self.put_cv2_image(cropped, self.right_image_pane)
 
     def put_cv2_image(self, image, widget):
         height, width = image.shape[0:2]
