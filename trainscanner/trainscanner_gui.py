@@ -941,7 +941,7 @@ class EditorGUI(QWidget):
         self.crop_slider.setDrawValues(False)
         self.crop_slider.startValueChanged.connect(self.croptop_slider_on_draw)
         self.crop_slider.endValueChanged.connect(self.cropbottom_slider_on_draw)
-        self.crop_slider.setMinimumHeight(500)
+        # self.crop_slider.setMinimumHeight(500)
 
         crop_layout.addWidget(self.crop_slider)
 
@@ -953,7 +953,7 @@ class EditorGUI(QWidget):
         self.sliderL.setDrawValues(False)
         self.sliderL.startValueChanged.connect(self.sliderTL_on_draw)
         self.sliderL.endValueChanged.connect(self.sliderBL_on_draw)
-        self.sliderL.setMinimumHeight(500)
+        # self.sliderL.setMinimumHeight(500)
 
         self.sliderR = rs.QRangeSlider(
             splitterWidth=10, vertical=True
@@ -963,7 +963,7 @@ class EditorGUI(QWidget):
         self.sliderR.setDrawValues(False)
         self.sliderR.startValueChanged.connect(self.sliderTR_on_draw)
         self.sliderR.endValueChanged.connect(self.sliderBR_on_draw)
-        self.sliderR.setMinimumHeight(500)
+        # self.sliderR.setMinimumHeight(500)
 
         raw_image_layout = QVBoxLayout()
         self.raw_image_pane = DrawableLabel()
