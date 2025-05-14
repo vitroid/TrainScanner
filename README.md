@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.19.6
+Version 0.19.7
 
 # TrainScanner の使い方
 
@@ -142,6 +142,7 @@ Options:
   -R, --head-right       右端が先頭
   -r, --fps INTEGER      フレームレート
   -b, --bitrate INTEGER  ビットレート
+  -e, --encoder TEXT     mp4エンコーダー
   --help                 Show this message and exit.
 
 ```
@@ -170,6 +171,7 @@ Options:
   -p, --png              中間ファイルをpngにする
   -a, --alternating      前進+後退
   -A, --accel            加速
+  -e, --encoder TEXT     mp4エンコーダー
   --help                 Show this message and exit.
 
 ```
