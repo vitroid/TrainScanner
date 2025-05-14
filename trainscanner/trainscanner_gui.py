@@ -801,7 +801,7 @@ class SettingsGUI(QWidget):
         ]
 
         matcher = pass1_gui.MatcherUI(argv, False)  # do not terminate
-        matcher.exec_()
+        matcher.exec()
         if matcher.terminated:
             matcher = None
             return
@@ -817,7 +817,7 @@ class SettingsGUI(QWidget):
         file_name = stitcher.stitcher.outfilename
         stitcher.setMaximumHeight(500)
         stitcher.showMaximized()
-        stitcher.exec_()
+        stitcher.exec()
         stitcher = None
 
     def closeEvent(self, event):
