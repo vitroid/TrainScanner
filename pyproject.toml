@@ -13,7 +13,8 @@ TiledImage = "^0.1.1"
 opencv-python-headless = "^4.10.0.84"
 click = "^8.1.8"
 tqdm = "^4.67.1"
-pyqt5 = "^5.15.11"
+pyqt5 = { version = "^5.15.11", markers = "sys_platform == 'darwin' and platform_machine == 'arm64' and platform_release < '20.0.0'" }
+pyqt6 = { version = "^6.6.1", markers = "sys_platform == 'darwin' and platform_machine == 'arm64' and platform_release >= '20.0.0'" }
 
 [tool.poetry.scripts]
 trainscanner        = 'trainscanner.trainscanner_gui:main'
