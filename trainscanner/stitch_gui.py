@@ -75,7 +75,7 @@ class ExtensibleCanvasWidget(QLabel):
 
     def updatePixmap(self, pos, image):
         self.scaled_canvas.put_image(pos, image)
-        fullimage = self.scaled_canvas.get_image()[:, :, ::-1].copy()  # reverse order
+        fullimage = cv2.cvtColor(self.scaled_canvas.get_image(), cv2.COLOR_BGR2RGB)  # reverse order
         h, w = fullimage.shape[:2]
         self.resize(w, h)
         qimage = QImage(fullimage.data, w, h, w * 3, QImage.Format.Format_RGB888)
