@@ -75,7 +75,9 @@ class ExtensibleCanvasWidget(QLabel):
 
     def updatePixmap(self, pos, image):
         self.scaled_canvas.put_image(pos, image)
-        fullimage = cv2.cvtColor(self.scaled_canvas.get_image(), cv2.COLOR_BGR2RGB)  # reverse order
+        fullimage = cv2.cvtColor(
+            self.scaled_canvas.get_image(), cv2.COLOR_BGR2RGB
+        )  # reverse order
         h, w = fullimage.shape[:2]
         self.resize(w, h)
         qimage = QImage(fullimage.data, w, h, w * 3, QImage.Format.Format_RGB888)
@@ -83,9 +85,9 @@ class ExtensibleCanvasWidget(QLabel):
         self.update()
 
 
-class ExtensiblecroppingCanvasWidget(ExtensibleCanvasWidget):
+class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
     def __init__(self, parent=None, preview_ratio=1.0):
-        super(ExtensiblecroppingCanvasWidget, self).__init__(parent)
+        super(ExtensibleCroppingCanvasWidget, self).__init__(parent, preview_ratio)
         self.left_edge = 0
         self.right_edge = 0
         self.dragging = False
@@ -207,7 +209,7 @@ class StitcherUI(QDialog):
 
         self.scrollArea = QScrollArea()
         # self.scrollArea.setMaximumHeight(1000)
-        self.largecanvas = ExtensiblecroppingCanvasWidget(
+        self.largecanvas = ExtensibleCroppingCanvasWidget(
             preview_ratio=self.preview_ratio
         )
         # print(width,height)
