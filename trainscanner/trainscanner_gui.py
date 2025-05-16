@@ -113,7 +113,7 @@ class AsyncImageLoader(QObject):
             frame = trainscanner.fit_to_square(frame, self.size)
         self.snapshots = [frame]
         self.every_n_frames = 1
-        self.max_frames = 256
+        self.max_frames = 128
 
     def stop(self):
         self.isRunning = False
@@ -475,7 +475,7 @@ class SettingsGUI(QWidget):
 
         settings2_layout.addWidget(QLabel(self.tr("Tripod")), rows, 2)
         self.accel_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
-        self.accel_slider.setRange(1, 15)  # スライダの範囲
+        self.accel_slider.setRange(1, 100)  # スライダの範囲
         self.accel_slider.setValue(1)  # 初期値
         self.accel_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.accel_slider.valueChanged.connect(self.accel_slider_on_draw)
