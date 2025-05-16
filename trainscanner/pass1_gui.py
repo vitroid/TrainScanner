@@ -3,7 +3,9 @@
 import sys
 import time
 
+import cv2
 import numpy as np
+
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import (
@@ -29,7 +31,7 @@ def cv2toQImage(cv2image):
     # cv2image[:, :, 0] = cv2image[:, :, 2]
     # cv2image[:, :, 2] = tmp
     return QImage(
-        cv2image[:, :, ::-1].copy().data,
+        cv2.cvtColor(cv2image, cv2.COLOR_BGR2RGB).data,
         width,
         height,
         width * 3,
