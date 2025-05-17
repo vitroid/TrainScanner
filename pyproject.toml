@@ -9,7 +9,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-TiledImage = "^0.1.1"
+TiledImage = "0.3.1"
 PyQt6 = "^6.7.1"
 opencv-python-headless = "^4.10.0.84"
 click = "^8.1.8"

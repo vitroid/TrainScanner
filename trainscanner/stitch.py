@@ -144,7 +144,7 @@ class Stitcher:
     exclude video handling
     """
 
-    def __init__(self, argv):
+    def __init__(self, argv, outfilename=None):
         logger = getLogger()
         parser = prepare_parser()
         # これが一番スマートなんだが、動かないので、手動で--fileをさがして処理を行う。
@@ -171,8 +171,14 @@ class Stitcher:
             tsconfbase = os.path.basename(self.params.logbase)
             self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
         moviefile = tsconfdir + "/" + moviebase
-        self.outfilename = tsconfdir + "/" + tsconfbase + ".png"
-        self.cachedir = tsconfdir + "/" + tsconfbase + ".pngs"  # if required
+
+        # quake.pyで利用する
+        if outfilename:
+            self.outfilename = outfilename
+            self.cachedir = os.path.dirname(outfilename) + ".pngs"
+        else:
+            self.outfilename = tsconfdir + "/" + tsconfbase + ".png"
+            self.cachedir = tsconfdir + "/" + tsconfbase + ".pngs"  # if required
         if not os.path.exists(moviefile):
             moviefile = moviepath
         logger.info("TSPos  {0}".format(self.tsposfile))
@@ -314,10 +320,10 @@ if __name__ == "__main__":
 
     tilesize = (512, 512)  # canbe smaller for smaller machine
     cachesize = 10
-    canvas = ci.CachedImage(
+    with ci.CachedImage(
         "new", dir=st.cachedir, tilesize=tilesize, cachesize=cachesize
-    )
-    st.set_canvas(canvas)
+    ) as canvas:
+        st.set_canvas(canvas)
 
-    st.stitch()
-    st.make_a_big_picture()
+        st.stitch()
+        st.make_a_big_picture()

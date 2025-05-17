@@ -34,6 +34,7 @@ project |= {
     "usage_rectify": get_usage("rect", "rectify"),
     "usage_movify": get_usage("scroll", "movify"),
     "usage_movify2": get_usage("movie2", "movify2"),
+    "usage_quake": get_usage("quake", "quake"),
 }
 
 # テンプレートの内容を標準入力から読み込む

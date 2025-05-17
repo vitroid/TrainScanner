@@ -176,6 +176,30 @@ Options:
 
 ```
 
+### `quake`: 視差動画を生成するツール 2
+
+スリット位置を動かすことで、奥行きを感じられる動画を生成します。(非常に時間がかかります)
+
+このコマンドは引数の与え方が違うので、`ts_converter`には含まれません。
+
+```shell
+quake train.tsconf
+```
+
+```
+Usage: quake [OPTIONS] FILENAME
+
+Options:
+  --slit_start INTEGER  start slit position (default to -20%) -50: left end;
+                        0: center; +50: right end
+  --slit_end INTEGER    end slit position (default to 20%) -50: left end; 0:
+                        center; +50: right end
+  --frames INTEGER      number of frames (default to 20)
+  --width INTEGER       Width of output video (default to 3840)
+  --help                Show this message and exit.
+
+```
+
 <!-- ### `shakereduction.py`: 手振れ補正 (試験中)
 
 TrainScanner とおなじしくみを使って，ビデオの手振れを除くツールです．列車の場所ではなく，背景の一区画を`--focus`オプションで選ぶと，その部分が動かなくなるように，各コマを縦横にずらしたしたムービーを作成します．
