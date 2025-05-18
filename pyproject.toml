@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trainscanner"
-version = "0.20.0"
+version = "0.21.0"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]
@@ -28,6 +28,7 @@ hansify             = 'trainscanner.converter.hans_style:main'
 ts_converter        = 'trainscanner.converter.gui:main'
 movify              = 'trainscanner.converter.scroll:main'
 movify2             = 'trainscanner.converter.movie2:main'
+quake               = 'trainscanner.converter.quake:main'
 
 [tool.poetry.group.dev.dependencies]
 jinja2 = "^3.1.6"

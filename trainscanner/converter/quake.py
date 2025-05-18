@@ -76,7 +76,7 @@ def run_stitch(basename, options, outfilename=None, width=None):
 @click.option(
     "--width", type=int, default=3840, help="Width of output video (default to 3840)"
 )
-def quake(filename, slit_start, slit_end, frames, width):
+def main(filename, slit_start, slit_end, frames, width):
     # tsconfを読み込む
     with open(filename, "r") as f:
         tsconf = [x.rstrip() for x in f.readlines()]
@@ -135,4 +135,4 @@ def quake(filename, slit_start, slit_end, frames, width):
 
 
 if __name__ == "__main__":
-    quake()
+    main()

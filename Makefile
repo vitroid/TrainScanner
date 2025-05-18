@@ -28,7 +28,7 @@ build: README.md $(wildcard trainscanner/*.py)
 tag:
 	-git tag -a v$(VERSION) -m "Release version $(VERSION)"
 
-deploy: build tag
+deploy: build tag README.md
 	poetry publish
 	git push origin v$(VERSION)
 
