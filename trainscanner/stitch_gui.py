@@ -54,7 +54,7 @@ class Renderer(QObject):
         for num, den in self.stitcher.loop():
             if not self._isRunning:
                 # interrupted
-                self.stitcher.after()
+                # self.stitcher.after()
                 self.finished.emit()
                 return
             self.progress.emit(num * 100 // den)
