@@ -397,7 +397,7 @@ class Pass1:
         self.rawframe = frame
         self.lastnframe = nframe  # just for iter()
 
-    def _backward_match(self, absx, absy, velx, vely, precount):
+    def _backward_match_unused(self, absx, absy, velx, vely, precount):
         """
         using cached images,
         "postdict" the displacements
@@ -458,6 +458,81 @@ class Pass1:
             s += "{0} {1} {2}\n".format(*delta)
         return s
 
+    def _add_trailing_frames(self):
+        """
+        Add trailing frames to tspos.
+        """
+        logger = getLogger()
+        logger.info("Adding trailing frames to tspos.")
+
+        if len(self.tspos) < self.params.estimate:
+            return
+        num_frames = self.params.trailing
+
+        # 座標を抽出する
+        t = [
+            self.tspos[i][0]
+            for i in range(len(self.tspos) - self.params.estimate, len(self.tspos))
+        ]
+        x = [
+            self.tspos[i][1]
+            for i in range(len(self.tspos) - self.params.estimate, len(self.tspos))
+        ]
+        y = [
+            self.tspos[i][2]
+            for i in range(len(self.tspos) - self.params.estimate, len(self.tspos))
+        ]
+
+        ax, bx = np.polyfit(t, x, 1)
+        ay, by = np.polyfit(t, y, 1)
+
+        # 外挿する
+        t_extrapolated = np.linspace(
+            t[-1] + 1,
+            t[-1] + num_frames,
+            num_frames,
+            dtype=int,
+        )
+        x_extrapolated = (ax * t_extrapolated + bx).astype(int)
+        y_extrapolated = (ay * t_extrapolated + by).astype(int)
+        for i in range(num_frames):
+            self.tspos.append([t_extrapolated[i], x_extrapolated[i], y_extrapolated[i]])
+
+    def _add_leading_frames(self):
+        """
+        Add leading frames to tspos.
+        """
+        logger = getLogger()
+        logger.info("Adding leading frames to tspos.")
+
+        if len(self.tspos) < self.params.estimate:
+            return
+        num_frames = self.params.trailing
+        if self.tspos[0][0] < num_frames:
+            num_frames = self.tspos[0][0]
+
+        t = [self.tspos[i][0] for i in range(num_frames)]
+        x = [self.tspos[i][1] for i in range(num_frames)]
+        y = [self.tspos[i][2] for i in range(num_frames)]
+
+        ax, bx = np.polyfit(t, x, 1)
+        ay, by = np.polyfit(t, y, 1)
+
+        t_extrapolated = np.linspace(
+            t[0] - num_frames,
+            t[0] - 1,
+            num_frames,
+            dtype=int,
+        )
+        x_extrapolated = (ax * t_extrapolated + bx).astype(int)
+        y_extrapolated = (ay * t_extrapolated + by).astype(int)
+        leading_tspos = []
+        for i in range(num_frames):
+            leading_tspos.append(
+                [t_extrapolated[i], x_extrapolated[i], y_extrapolated[i]]
+            )
+        self.tspos = leading_tspos + self.tspos
+
     def iter(self):
         logger = getLogger()
         # All self variables to be inherited.
@@ -482,7 +557,7 @@ class Pass1:
         preview = trainscanner.fit_to_square(cropped, preview_size)
         preview_ratio = preview.shape[0] / cropped.shape[0]
 
-        self.tspos = ""
+        self.tspos = []
         self.cache = []  # save only "active" frames.
         deltax = []  # store displacements
         deltay = []  # store displacements
@@ -493,18 +568,18 @@ class Pass1:
             lastpreview = preview
             # もしlastが設定されていて，しかもframe数がそれを越えていれば，終了．
             if params.skip < params.last < nframe + params.every:
-                return
+                break
             # フレームの早送り
             for i in range(params.every - 1):
                 nframe = vl.skip()
                 if nframe == 0:
                     logger.debug("Video ended (1).")
-                    return
+                    break
             # 1フレームとりこみ
             nframe, rawframe = vl.next()
             if nframe == 0:
                 logger.debug("Video ended (2).")
-                return
+                break
             ##### compare with the previous raw frame
             diff = cv2.absdiff(rawframe, lastrawframe)
             # When the raw frame is not changed at all, ignore the frame.
@@ -535,7 +610,7 @@ class Pass1:
                     logger.error(
                         "Matching failed (probabily the motion detection window goes out of the image)."
                     )
-                    return
+                    break
                 dx, dy = delta
             else:
                 dx, dy = motion(lastframe, cropped, focus=params.focus)
@@ -578,7 +653,7 @@ class Pass1:
                         # 速度は安定した．
                         guess_mode = True
                         # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
-                        self.tspos = self._backward_match(absx, absy, dx, dy, precount)
+                        # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
                 # 変位をそのまま採用する．
                 velx = dx
                 vely = dy
@@ -591,7 +666,10 @@ class Pass1:
                     if match_fail > params.trailing:
                         # end of work
                         # Add trailing frames to the log file here.
-                        return
+
+                        # ここで、マッチしはじめる前の部分と、マッチしおえたあとの部分を整える。
+
+                        break
                     logger.info(
                         "Skip ({0} {1} {2} +{3}/{4})".format(
                             nframe, dx, dy, match_fail, params.trailing
@@ -609,7 +687,17 @@ class Pass1:
             absx += velx
             absy += vely
             self.canvas = canvas_size(self.canvas, cropped, absx, absy)
-            self.tspos += "{0} {1} {2}\n".format(nframe, velx, vely)
+            self.tspos.append([nframe, velx, vely])
+        # end of capture
+
+        # 最後の、match_failフレームを削除する。
+        self.tspos = self.tspos[:-match_fail]
+        # 10枚ほど余分に削る。
+        # self.tspos = self.tspos[:-10]
+        # self.tspos = self.tspos[10:]
+
+        self._add_trailing_frames()
+        self._add_leading_frames()
 
     def after(self):
         """
@@ -627,7 +715,8 @@ class Pass1:
         ostream.write(self.tsconf)
         if self.params.log is not None:
             ostream = open(self.params.log + ".tspos", "w")
-        ostream.write(self.tspos)
+        for t, x, y in self.tspos:
+            ostream.write(f"{t} {x} {y}\n")
         ostream.close()
 
         self.rawframe = None
