@@ -1,16 +1,9 @@
 from cx_Freeze import setup, Executable
 import tomllib
-from pathlib import Path
-import sys
-import shutil
 
 # load from ../pyproject.toml
 with open('../pyproject.toml', 'rb') as f:
     pyproject = tomllib.load(f)
-
-# copy *.x
-shutil.copy('../trainscanner.x', './trainscanner_win.py')
-shutil.copy('../ts_converter.x', './ts_converter_win.py')
 
 name = 'TrainScanner'
 version = pyproject['tool']['poetry']['version']
@@ -42,14 +35,14 @@ options = dict(
 )
 
 executables = [
-    Executable(r'.\trainscanner_win.py',
+    Executable(r'..\trainscanner_exe.py',
                base='gui',
                copyright=copyright,
                icon=r'.\trainscanner.drawio.ico',
                shortcut_name=name,
                shortcut_dir='MyProgramMenu'
     ),
-    Executable(r'.\ts_converter_win.py',
+    Executable(r'..\ts_converter_exe.py',
                base='console',
                copyright=copyright,
                icon=r'.\ts_converter.drawio.ico',
