@@ -1,0 +1,20 @@
+<svg host="65bd71144e" xmlns="http://www.w3.org/2000/svg" style="background: transparent; background-color: transparent;" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="700px" height="700px" viewBox="-0.5 -0.5 700 700" content="&lt;mxfile&gt;&lt;diagram id=&quot;G5fzgQsGZhQNvU1yDdpF&quot; name=&quot;ページ1&quot;&gt;3VXBkpswDP0argy2SQjHDd00l56y0z17sQOeGsw4ppD9+lrBDjAks+k0p56Qn2QhPT1BQLKq/65pU/5QjMsAR6wPyLcAYxwnG/sA5OwQhKIBKbRgA4ZG4CA+uQN9WCsYP80CjVLSiGYO5qqueW5mGNVadfOwo5Lztza04AvgkFO5RN8FM+WAbnAy4nsuitK/Ga3TwVNRH+w6OZWUqW4CkdeAZFopM1hVn3EJ7Hlehnu7O95rYZrX5pEL2I3iN5Wta84VZs6+W63amnG4gAKy7Uph+KGhOXg7O2CLlaaSzn0yWv3imZJKW6RWtQ3bFpoyYSvycIBJFKVpFFnfUUg5wbNst8syi7u6uDa8v9sculJmxcZVxY0+2xB/AUeOZie0xB27cWiJDyknA7uC1AmluOYeubSGo/M2tQn5mtrCctvc7dTJl3748OjvGUjnDKAbFKyi9ZKCOH0CBesH1DXVjl8G0AWjp/IiOjhQKYra2rntm1ulbIEtYRfyxTkqwRhkhBwNZK76Aj4+4bDuOGzfWl2/wAFyAxsxDtMYcgO45/Qi8M0qBD63rMdwRDiMyT1VP6TQQQXLAU34R6tb/MfPkCD+n/k/StH8dKWDvXf2P83F3SDJfG9Wy7V52tjscfzgX3yT/yZ5/QM=&lt;/diagram&gt;&lt;/mxfile&gt;">
+    <defs>
+        <linearGradient x1="0%" y1="0%" x2="0%" y2="100%" id="drawio-svg-JCZLoHfqibVAdWmjg2v4-gradient-light-dark_ccffcc_002b00_-1-light-dark_009900_32b532_-1-s-0">
+            <stop offset="0%" stop-color="#CCFFCC" stop-opacity="1" style="stop-color: light-dark(rgb(204, 255, 204), rgb(0, 43, 0)); stop-opacity: 1;"/>
+            <stop offset="100%" stop-color="#009900" stop-opacity="1" style="stop-color: light-dark(rgb(0, 153, 0), rgb(50, 181, 50)); stop-opacity: 1;"/>
+        </linearGradient>
+    </defs>
+    <g>
+        <g>
+            <rect x="0" y="0" width="700" height="700" rx="105" ry="105" fill="url(#drawio-svg-JCZLoHfqibVAdWmjg2v4-gradient-light-dark_ccffcc_002b00_-1-light-dark_009900_32b532_-1-s-0)" stroke="none" pointer-events="all" style="fill: url(&quot;#drawio-svg-JCZLoHfqibVAdWmjg2v4-gradient-light-dark_ccffcc_002b00_-1-light-dark_009900_32b532_-1-s-0&quot;);"/>
+        </g>
+        <g/>
+        <g>
+            <path d="M 285.16 100 L 397.6 192.61 L 285.16 285.22 L 285.16 235.55 C 224.81 235.55 175.88 284.48 175.88 344.84 C 175.88 405.19 224.81 454.12 285.16 454.12 L 285.16 454.12 L 285.16 540 L 285.16 540 C 177.38 540 90 452.62 90 344.84 C 90 237.05 177.38 149.67 285.16 149.67 Z" fill="#ffffff" stroke="none" pointer-events="all" style="fill: light-dark(#ffffff, var(--ge-dark-color, #121212));"/>
+        </g>
+        <g>
+            <path d="M 655.16 150 L 767.6 242.61 L 655.16 335.22 L 655.16 285.55 C 594.81 285.55 545.88 334.48 545.88 394.84 C 545.88 455.19 594.81 504.12 655.16 504.12 L 655.16 504.12 L 655.16 590 L 655.16 590 C 547.38 590 460 502.62 460 394.84 C 460 287.05 547.38 199.67 655.16 199.67 Z" fill="#ffffff" stroke="none" transform="rotate(180,538,370)" pointer-events="all" style="fill: light-dark(#ffffff, var(--ge-dark-color, #121212));"/>
+        </g>
+    </g>
+</svg>
