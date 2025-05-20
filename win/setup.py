@@ -44,12 +44,14 @@ options = dict(
 executables = [
     Executable(r'.\trainscanner_win.py',
                base='gui',
+               copyright=copyright,
                icon=r'.\trainscanner.drawio.ico',
                shortcut_name=name,
                shortcut_dir='MyProgramMenu'
     ),
     Executable(r'.\ts_converter_win.py',
                base='console',
+               copyright=copyright,
                icon=r'.\ts_converter.drawio.ico',
                shortcut_name='ts_converter',
                shortcut_dir='MyProgramMenu'
