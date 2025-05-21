@@ -7,6 +7,7 @@ import math
 # File handling
 import os
 import subprocess
+from dataclasses import dataclass
 
 # options handler
 import sys
@@ -232,7 +233,7 @@ class SettingsGUI(QWidget):
 
         settings2_layout.addWidget(QLabel(self.tr("Tripod")), rows, 2)
         self.accel_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
-        self.accel_slider.setRange(1, 15)  # スライダの範囲
+        self.accel_slider.setRange(1, 100)  # スライダの範囲
         self.accel_slider.setValue(1)  # 初期値
         self.accel_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.accel_slider.valueChanged.connect(self.accel_slider_on_draw)
@@ -541,33 +542,33 @@ class SettingsGUI(QWidget):
         if self.editor is None:
             return
         now = int(time.time()) % 100000
-        logfilenamebase = self.filename + ".{0}".format(now)
+        logfilenamebase = self.filename + f".{now}"
         stitch_options = []
-        stitch_options += ["slit={0}".format(self.editor.slitpos)]
-        stitch_options += ["width={0}".format(self.slitwidth / 100.0)]
+        stitch_options += [f"slit={self.editor.slitpos}"]
+        stitch_options += [f"width={self.slitwidth / 100.0}"]
         if self.btn_length.isChecked():
-            stitch_options += ["length={0}".format(self.spin_length.value())]
+            stitch_options += [f"length={self.spin_length.value()}"]
 
         common_options = []
         common_options += [
             "--perspective",
         ] + [str(x) for x in self.editor.perspective]
-        common_options += ["--rotate", "{0}".format(self.editor.angle_degree)]
+        common_options += ["--rotate", f"{self.editor.angle_degree}"]
         common_options += [
             "--crop",
         ] + [str(x) for x in (self.editor.croptop, self.editor.cropbottom)]
         pass1_options = []
-        pass1_options += ["--trail", "{0}".format(self.trailing)]
-        pass1_options += ["--antishake", "{0}".format(self.antishake)]
-        pass1_options += ["--estimate", "{0}".format(self.estimate)]
-        pass1_options += ["--identity", "{0}".format(self.identity)]
+        pass1_options += ["--trail", f"{self.trailing}"]
+        pass1_options += ["--antishake", f"{self.antishake}"]
+        pass1_options += ["--estimate", f"{self.estimate}"]
+        pass1_options += ["--identity", f"{self.identity}"]
         pass1_options += [
             "--skip",
-            "{0}".format(self.editor.imageselector2.slider.start() * 10),
+            f"{self.editor.imageselector2.slider.start() * self.editor.every_n_frames}",
         ]
         pass1_options += [
             "--last",
-            "{0}".format(self.editor.imageselector2.slider.end() * 10),
+            f"{self.editor.imageselector2.slider.end() * self.editor.every_n_frames}",
         ]
         pass1_options += [
             "--focus",
@@ -580,7 +581,7 @@ class SettingsGUI(QWidget):
             pass1_options += [
                 "--stall",
             ]
-        pass1_options += ["--maxaccel", "{0}".format(self.accel)]
+        pass1_options += ["--maxaccel", f"{self.accel}"]
         pass1_options += ["--log", logfilenamebase]
 
         # wrap the options to record in the tsconf file
@@ -603,7 +604,7 @@ class SettingsGUI(QWidget):
 
         matcher = pass1_gui.MatcherUI(argv, False)  # do not terminate
         matcher.exec()
-        if matcher.terminated:
+        if matcher.terminated or not matcher.success:
             matcher = None
             return
         matcher = None

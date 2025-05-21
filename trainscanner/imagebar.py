@@ -78,7 +78,7 @@ def main():
 
     # from trainscanner import video
     import cv2
-    import video
+    import trainscanner.video as video
 
     vl = video.VideoLoader("examples/sample2.mov")
     ret = True
