@@ -1,6 +1,6 @@
 # TrainScannerのMac用ディスクイメージ(.dmg)作成手順
 
-以下はTrainScannerのMac用ディスクイメージ(`.dmg`)を作成する手順のメモです。macOS 15 SequoiaとPython 3.12 (Homebrew版)で動作確認を行っています。
+以下はTrainScannerのMac用ディスクイメージ(`.dmg`)を作成する手順のメモです。macOS 15.5 Sequoia (Intel/Apple Silicon)とPython 3.12 (Homebrew版)で動作確認を行っています。
 
 ## TrainScannerのソースコードのダウンロード
 
@@ -45,3 +45,18 @@ python setup.py bdist_dmg
 `mac`フォルダーの中に`build`フォルダーが作成され、ファイル拡張子が`.dmg`のMac用ディスクイメージが保存されます。
 
 Finderでディスクイメージファイルを開くと、TrainScannerのアプリアイコンとアプリケーションフォルダへのエイリアスが表示されるので、アプリアイコンをアプリケーションフォルダにコピーします。
+
+## 補足
+
+cx_Freezeの現在の実装では、ビルドしたアプリの言語が`English`固定になってしまうため、TrainScannerアプリを日本語化するためにはアプリの`Info.plist`を修正する必要があります。
+
+```bash
+nano /Applications/TrainScanner.app/Contents/Info.plist
+```
+
+テキストエディタで`Info.plist`を開いたら、以下の2行を削除して上書き保存します。
+
+```Info.plist
+        <key>CFBundleDevelopmentRegion</key>
+        <string>English</string>
+```
