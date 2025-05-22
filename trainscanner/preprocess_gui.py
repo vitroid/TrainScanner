@@ -1,8 +1,11 @@
-from logging import getLogger
+from dataclasses import dataclass
 import time
+from logging import DEBUG, WARN, basicConfig, getLogger, root
 
 import cv2
-from PyQt6.QtCore import pyqtSignal, Qt, QObject, QPoint, QRect, QThread
+import numpy as np
+
+from PyQt6.QtCore import pyqtSignal, Qt, QObject, QPoint, QRect, QThread, QSize
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -19,6 +22,7 @@ from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
 from trainscanner import trainscanner, video
 from trainscanner.imageselector2 import ImageSelector2
 import trainscanner.qrangeslider as rs
+
 
 perspectiveCSS = """
 QRangeSlider > QSplitter::handle {
@@ -45,13 +49,21 @@ QRangeSlider #Span {
 """
 
 
+@dataclass
+class FrameInfo:
+    every_n_frames: int
+    frames: list[np.ndarray]
+
+
 class AsyncImageLoader(QObject):
     """
     This works in the background as a separate thread
     to load the thumbnails for the time line
     """
 
-    frameIncreased = pyqtSignal(list)
+    # skip幅を固定するのではなく、最大数を指定し、それを越えたら半分に間引く、というようにする
+
+    frameIncreased = pyqtSignal(FrameInfo)
 
     def __init__(self, parent=None, filename="", size=0):
         super(AsyncImageLoader, self).__init__(parent)
@@ -60,12 +72,14 @@ class AsyncImageLoader(QObject):
         # capture the first frame ASAP to avoid "no frame" errors.
         self.size = size
         logger = getLogger()
-        logger.debug(f"Open video: {filename}")
+        logger.debug("Open video: {0}".format(filename))
         self.vl = video.VideoLoader(filename)
         nframe, frame = self.vl.next()
         if self.size:
             frame = trainscanner.fit_to_square(frame, self.size)
         self.snapshots = [frame]
+        self.every_n_frames = 1
+        self.max_frames = 128
 
     def stop(self):
         self.isRunning = False
@@ -73,21 +87,54 @@ class AsyncImageLoader(QObject):
         self.snapshots = []
 
     def task(self):
+        logger = getLogger()
         if not self.isRunning:
             self.isRunning = True
 
-        while self.isRunning:
-            nframe, frame = self.vl.next()
-            if nframe == 0:
-                return
-            if self.size:
-                frame = trainscanner.fit_to_square(frame, self.size)
-            self.snapshots.append(frame)
-            self.frameIncreased.emit(self.snapshots)
-            for i in range(9):
-                nframe = self.vl.skip()
+        last_emit_time = time.time()
+        while True:
+            try:
+                nframe, frame = self.vl.next()
                 if nframe == 0:
-                    return
+                    logger.debug("End of video reached")
+                    break
+                if self.size:
+                    frame = trainscanner.fit_to_square(frame, self.size)
+                self.snapshots.append(frame)
+                if len(self.snapshots) == self.max_frames:
+                    logger.debug("max frames reached")
+                    self.every_n_frames *= 2
+                    self.snapshots = self.snapshots[::2]
+                logger.debug(f"frames: {len(self.snapshots)}")
+                now = time.time()
+                if now - last_emit_time > 0.1:
+                    self.frameIncreased.emit(
+                        FrameInfo(
+                            every_n_frames=self.every_n_frames,
+                            frames=self.snapshots,
+                        )
+                    )
+                    last_emit_time = now
+
+                # Skip frames
+                for i in range(self.every_n_frames - 1):
+                    nframe = self.vl.skip()
+                    if nframe == 0:
+                        logger.debug("End of video reached during skip")
+                        break
+            except Exception as e:
+                logger.error(f"Error during video loading: {str(e)}")
+                break
+        # 0.1秒待ってから再度emitする。
+        time.sleep(0.1)
+        self.frameIncreased.emit(
+            FrameInfo(
+                every_n_frames=self.every_n_frames,
+                frames=self.snapshots,
+            )
+        )
+        self.isRunning = False
+        return
 
 
 class DrawableLabel(QLabel):
@@ -99,9 +146,13 @@ class DrawableLabel(QLabel):
     def paintEvent(self, event):
         QLabel.paintEvent(self, event)
         painter = QPainter(self)
+
+        # 外枠線を描画
+        painter.setPen(Qt.GlobalColor.red)
+        painter.drawRect(0, 0, self.width() - 1, self.height() - 1)
+
+        # 既存の描画処理
         painter.setPen(Qt.GlobalColor.blue)
-        # painter.setBrush(Qt.yellow)
-        # painter.drawRect(10, 10, 100, 100)
         x, y, w, h = self.geometry
         painter.drawLine(
             x,
@@ -127,86 +178,135 @@ def draw_slitpos(f, slitpos):
 
 class MyLabel(QLabel):
 
-    def __init__(self, parent=None, func=None):
-
-        self.func = func
+    def __init__(self, parent=None, hook=None, focus=None):
+        self.hook = hook
         QLabel.__init__(self, parent)
         self.rubberBand = QRubberBand(QRubberBand.Shape.Rectangle, self)
         self.origin = QPoint()
         self.slitpos = 250
-        self.focus = (333, 666, 333, 666)  # xs,xe,ys,ye
-        self.geometry = (0, 0, 1000, 1000)  # x,y,w,h
+        self.focus = focus.copy()
+
+    def widget_to_fractional_coords(self, point):
+        # ウィジェットの中の画像のサイズを取得
+        pixmap = self.pixmap()
+        if pixmap is None:
+            return 0, 0
+        img_w = pixmap.width()
+        img_h = pixmap.height()
+
+        # 画像の表示位置を計算（ウィジェットの中央）
+        x = (self.width() - img_w) // 2
+        y = (self.height() - img_h) // 2
+
+        # マウス座標が画像の範囲内かチェック
+        if (
+            point.x() < x
+            or point.x() > x + img_w
+            or point.y() < y
+            or point.y() > y + img_h
+        ):
+            return 0, 0
+
+        # ウィジェット座標から画像座標への変換
+        img_x = (point.x() - x) * 1000 // img_w
+        img_y = (point.y() - y) * 1000 // img_h
+        # it s correct.
+        return img_x, img_y
 
     def paintEvent(self, event):
         QLabel.paintEvent(self, event)
         painter = QPainter(self)
         painter.setPen(Qt.GlobalColor.red)
-        x, y, w, h = self.geometry
+
+        # 実際のウィジェットのサイズを取得
+        w = self.width()
+        h = self.height()
+        # 画像のサイズを取得
+        pixmap = self.pixmap()
+        if pixmap is None:
+            return
+        img_w = pixmap.width()
+        img_h = pixmap.height()
+
+        # 画像の表示位置を計算
+        x = (w - img_w) // 2
+        y = (h - img_h) // 2
+
         d = 20
         painter.drawLine(
-            x + w // 2 - self.slitpos * w // 1000,
+            x + img_w // 2 - self.slitpos * img_w // 1000,
             y,
-            x + w // 2 - self.slitpos * w // 1000,
-            y + h,
+            x + img_w // 2 - self.slitpos * img_w // 1000,
+            y + img_h,
         )
         painter.drawLine(
-            x + w // 2 - self.slitpos * w // 1000 - d,
-            y + h // 2,
-            x + w // 2 - self.slitpos * w // 1000,
-            y + h // 2 - d,
+            x + img_w // 2 - self.slitpos * img_w // 1000 - d,
+            y + img_h // 2,
+            x + img_w // 2 - self.slitpos * img_w // 1000,
+            y + img_h // 2 - d,
         )
         painter.drawLine(
-            x + w // 2 - self.slitpos * w // 1000 - d,
-            y + h // 2,
-            x + w // 2 - self.slitpos * w // 1000,
-            y + h // 2 + d,
+            x + img_w // 2 - self.slitpos * img_w // 1000 - d,
+            y + img_h // 2,
+            x + img_w // 2 - self.slitpos * img_w // 1000,
+            y + img_h // 2 + d,
         )
         painter.drawLine(
-            x + w // 2 + self.slitpos * w // 1000,
+            x + img_w // 2 + self.slitpos * img_w // 1000,
             y,
-            x + w // 2 + self.slitpos * w // 1000,
-            y + h,
+            x + img_w // 2 + self.slitpos * img_w // 1000,
+            y + img_h,
         )
         painter.drawLine(
-            x + w // 2 + self.slitpos * w // 1000 + d,
-            y + h // 2,
-            x + w // 2 + self.slitpos * w // 1000,
-            y + h // 2 - d,
+            x + img_w // 2 + self.slitpos * img_w // 1000 + d,
+            y + img_h // 2,
+            x + img_w // 2 + self.slitpos * img_w // 1000,
+            y + img_h // 2 - d,
         )
         painter.drawLine(
-            x + w // 2 + self.slitpos * w // 1000 + d,
-            y + h // 2,
-            x + w // 2 + self.slitpos * w // 1000,
-            y + h // 2 + d,
+            x + img_w // 2 + self.slitpos * img_w // 1000 + d,
+            y + img_h // 2,
+            x + img_w // 2 + self.slitpos * img_w // 1000,
+            y + img_h // 2 + d,
         )
         painter.setPen(Qt.GlobalColor.green)
         painter.drawRect(
-            x + w * self.focus[0] // 1000,
-            y + h * self.focus[2] // 1000,
-            w * (self.focus[1] - self.focus[0]) // 1000,
-            h * (self.focus[3] - self.focus[2]) // 1000,
+            x + img_w * self.focus[0] // 1000,
+            y + img_h * self.focus[2] // 1000,
+            img_w * (self.focus[1] - self.focus[0]) // 1000,
+            img_h * (self.focus[3] - self.focus[2]) // 1000,
         )
 
     def mousePressEvent(self, event):
-
         if event.button() == Qt.MouseButton.LeftButton:
-
             self.origin = QPoint(event.pos())
             self.rubberBand.setGeometry(QRect(self.origin, QSize()))
             self.rubberBand.show()
 
     def mouseMoveEvent(self, event):
-
         if not self.origin.isNull():
             self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
 
     def mouseReleaseEvent(self, event):
-
         if event.button() == Qt.MouseButton.LeftButton:
             self.rubberBand.hide()
-            self.region = QRect(self.origin, event.pos()).normalized()
-            if self.func is not None:
-                self.func(self.region)
+            region = QRect(self.origin, event.pos()).normalized()
+
+            # ウィジェット座標を分数座標に変換
+            x1, y1 = self.widget_to_fractional_coords(region.topLeft())
+            x2, y2 = self.widget_to_fractional_coords(region.bottomRight())
+
+            # 座標を0-1000の範囲に制限
+            x1 = max(0, min(1000, x1))
+            x2 = max(0, min(1000, x2))
+            y1 = max(0, min(1000, y1))
+            y2 = max(0, min(1000, y2))
+
+            # focusを更新（分数座標系）
+            self.focus = (x1, x2, y1, y2)
+
+            if self.hook is not None:
+                self.hook(self.focus)
 
 
 # https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
@@ -268,9 +368,22 @@ class EditorGUI(QWidget):
         imageselector_layout.addWidget(self.imageselector2)
         imageselector_gbox = QGroupBox(self.tr("1. Specify the frame range"))
         imageselector_gbox.setLayout(imageselector_layout)
+
+        # finish_layout_gbox = QGroupBox(self.tr("4. Finish"))
+        # finish_layout = QVBoxLayout()
+        # https://www.tutorialspoint.com/pyqt/pyqt_qcheckbox_widget.htm
+        self.start_button = QPushButton(self.tr("Stich"), self)
+        self.start_button.clicked.connect(self.settings.start_process)
+        # finish_layout.addWidget(self.start_button)
+
+        # finish_layout_gbox.setLayout(finish_layout)
+
+        # The outmost box
         glayout = QVBoxLayout()
         glayout.addWidget(imageselector_gbox)
         glayout.addLayout(bottom_pane)
+        # glayout.addWidget(finish_layout_gbox)
+        glayout.addWidget(self.start_button)
         self.setLayout(glayout)
         self.setWindowTitle("Editor")
 
@@ -287,14 +400,16 @@ class EditorGUI(QWidget):
         thumb = cv2.resize(cropped, (thumbw, thumbh), interpolation=cv2.INTER_CUBIC)
         return self.cv2toQImage(thumb)
 
-    def updateTimeLine(self, cv2thumbs):
+    def updateTimeLine(self, frameinfo: FrameInfo = None):
         # count time and limit update
         now = time.time()
-        if now - self.lastupdatethumbs < 0.2:
-            return
+        # if now - self.lastupdatethumbs < 0.1:  # 更新頻度を0.05秒に変更
+        #     return
         # transformation filter
         self.imageselector2.imagebar.setTransformer(self.thumbtransformer)
-        self.imageselector2.setThumbs(cv2thumbs)
+        self.imageselector2.setThumbs(frameinfo.frames)
+        if frameinfo.every_n_frames:
+            self.every_n_frames = frameinfo.every_n_frames
         self.lastupdatethumbs = time.time()
 
     def deformation_rangeslider_widget(self, top_on_draw, bottom_on_draw):
@@ -345,20 +460,27 @@ class EditorGUI(QWidget):
         self.left_image_pane = DrawableLabel()
         self.left_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.left_image_pane.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding
         )
+        self.left_image_pane.setMinimumSize(100, 100)  # 最小サイズを設定
         layout.addWidget(self.left_image_pane, 1)
         layout.setAlignment(self.left_image_pane, Qt.AlignmentFlag.AlignHCenter)
         layout.setAlignment(self.left_image_pane, Qt.AlignmentFlag.AlignTop)
         return layout
 
+    def set_focus(self, focus: tuple[int, int, int, int]):
+        self.focus = focus
+        # これを呼ばないと、古い■が残ったままになる
+        self.show_snapshots()
+
     def crop_image_layout(self):
         layout = QVBoxLayout()
-        self.right_image_pane = MyLabel(func=self.show_snapshots)
+        self.right_image_pane = MyLabel(hook=self.set_focus, focus=self.focus)
         self.right_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.right_image_pane.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding
         )
+        self.right_image_pane.setMinimumSize(100, 100)  # 最小サイズを設定
         layout.addWidget(self.right_image_pane, 1)
         layout.setAlignment(self.right_image_pane, Qt.AlignmentFlag.AlignHCenter)
         layout.setAlignment(self.right_image_pane, Qt.AlignmentFlag.AlignTop)
@@ -455,28 +577,48 @@ class EditorGUI(QWidget):
         self.angle_degree += 1
         self.angle_degree %= 360
         self.angle_label.setText("{0} ".format(self.angle_degree) + self.tr("degrees"))
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def angle_dec(self):
         self.angle_degree -= 1
         self.angle_degree %= 360
         self.angle_label.setText("{0} ".format(self.angle_degree) + self.tr("degrees"))
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def angle_add90(self):
         self.angle_degree += 90
         self.angle_degree %= 360
         self.angle_label.setText("{0} ".format(self.angle_degree) + self.tr("degrees"))
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def angle_sub90(self):
         self.angle_degree -= 90
         self.angle_degree %= 360
         self.angle_label.setText("{0} ".format(self.angle_degree) + self.tr("degrees"))
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def frameChanged(self, value):
@@ -485,28 +627,48 @@ class EditorGUI(QWidget):
 
     def sliderTL_on_draw(self):
         self.perspective[0] = self.sliderL.start()
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def sliderBL_on_draw(self):
         self.perspective[2] = self.sliderL.end()
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def sliderTR_on_draw(self):
         self.perspective[1] = self.sliderR.start()
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def sliderBR_on_draw(self):
         self.perspective[3] = self.sliderR.end()
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def cv2toQImage(self, cv2image):
         height, width = cv2image.shape[:2]
         return QImage(
-            cv2image[:, :, ::-1].copy().data,
+            cv2.cvtColor(cv2image, cv2.COLOR_BGR2RGB).data,
             width,
             height,
             width * 3,
@@ -520,13 +682,16 @@ class EditorGUI(QWidget):
         if self.frame < 0:
             return
         logger = getLogger()
+        if self.frame < 0:
+            self.frame = 0
+        elif self.frame >= len(self.asyncimageloader.snapshots):
+            self.frame = len(self.asyncimageloader.snapshots) - 1
         image = self.asyncimageloader.snapshots[self.frame]
         self.transform = trainscanner.transformation(
             self.angle_degree, self.perspective, [self.croptop, self.cropbottom]
         )
         rotated, warped, cropped = self.transform.process_first_image(image)
         self.put_cv2_image(rotated, self.left_image_pane)
-
         self.put_cv2_image(cropped, self.right_image_pane)
 
     def put_cv2_image(self, image, widget):
@@ -553,7 +718,6 @@ class EditorGUI(QWidget):
         widget.setPixmap(pixmap)
         # give hints to DrawableLabel() and MyLabel()
         widget.perspective = self.perspective
-        widget.focus = self.focus
         widget.slitpos = self.slitpos
         w = pixmap.width()
         h = pixmap.height()
@@ -567,12 +731,22 @@ class EditorGUI(QWidget):
 
     def croptop_slider_on_draw(self):
         self.croptop = self.crop_slider.start()
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def cropbottom_slider_on_draw(self):
         self.cropbottom = self.crop_slider.end()
-        self.updateTimeLine(self.asyncimageloader.snapshots)
+        self.updateTimeLine(
+            FrameInfo(
+                every_n_frames=0,
+                frames=self.asyncimageloader.snapshots,
+            )
+        )
         self.show_snapshots()
 
     def closeEvent(self, event):
@@ -588,3 +762,38 @@ class EditorGUI(QWidget):
     # This will be the trigger for the first rendering
     # def resizeEvent(self, event):
     #    self.asyncimageloader.render()
+
+
+# for pyinstaller
+def resource_path(relative):
+    return os.path.join(os.environ.get("_MEIPASS", os.path.abspath(".")), relative)
+
+
+def main():
+    # pyqt_set_trace()
+    basicConfig(level=WARN, format="%(asctime)s %(levelname)s %(message)s")
+    app = QApplication(sys.argv)
+    translator = QTranslator(app)
+    path = os.path.dirname(trainscanner.__file__)
+
+    # まずLANG環境変数を確認
+    lang = os.environ.get("LANG", "").split("_")[0]
+
+    # LANGが設定されていない場合はQLocaleを使用
+    if not lang:
+        locale = QLocale()
+        lang = locale.name().split("_")[0]
+
+    if lang == "ja":
+        translator.load(path + "/i18n/trainscanner_ja")
+    elif lang == "fr":
+        translator.load(path + "/i18n/trainscanner_fr")
+    app.installTranslator(translator)
+    se = SettingsGUI()
+    se.show()
+    se.raise_()
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
