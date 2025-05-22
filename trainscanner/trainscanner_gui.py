@@ -2,11 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import math
 
 # File handling
 import os
-import subprocess
 from dataclasses import dataclass
 
 # options handler
@@ -20,7 +18,6 @@ from PyQt6.QtCore import (
     Qt,
     QTranslator,
 )
-from PyQt6.QtGui import QImage, QPainter, QPixmap
 
 # Core of the GUI and image process
 from PyQt6.QtWidgets import (
@@ -36,7 +33,9 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
     QWidget,
+    QSizePolicy,
 )
+from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
 
 #
 # sub dialog windows
@@ -53,6 +52,10 @@ class SettingsGUI(QWidget):
     def __init__(self, parent=None):
         super(SettingsGUI, self).__init__(parent)
         self.setAcceptDrops(True)
+
+        # ショートカットの設定
+        close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_shortcut.activated.connect(self.close)
 
         # options
         self.trailing = 30
@@ -338,9 +341,9 @@ class SettingsGUI(QWidget):
 
         finish_layout.addLayout(length_layout)
         # https://www.tutorialspoint.com/pyqt/pyqt_qcheckbox_widget.htm
-        self.start_button = QPushButton(self.tr("Start"), self)
-        self.start_button.clicked.connect(self.start_process)
-        finish_layout.addWidget(self.start_button)
+        # self.start_button = QPushButton(self.tr("Start"), self)
+        # self.start_button.clicked.connect(self.start_process)
+        # finish_layout.addWidget(self.start_button)
 
         finish_layout_gbox.setLayout(finish_layout)
         left_layout.addWidget(finish_layout_gbox)

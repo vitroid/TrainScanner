@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
-from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -16,6 +16,10 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
+    QHBoxLayout,
+    QGroupBox,
+    QSizePolicy,
+    QSlider,
 )
 
 from trainscanner import pass1
@@ -105,6 +109,10 @@ class MatcherUI(QDialog):
         self.btnStop.clicked.connect(lambda: self.worker.stop())
         self.btnStop.clicked.connect(self.terminateIt)
         self.terminated = False
+
+        # ショートカットの設定
+        close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_shortcut.activated.connect(self.close)
 
     def updatePixmap(self, image):
         # it is called only when the pixmap is really updated by the thread.

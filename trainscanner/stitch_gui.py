@@ -7,7 +7,7 @@ from logging import DEBUG, WARN, basicConfig, getLogger, INFO
 import cv2
 import numpy as np
 from PyQt6.QtCore import QObject, QPoint, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QImage, QPainter, QPixmap, QPen
+from PyQt6.QtGui import QImage, QPainter, QPixmap, QPen, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -19,6 +19,8 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QGroupBox,
+    QSizePolicy,
+    QSlider,
 )
 
 # from QTiledImage import QTiledImage
@@ -235,6 +237,10 @@ class StitcherUI(QDialog):
         self.layout.addWidget(self.scrollArea)
         self.layout.addStretch(1)
         self.setLayout(self.layout)
+
+        # ショートカットの設定
+        close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_shortcut.activated.connect(self.close)
 
     def crop_finished(self):
         # save the final image

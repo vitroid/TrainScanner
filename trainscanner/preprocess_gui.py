@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QSlider,
     QRubberBand,
 )
-from PyQt6.QtGui import QImage, QPixmap, QPainter
+from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
 
 from trainscanner import trainscanner, video
 from trainscanner.imageselector2 import ImageSelector2
@@ -215,6 +215,10 @@ class EditorGUI(QWidget):
 
     def __init__(self, settings, parent=None, filename=None, params=None):
         super(EditorGUI, self).__init__(parent)
+
+        # ショートカットの設定
+        close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_shortcut.activated.connect(self.close)
 
         # options
         # self.skip       = 0
