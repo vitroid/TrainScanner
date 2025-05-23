@@ -456,13 +456,14 @@ class EditorGUI(QWidget):
         # return crop_layout
 
     def deformation_image_layout(self):
-        layout = QVBoxLayout()
         self.left_image_pane = DrawableLabel()
         self.left_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.left_image_pane.setSizePolicy(
             QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding
         )
         self.left_image_pane.setMinimumSize(100, 100)  # 最小サイズを設定
+
+        layout = QVBoxLayout()
         layout.addWidget(self.left_image_pane, 1)
         layout.setAlignment(self.left_image_pane, Qt.AlignmentFlag.AlignHCenter)
         layout.setAlignment(self.left_image_pane, Qt.AlignmentFlag.AlignTop)
@@ -702,18 +703,16 @@ class EditorGUI(QWidget):
         # Get the current widget size
         widget_width = widget.width()
         widget_height = widget.height()
+        # widgetの外枠がひろがっても、widget_heightはひろがらない。
+        # 縮むときには小さくなるのに。
 
-        # Scale the image to fit the widget while maintaining aspect ratio
-        if height > width:
-            if height > widget_height:
-                pixmap = pixmap.scaledToHeight(
-                    widget_height, Qt.TransformationMode.SmoothTransformation
-                )
-        else:
-            if width > widget_width:
-                pixmap = pixmap.scaledToWidth(
-                    widget_width, Qt.TransformationMode.SmoothTransformation
-                )
+        # アスペクト比を維持しながらスケーリング(拡大も可能)
+        pixmap = pixmap.scaled(
+            widget_width,
+            widget_height,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
 
         widget.setPixmap(pixmap)
         # give hints to DrawableLabel() and MyLabel()
