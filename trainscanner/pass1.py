@@ -367,9 +367,9 @@ class Pass1:
                     "--focus",
                     "--crop",
                 ):  # multiple values
-                    self.tsconf += "{0}\n".format(option)
+                    self.tsconf += f"{option}\n"
                     for v in value:
-                        self.tsconf += "{0}\n".format(v)
+                        self.tsconf += f"{v}\n"
                 elif option in (
                     "--zero",
                     "--stall",
@@ -396,67 +396,6 @@ class Pass1:
             sys.exit(0)
         self.rawframe = frame
         self.lastnframe = nframe  # just for iter()
-
-    def _backward_match_unused(self, absx, absy, velx, vely, precount):
-        """
-        using cached images,
-        "postdict" the displacements
-        Do not break the cache. It will be used again.
-        """
-        logger = getLogger()
-        curFrameNum, curFrameImg = self.cache.pop(-1)
-        prevFrameNum = -1
-        curFrameAbsX = int(absx)
-        curFrameAbsY = int(absy)
-        newDeltas = []
-        for i in range(precount + self.params.trailing):
-            logger.debug(
-                "Rewinding {0} {1} {2}".format(
-                    i, precount + self.params.trailing, len(self.cache)
-                )
-            )
-            if len(self.cache) == 0:
-                break
-            prevFrameNum, prevFrameImg = self.cache.pop(-1)
-            d = motion(
-                prevFrameImg,
-                curFrameImg,
-                focus=self.params.focus,
-                maxaccel=self.params.maxaccel,
-                delta=(velx, vely),
-            )
-            if d is None:
-                dx = 0
-                dy = 0
-            else:
-                dx, dy = d
-            if self.params.zero:
-                dy = 0
-            if abs(dx) > self.params.antishake or abs(dy) > self.params.antishake:
-                velx = dx
-                vely = dy
-            newDeltas = [[prevFrameNum, velx, vely]] + newDeltas
-            curFrameAbsX -= velx
-            curFrameAbsY -= vely
-            self.canvas = canvas_size(
-                self.canvas, curFrameImg, curFrameAbsX, curFrameAbsY
-            )
-            logger.info("Rewind {0} {1} {2}".format(prevFrameNum, velx, vely))
-            curFrameImg = prevFrameImg
-            curFrameNum = prevFrameNum
-        # dispose cache
-        self.cache = None  # Dispose image cache.
-        logger.debug("Disposed the image cache.")
-
-        # trick; by the backward matching, the first frame may not be located at the origin
-        # So the first frame is specified by the abs coord.
-        if prevFrameNum < 0:
-            return ""
-        newDeltas = [[prevFrameNum, curFrameAbsX, curFrameAbsY]] + newDeltas
-        s = ""
-        for delta in newDeltas:
-            s += "{0} {1} {2}\n".format(*delta)
-        return s
 
     def _add_trailing_frames(self):
         """
@@ -533,6 +472,15 @@ class Pass1:
             )
         self.tspos = leading_tspos + self.tspos
 
+    def valid_focus(self, focus):
+        if focus is None:
+            return False
+        if focus[0] >= focus[1]:
+            return False
+        if focus[2] >= focus[3]:
+            return False
+        return True
+
     def iter(self):
         logger = getLogger()
         # All self variables to be inherited.
@@ -562,6 +510,9 @@ class Pass1:
         deltax = []  # store displacements
         deltay = []  # store displacements
 
+        if not self.valid_focus(params.focus):
+            return
+
         while True:
             lastrawframe = rawframe
             lastframe = cropped
@@ -589,7 +540,7 @@ class Pass1:
                 logger.info("skip identical frame #{0}".format(diff))
                 continue
             ##### Warping the frame
-            rotated, warped, cropped = transform.process_next_image(rawframe)
+            _, _, cropped = transform.process_next_image(rawframe)
             ##### motion detection.
             # if maxaccel is set, motion detection area becomes very narrow
             # assuming that the train is running at constant speed.
