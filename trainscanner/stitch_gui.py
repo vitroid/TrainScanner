@@ -7,7 +7,7 @@ from logging import DEBUG, WARN, basicConfig, getLogger, INFO
 import cv2
 import numpy as np
 from PyQt6.QtCore import QObject, QPoint, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QImage, QPainter, QPixmap, QPen
+from PyQt6.QtGui import QImage, QPainter, QPixmap, QPen, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -19,6 +19,8 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QGroupBox,
+    QSizePolicy,
+    QSlider,
 )
 
 # from QTiledImage import QTiledImage
@@ -177,6 +179,7 @@ class StitcherUI(QDialog):
     thread_invoker = pyqtSignal()
 
     def __init__(self, argv, terminate, parent=None):
+        logger = getLogger()
         super(StitcherUI, self).__init__(parent)
         self.setWindowTitle("Stitcher Preview")
         stitcher = stitch.Stitcher(argv=argv)
@@ -188,24 +191,19 @@ class StitcherUI(QDialog):
             )
         )
         self.stitcher = stitcher
+        # stitcherの幅
+        width = stitcher.dimen[0]
+
         # determine the shrink ratio to avoid too huge preview
         self.preview_ratio = 1.0
-        if stitcher.dimen[0] > 10000:
-            self.preview_ratio = 10000.0 / stitcher.dimen[0]
-        if stitcher.dimen[1] * self.preview_ratio > 500:
-            self.preview_ratio = 500.0 / stitcher.dimen[1]
+        if width > 10000:
+            self.preview_ratio = 10000.0 / width
         self.terminate = terminate
         self.thread = QThread()
         self.thread.start()
 
         self.worker = Renderer(stitcher=stitcher)
         # it might be too early.
-
-        # determine the window size
-        width, height = stitcher.dimen[:2]
-        height = int(height * self.preview_ratio)
-        # determine the preview area size
-        width = int(width * self.preview_ratio)
 
         self.scrollArea = QScrollArea()
         # self.scrollArea.setMaximumHeight(1000)
@@ -239,6 +237,10 @@ class StitcherUI(QDialog):
         self.layout.addWidget(self.scrollArea)
         self.layout.addStretch(1)
         self.setLayout(self.layout)
+
+        # ショートカットの設定
+        close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_shortcut.activated.connect(self.close)
 
     def crop_finished(self):
         # save the final image

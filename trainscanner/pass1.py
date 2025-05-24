@@ -16,7 +16,7 @@ from trainscanner import video
 
 def draw_focus_area(f, focus, delta=None):
     """
-    cv2形式の画像の中に四角を描く．
+    cv2形式の画像の中に四角を描く
     """
     h, w = f.shape[0:2]
     pos = [
@@ -27,18 +27,19 @@ def draw_focus_area(f, focus, delta=None):
     ]
     cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), (0, 255, 0), 1)
     if delta is not None:
+        dx, dy = delta
         pos = [
-            w * focus[0] // 1000 + delta,
-            w * focus[1] // 1000 + delta,
-            h * focus[2] // 1000,
-            h * focus[3] // 1000,
+            w * focus[0] // 1000 + dx,
+            w * focus[1] // 1000 + dx,
+            h * focus[2] // 1000 + dy,
+            h * focus[3] // 1000 + dy,
         ]
         cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), (255, 255, 0), 1)
 
 
 def draw_slit_position(f, slitpos, dx):
     """
-    cv2形式の画像の中にスリットマーカーを描く．
+    cv2形式の画像の中にスリットマーカーを描く
     """
     h, w = f.shape[0:2]
     if dx > 0:
@@ -55,8 +56,8 @@ def motion(
     image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0, 0), antishake=2
 ):
     """
-    ref画像の，focusで指定された領域内の画像と同じ画像を，image内でさがして，その変位を返す．
-    maxaccelとdeltaが指定されている場合は，探索範囲を絞り高速にマッチングできる．
+    ref画像のfocusで指定された領域内の画像と同じ画像をimage内で探して、その変位を返す。
+    maxaccelとdeltaが指定されている場合は、探索範囲を絞り高速にマッチングできる。
     """
     logger = getLogger()
     hi, wi = ref.shape[0:2]
@@ -106,7 +107,7 @@ def motion(
             return (min_loc2[0] + roix02 - wmin, min_loc2[1] + roiy02 - hmin)
 
 
-def diffImage(frame1, frame2, dx, dy, focus=None, slitpos=None):
+def diffImage(frame1, frame2, dx, dy):  # , focus=None, slitpos=None):
     """
     2枚のcv2画像の差を返す．
     """
@@ -114,10 +115,10 @@ def diffImage(frame1, frame2, dx, dy, focus=None, slitpos=None):
     h, w = frame1.shape[0:2]
     frame1 = cv2.warpAffine(frame1, affine, (w, h))
     diff = 255 - cv2.absdiff(frame1, frame2)
-    if focus is not None:
-        draw_focus_area(diff, focus, delta=dx)
-    if slitpos is not None:
-        draw_slit_position(diff, slitpos, dx)
+    # if focus is not None:
+    #     draw_focus_area(diff, focus, delta=(dx, dy))
+    # if slitpos is not None:
+    #     draw_slit_position(diff, slitpos, dx)
     return diff
 
 
@@ -585,7 +586,11 @@ class Pass1:
             # diff_img = diffImage(preview,lastpreview,int(dx*preview_ratio),int(dy*preview_ratio),focus=params.focus)
             diff_img = diffImage(cropped, lastframe, int(dx), int(dy))
             diff_img = trainscanner.fit_to_square(diff_img, preview_size)
-            draw_focus_area(diff_img, params.focus, delta=int(dx * preview_ratio))
+            draw_focus_area(
+                diff_img,
+                params.focus,
+                delta=(int(dx * preview_ratio), int(dy * preview_ratio)),
+            )
             # previewを表示
             yield diff_img
             ##### if the motion is large
