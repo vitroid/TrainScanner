@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QFrame,
 )
-from PyQt6.QtGui import QPalette, QPainter, QIcon
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtCore import QTranslator, QLocale, Qt
 import cv2
 import numpy as np
@@ -138,6 +138,14 @@ class SettingsGUI(QWidget):
         self.setLayout(finish_layout)
         self.setWindowTitle("Converter")
 
+        # Command-Wで閉じるショートカットを追加
+        close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_shortcut.activated.connect(self.close)
+
+        # Command-Qで終了するショートカットを追加
+        quit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
+        quit_shortcut.activated.connect(QApplication.quit)
+
     def start_process(self):
         logger = logging.getLogger()
         head_right = self.btn_right.isChecked()
@@ -207,7 +215,9 @@ class SettingsGUI(QWidget):
         # 3. and the mimetipe is text/uri-list
         # 2. That has the regular extension.
         logger.debug("len:{0}".format(len(mimeData.formats())))
-        mimetypes = [mimetype for mimetype in mimeData.formats() if mimetype == "text/uri-list"]
+        mimetypes = [
+            mimetype for mimetype in mimeData.formats() if mimetype == "text/uri-list"
+        ]
         if mimetypes:
             data = mimeData.data(mimetypes[0])
             from urllib.parse import urlparse, unquote
