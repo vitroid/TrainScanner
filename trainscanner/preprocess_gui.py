@@ -137,34 +137,55 @@ class AsyncImageLoader(QObject):
         return
 
 
-class DrawableLabel(QLabel):
+class DeformationFixWidget(QLabel):
     def __init__(self, parent=None):
         super(QLabel, self).__init__(parent)
         self.perspective = (0, 0, 1000, 1000)
-        self.geometry = (0, 0, 1000, 1000)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        # 画像のスケーリングモードを設定
+        self.setScaledContents(False)
+
+    def sizeHint(self):
+        # 親ウィジェットのサイズを取得
+        parent = self.parent()
+        if parent:
+            return parent.size()
+        return super().sizeHint()
+
+    def minimumSizeHint(self):
+        return QSize(100, 100)
 
     def paintEvent(self, event):
         QLabel.paintEvent(self, event)
         painter = QPainter(self)
 
-        # 外枠線を描画
-        painter.setPen(Qt.GlobalColor.red)
-        painter.drawRect(0, 0, self.width() - 1, self.height() - 1)
+        w = self.width()
+        h = self.height()
+
+        # widget内部の画像のサイズを取得
+        pixmap = self.pixmap()
+        if pixmap is None:
+            return
+        img_w = pixmap.width()
+        img_h = pixmap.height()
+
+        image_left = (w - img_w) // 2
+        image_right = image_left + img_w
+        image_top = (h - img_h) // 2
 
         # 既存の描画処理
         painter.setPen(Qt.GlobalColor.blue)
-        x, y, w, h = self.geometry
         painter.drawLine(
-            x,
-            y + self.perspective[0] * h // 1000,
-            x + w,
-            y + self.perspective[1] * h // 1000,
+            image_left,
+            image_top + self.perspective[0] * img_h // 1000,
+            image_right,
+            image_top + self.perspective[1] * img_h // 1000,
         )
         painter.drawLine(
-            x,
-            y + self.perspective[2] * h // 1000,
-            x + w,
-            y + self.perspective[3] * h // 1000,
+            image_left,
+            image_top + self.perspective[2] * img_h // 1000,
+            image_right,
+            image_top + self.perspective[3] * img_h // 1000,
         )
 
 
@@ -176,8 +197,7 @@ def draw_slitpos(f, slitpos):
     cv2.line(f, (slitpos2, 0), (slitpos2, h), (0, 0, 255), 1)
 
 
-class MyLabel(QLabel):
-
+class ClippingWidget(QLabel):
     def __init__(self, parent=None, hook=None, focus=None):
         self.hook = hook
         QLabel.__init__(self, parent)
@@ -185,6 +205,19 @@ class MyLabel(QLabel):
         self.origin = QPoint()
         self.slitpos = 250
         self.focus = focus.copy()
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        # 画像のスケーリングモードを設定
+        self.setScaledContents(False)
+
+    def sizeHint(self):
+        # 親ウィジェットのサイズを取得
+        parent = self.parent()
+        if parent:
+            return parent.size()
+        return super().sizeHint()
+
+    def minimumSizeHint(self):
+        return QSize(100, 100)
 
     def widget_to_fractional_coords(self, point):
         # ウィジェットの中の画像のサイズを取得
@@ -210,7 +243,6 @@ class MyLabel(QLabel):
         # ウィジェット座標から画像座標への変換
         img_x = (point.x() - x) * 1000 // img_w
         img_y = (point.y() - y) * 1000 // img_h
-        # it s correct.
         return img_x, img_y
 
     def paintEvent(self, event):
@@ -456,15 +488,14 @@ class EditorGUI(QWidget):
         # return crop_layout
 
     def deformation_image_layout(self):
-        self.left_image_pane = DrawableLabel()
+        self.left_image_pane = DeformationFixWidget()
         self.left_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.left_image_pane.setSizePolicy(
-            QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding
-        )
+        # サイズポリシーはDeformationFixWidgetのコンストラクタで設定するため、ここでは削除
         self.left_image_pane.setMinimumSize(100, 100)  # 最小サイズを設定
 
         layout = QVBoxLayout()
-        layout.addWidget(self.left_image_pane, 1)
+        layout.addWidget(self.left_image_pane, 1)  # ストレッチファクター1
+        # 中央揃えは維持
         layout.setAlignment(self.left_image_pane, Qt.AlignmentFlag.AlignHCenter)
         layout.setAlignment(self.left_image_pane, Qt.AlignmentFlag.AlignTop)
         return layout
@@ -476,7 +507,7 @@ class EditorGUI(QWidget):
 
     def crop_image_layout(self):
         layout = QVBoxLayout()
-        self.right_image_pane = MyLabel(hook=self.set_focus, focus=self.focus)
+        self.right_image_pane = ClippingWidget(hook=self.set_focus, focus=self.focus)
         self.right_image_pane.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.right_image_pane.setSizePolicy(
             QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding
@@ -509,23 +540,31 @@ class EditorGUI(QWidget):
         left_pane_title = QGroupBox(self.tr("2. Repair deformation"))
         left_pane_layout.addWidget(left_pane_title)
 
+        # left medium layout
+        left_medium_layout = QVBoxLayout()
+        left_medium_layout.addLayout(self.deformation_image_layout(), 1)
+        rotation_deformation_layout = self.rotation_deformation_control()
+        left_medium_layout.addLayout(rotation_deformation_layout)
+
         # 左上段
         first_box = QHBoxLayout()
         first_box.addWidget(self.sliderL)
-        first_box.addLayout(self.deformation_image_layout(), 1)
+        # first_box.addLayout(self.deformation_image_layout(), 1)
+        first_box.addLayout(left_medium_layout)
         first_box.addWidget(self.sliderR)
 
         # 左下段
-        rotation_deformation_layout = self.rotation_deformation_control()
+        # rotation_deformation_layout = self.rotation_deformation_control()
 
-        combined_box = QVBoxLayout()
-        combined_box.addLayout(first_box)
-        combined_box.addLayout(rotation_deformation_layout)
-        combined_box.setAlignment(
-            rotation_deformation_layout, Qt.AlignmentFlag.AlignTop
-        )
+        # combined_box = QVBoxLayout()
+        # combined_box.addLayout(first_box)
+        # combined_box.addLayout(rotation_deformation_layout)
+        # combined_box.setAlignment(
+        #     rotation_deformation_layout, Qt.AlignmentFlag.AlignTop
+        # )
 
-        left_pane_title.setLayout(combined_box)
+        # left_pane_title.setLayout(combined_box)
+        left_pane_title.setLayout(first_box)
         return left_pane_layout
 
     def right_pane_layout(self):
@@ -703,8 +742,6 @@ class EditorGUI(QWidget):
         # Get the current widget size
         widget_width = widget.width()
         widget_height = widget.height()
-        # widgetの外枠がひろがっても、widget_heightはひろがらない。
-        # 縮むときには小さくなるのに。
 
         # アスペクト比を維持しながらスケーリング(拡大も可能)
         pixmap = pixmap.scaled(
@@ -715,14 +752,8 @@ class EditorGUI(QWidget):
         )
 
         widget.setPixmap(pixmap)
-        # give hints to DrawableLabel() and MyLabel()
         widget.perspective = self.perspective
         widget.slitpos = self.slitpos
-        w = pixmap.width()
-        h = pixmap.height()
-        x = (widget_width - w) // 2
-        y = (widget_height - h) // 2
-        widget.geometry = x, y, w, h
 
     def slit_slider_on_draw(self):
         self.slitpos = self.slit_slider.value()
