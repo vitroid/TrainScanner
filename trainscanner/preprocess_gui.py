@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QSlider,
     QRubberBand,
+    QMessageBox,
 )
 from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
 
@@ -61,25 +62,30 @@ class AsyncImageLoader(QObject):
     to load the thumbnails for the time line
     """
 
-    # skip幅を固定するのではなく、最大数を指定し、それを越えたら半分に間引く、というようにする
-
     frameIncreased = pyqtSignal(FrameInfo)
+    errorOccurred = pyqtSignal(str)  # エラーメッセージを送信するシグナルを追加
 
     def __init__(self, parent=None, filename="", size=0):
         super(AsyncImageLoader, self).__init__(parent)
         self.isRunning = True
-
-        # capture the first frame ASAP to avoid "no frame" errors.
+        self.filename = filename  # ファイル名を保持
         self.size = size
         logger = getLogger()
         logger.debug("Open video: {0}".format(filename))
-        self.vl = video.VideoLoader(filename)
-        nframe, frame = self.vl.next()
-        if self.size:
-            frame = trainscanner.fit_to_square(frame, self.size)
-        self.snapshots = [frame]
-        self.every_n_frames = 1
-        self.max_frames = 128
+
+        try:
+            self.vl = video.VideoLoader(filename)
+            nframe, frame = self.vl.next()
+            if self.size:
+                frame = trainscanner.fit_to_square(frame, self.size)
+            self.snapshots = [frame]
+            self.every_n_frames = 1
+            self.max_frames = 128
+        except Exception as e:
+            logger.error(f"Error opening video file: {str(e)}")
+            self.errorOccurred.emit(f"ビデオファイルを開けません: {filename}\n{str(e)}")
+            self.isRunning = False
+            self.snapshots = []
 
     def stop(self):
         self.isRunning = False
@@ -89,7 +95,10 @@ class AsyncImageLoader(QObject):
     def task(self):
         logger = getLogger()
         if not self.isRunning:
-            self.isRunning = True
+            return
+
+        if not self.snapshots:  # 初期化時にエラーが発生していた場合
+            return
 
         last_emit_time = time.time()
         while True:
@@ -124,15 +133,20 @@ class AsyncImageLoader(QObject):
                         break
             except Exception as e:
                 logger.error(f"Error during video loading: {str(e)}")
+                self.errorOccurred.emit(
+                    f"ビデオの読み込み中にエラーが発生しました: {str(e)}"
+                )
                 break
+
         # 0.1秒待ってから再度emitする。
         time.sleep(0.1)
-        self.frameIncreased.emit(
-            FrameInfo(
-                every_n_frames=self.every_n_frames,
-                frames=self.snapshots,
+        if self.snapshots:  # エラーが発生していない場合のみemit
+            self.frameIncreased.emit(
+                FrameInfo(
+                    every_n_frames=self.every_n_frames,
+                    frames=self.snapshots,
+                )
             )
-        )
         self.isRunning = False
         return
 
@@ -386,8 +400,10 @@ class EditorGUI(QWidget):
         self.asyncimageloader.moveToThread(self.thread)
         self.thread_invoker.connect(self.asyncimageloader.task)
         self.thread_invoker.emit()
-        # self.destroyed.connect(self.stop_thread)  #does not work
         self.asyncimageloader.frameIncreased.connect(self.updateTimeLine)
+        self.asyncimageloader.errorOccurred.connect(
+            self.handleError
+        )  # エラーハンドラを接続
 
         # close on quit
         # http://stackoverflow.com/questions/27420338/how-to-clear-child-window-reference-stored-in-parent-application-when-child-wind
@@ -787,11 +803,10 @@ class EditorGUI(QWidget):
         super().resizeEvent(event)
         self.show_snapshots()
 
-    #    self.asyncimageloader.stop()
-
-    # This will be the trigger for the first rendering
-    # def resizeEvent(self, event):
-    #    self.asyncimageloader.render()
+    def handleError(self, error_message):
+        """エラーメッセージを表示し、ウィンドウを閉じる"""
+        QMessageBox.critical(self, "エラー", error_message)
+        self.close()
 
 
 # for pyinstaller
