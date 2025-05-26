@@ -24,7 +24,7 @@ setup(
     options={
         "bdist_mac": {
             "bundle_name": name,
-            "iconfile": './trainscanner.drawio.icns',
+            "iconfile": './TrainScanner.icns',
             "include_resources": [('../trainscanner', 'lib/trainscanner')], 
         },
         "bdist_dmg": {
