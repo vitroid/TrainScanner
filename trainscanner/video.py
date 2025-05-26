@@ -6,21 +6,19 @@ Wrapper for video systems
 It does not fit the iterator framework.
 """
 
-import importlib
 import sys
+from trainscanner import video_cv2
 
-
-def VideoLoader(filename):
-    module = None
+def VideoLoader(filename:str):
     ostype = sys.platform
     if ostype == "darwin":
-        module = importlib.import_module("trainscanner.video_cv2")
+        return video_cv2.VideoLoader(filename)
     elif 0 == ostype.find("linux"):
-        module = importlib.import_module("trainscanner.video_cv2")
+        return video_cv2.VideoLoader(filename)
     elif 0 == ostype.find("win"):
-        module = importlib.import_module("trainscanner.video_cv2")
-    return module.VideoLoader(filename)
-
+        return video_cv2.VideoLoader(filename)
+    else:
+        raise ValueError(f"Unsupported platform: {ostype}")
 
 if __name__ == "__main__":
     vl = VideoLoader("../examples/sample3.mov")  # 58 frames
