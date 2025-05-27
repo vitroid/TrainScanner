@@ -57,12 +57,15 @@ $(ZIP_NAME_EN): $(APP_EN_BUNDLE)
 	ditto -c -k --sequesterRsrc --keepParent $< $@
 
 github-release: $(ZIP_NAME_JA) $(ZIP_NAME_EN) 
-	echo CodeSignしていないのでリリースできません。
-	# gh release create $(GHTAG) $^ \
-	# 	--title "TrainScanner $(VERSION)" \
-	# 	--notes "日本語版と英語版を同時リリース"
+	# codesignなしのリリース。
+	gh release create $(GHTAG) $^ \
+		--title "TrainScanner $(VERSION)" \
+		--notes "日本語版と英語版を同時リリース"
 
 
+# make codesign
+codesign:
+	LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle exec fastlane run cert generate_apple_certs:true username:"vitroid@gmail.com" platform:"macos"
 
 
 clean:
