@@ -76,13 +76,25 @@ def get_parser():
     parser = argparse.ArgumentParser(description="Make a movie from a train image")
     parser.add_argument("image_path", help="入力画像ファイルのパス")
     parser.add_argument("--output", "-o", help="出力ファイルのパス")
-    parser.add_argument("--duration", "-d", type=float, help="動画の長さ（秒）")
-    parser.add_argument("--height", "-h", type=int, default=1080, help="目標の高さ")
-    parser.add_argument("--width", "-w", type=int, default=1920, help="目標の幅")
+    parser.add_argument(
+        "--duration", "-d", type=float, help="動画の長さ（秒） -- 0.1,1000"
+    )
+    parser.add_argument(
+        "--height", "-H", type=int, default=1080, help="目標の高さ -- 100,4096"
+    )
+    parser.add_argument(
+        "--width", "-W", type=int, default=1920, help="目標の幅 -- 100,4096"
+    )
     parser.add_argument("--head-right", "-R", action="store_true", help="右端が先頭")
-    parser.add_argument("--fps", "-r", type=int, default=30, help="フレームレート")
-    parser.add_argument("--bitrate", "-b", type=int, help="ビットレート")
-    parser.add_argument("--encoder", "-e", type=str, default="libx264", help="mp4エンコーダー")
+    parser.add_argument(
+        "--fps", "-r", type=int, default=30, help="フレームレート -- 1,120"
+    )
+    parser.add_argument(
+        "--bitrate", "-b", type=int, help="ビットレート -- 1,1000000000"
+    )
+    parser.add_argument(
+        "--encoder", "-e", type=str, default="libx264", help="mp4エンコーダー"
+    )
     return parser
 
 

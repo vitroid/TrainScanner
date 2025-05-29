@@ -1,9 +1,10 @@
 import argparse
 
+
 def list_cli_options(parser: argparse.ArgumentParser):
     """
     コマンドラインオプションの一覧をリストで返すAPI
-    
+
     Returns:
         list: 各オプションの情報を含む辞書のリスト
         [
@@ -31,4 +32,4 @@ def list_cli_options(parser: argparse.ArgumentParser):
             "type": str(action.type) if action.type else None,
         }
         options.append(opt)
-    return options
+    return options, parser.description

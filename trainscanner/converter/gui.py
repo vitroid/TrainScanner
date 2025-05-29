@@ -15,6 +15,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QFrame,
     QButtonGroup,
+    QLineEdit,
+    QSlider,
 )
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtCore import QTranslator, QLocale, Qt
@@ -31,11 +33,17 @@ import shutil
 
 # final image tranformation
 import trainscanner
-from trainscanner.converter import film, scroll
+from trainscanner.converter import scroll
 from trainscanner.converter import helix
 from trainscanner.converter import rect
 from trainscanner.converter import hans_style as hans
 from trainscanner.converter import movie2
+from trainscanner.converter import list_cli_options
+from trainscanner.converter.helix import get_parser as helix_parser
+from trainscanner.converter.rect import get_parser as rect_parser
+from trainscanner.converter.hans_style import get_parser as hans_parser
+from trainscanner.converter.scroll import get_parser as scroll_parser
+from trainscanner.converter.movie2 import get_parser as movie2_parser
 from tiledimage.cachedimage import CachedImage
 
 # options handler
@@ -58,41 +66,76 @@ class SettingsGUI(QWidget):
         instruction.setAlignment(Qt.AlignmentFlag.AlignCenter)
         finish_layout.addWidget(instruction)
 
-        self.btn_finish_perf = QCheckBox(self.tr("Add the film perforations"))
-        finish_layout.addWidget(self.btn_finish_perf)
+        # self.btn_finish_perf = QCheckBox(self.tr("Add the film perforations"))
+        # finish_layout.addWidget(self.btn_finish_perf)
 
         # タブウィジェットを作成
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
 
         # 各タブの内容を作成
-        tab_labels = {
-            "None": "Do nothing",
-            "Helix": "Make a helical image",
-            "Rect": "Make a rectangular image",
-            "Hans": "Make a Hans-style image",
-            "Movie": "Make a scrolling movie",
-            "Movie2": "Make a scrolling movie (Yamako style)"
+        converters = {
+            "hans": list_cli_options(hans_parser()),
+            "rect": list_cli_options(rect_parser()),
+            "helix": list_cli_options(helix_parser()),
+            "scroll": list_cli_options(scroll_parser()),
+            "movie": list_cli_options(movie2_parser()),
         }
+        # ffmpegの確認
+        self.has_ffmpeg = shutil.which("ffmpeg") is not None
         self.tab_widgets = []
-        for name in tab_labels:
+        for converter, (options, description) in converters.items():
             tab = QWidget()
             tab_layout = QVBoxLayout()
-            tab_layout.addWidget(QLabel(self.tr(tab_labels[name])))
+            desc = self.tr(description)
+            if not self.has_ffmpeg and converter in ["movie", "movie2"]:
+                desc += " (ffmpeg required)"
+                tab.setEnabled(False)
+            tab_layout.addWidget(QLabel(desc))
+            # オプションの表示
+            for option in options:
+                if option["type"] == "<class 'int'>":
+                    help = option["help"]
+                    try:
+                        help, minmax = help.split("--")
+                        min, max = [int(x) for x in minmax.split(",")]
+                    except ValueError:
+                        min, max = 0, 100
+                    # sliderの左にラベルを付けたい。
+                    hbox = QHBoxLayout()
+                    label = QLabel(self.tr(help))
+                    hbox.addWidget(label)
+                    slider = QSlider(Qt.Orientation.Horizontal)
+                    slider.setMinimum(min)
+                    slider.setMaximum(max)
+                    if option["default"] is not None:
+                        slider.setValue(int(option["default"]))
+                    else:
+                        slider.setValue(min)
+                    # スライダーの両端に最小値と最大値を表示したい。
+                    min_label = QLabel(str(min))
+                    max_label = QLabel(str(max))
+                    hbox.addWidget(min_label)
+                    hbox.addWidget(slider)
+                    hbox.addWidget(max_label)
+                    tab_layout.addLayout(hbox)
+                elif option["type"] is None:
+                    print("checkbox", option["type"], None)
+                    checkbox = QCheckBox(self.tr(option["help"]))
+                    # checkbox.setChecked(option["default"])
+                    tab_layout.addWidget(checkbox)
+                # elif isinstance(option["type"], str):
+                #     print("text field")
+                #     lineedit = QLineEdit(self.tr(option["default"]))
+                #     tab_layout.addWidget(lineedit)
+                else:
+                    print(option["type"])
+                    tab_layout.addWidget(QLabel(self.tr(option["help"])))
             tab.setLayout(tab_layout)
-            self.tab_widget.addTab(tab, self.tr(name))
+            self.tab_widget.addTab(tab, self.tr(converter))
             self.tab_widgets.append(tab)
 
         finish_layout.addWidget(self.tab_widget)
-
-        # ffmpegの確認
-        self.has_ffmpeg = shutil.which("ffmpeg") is not None
-        if not self.has_ffmpeg:
-            # 4: "Make a scrolling movie", 5: "Make a scrolling movie (Yamako style)"
-            self.tab_widgets[4].setEnabled(False)
-            self.tab_widgets[5].setEnabled(False)
-            self.tab_widget.setTabText(4, self.tr(tab_labels["Movie"] + " (ffmpeg required)"))
-            self.tab_widget.setTabText(5, self.tr(tab_labels["Movie2"] + " (ffmpeg required)"))
 
         # 矢印ボタンとテキストのレイアウト
         arrow_layout = QHBoxLayout()
@@ -144,25 +187,24 @@ class SettingsGUI(QWidget):
         else:
             img = cv2.imread(self.filename)
         file_name = self.filename
-        if self.btn_finish_perf.isChecked():
-            img = film.filmify(img)
-            file_name += ".film.png"
-            cv2.imwrite(file_name, img)
-        if self.tab_widget.currentIndex() == 1:
+        # if self.btn_finish_perf.isChecked():
+        #     img = film.filmify(img)
+        #     file_name += ".film.png"
+        #     cv2.imwrite(file_name, img)
+        # tabのラベルで分岐
+        if self.tab_widget.tabText(self.tab_widget.currentIndex()) == "helix":
             himg = helix.helicify(img)
             cv2.imwrite(file_name + ".helix.png", himg)
-        elif self.tab_widget.currentIndex() == 2:
+        elif self.tab_widget.tabText(self.tab_widget.currentIndex()) == "rect":
             rimg = rect.rectify(img, head_right=head_right)
             cv2.imwrite(file_name + ".rect.png", rimg)
-        elif self.tab_widget.currentIndex() == 4:
+        elif self.tab_widget.tabText(self.tab_widget.currentIndex()) == "scroll":
             scroll.make_movie(file_name, head_right=head_right)
-        elif self.tab_widget.currentIndex() == 5:
+        elif self.tab_widget.tabText(self.tab_widget.currentIndex()) == "movie":
             movie2.make_movie(file_name, head_right=head_right)
-        elif self.tab_widget.currentIndex() == 3:
+        elif self.tab_widget.tabText(self.tab_widget.currentIndex()) == "hans":
             hansimg = hans.hansify(img, head_right=head_right)
             cv2.imwrite(file_name + ".hans.png", hansimg)
-        elif self.tab_widget.currentIndex() == 0:
-            pass
 
     def dragEnterEvent(self, event):
         logger = logging.getLogger()

@@ -4,8 +4,8 @@
 import cv2
 import numpy as np
 import math
-import click
 import logging
+import argparse
 
 
 # Determine tilt angle by Newton-Raphson method
@@ -110,24 +110,36 @@ def add_margin(img, margin):
     return canvas2
 
 
-@click.command()
-@click.argument("image_path")
-@click.option("--output", "-o", help="出力ファイルのパス")
-@click.option("--margin", "-m", type=float, default=0, help="マージン")
-@click.option("--aspect", "-a", type=float, default=2.0**0.5, help="アスペクト比")
-def main(image_path, output, margin, aspect):
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description="Make a helical strip from a train image"
+    )
+    parser.add_argument("image_path", help="入力画像ファイルのパス")
+    parser.add_argument("--output", "-o", help="出力ファイルのパス")
+    parser.add_argument(
+        "--margin", "-m", type=float, default=0, help="マージン -- 0,100"
+    )
+    parser.add_argument(
+        "--aspect", "-a", type=float, default=2.0**0.5, help="アスペクト比 -- 0.1,10"
+    )
+    return parser
+
+
+def main():
+    parser = get_parser()
+    args = parser.parse_args()
     """
     Make a helical strip from a train image
     """
     logging.basicConfig(level=logging.INFO)
-    img = cv2.imread(image_path)
-    canvas2 = helicify(img, aspect=aspect)
-    if margin != 0:
-        canvas2 = add_margin(canvas2, margin)
-    if output:
-        cv2.imwrite(output, canvas2)
+    img = cv2.imread(args.image_path)
+    canvas2 = helicify(img, aspect=args.aspect)
+    if args.margin != 0:
+        canvas2 = add_margin(canvas2, args.margin)
+    if args.output:
+        cv2.imwrite(args.output, canvas2)
     else:
-        cv2.imwrite(f"{image_path}.helix.png", canvas2)
+        cv2.imwrite(f"{args.image_path}.helix.png", canvas2)
 
 
 if __name__ == "__main__":

@@ -41,11 +41,13 @@ def get_parser():
     """
     コマンドライン引数のパーサーを生成して返す関数
     """
-    parser = argparse.ArgumentParser(description="Fold a train image into a stack of images")
+    parser = argparse.ArgumentParser(
+        description="Fold a train image into a stack of images"
+    )
     parser.add_argument("image_path", help="入力画像ファイルのパス")
     parser.add_argument("--output", "-o", help="出力ファイルのパス")
-    parser.add_argument("--rows", "-r", type=int, help="行数")
-    parser.add_argument("--gap", "-g", type=int, default=0, help="マージン")
+    parser.add_argument("--rows", "-r", type=int, help="行数 -- 2,100")
+    parser.add_argument("--gap", "-g", type=int, default=0, help="マージン -- 0,100")
     parser.add_argument("--head-right", "-R", action="store_true", help="右端が先頭")
     return parser
 
