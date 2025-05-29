@@ -3,7 +3,7 @@
 
 import cv2
 import numpy as np
-import click
+import argparse
 
 
 def hansify(img, head_right=True, rows=0, overlap=10):
@@ -49,22 +49,29 @@ def hansify(img, head_right=True, rows=0, overlap=10):
     return canvas
 
 
-@click.command()
-@click.argument("image_path")
-@click.option("--output", "-o", help="出力ファイルのパス")
-@click.option("--rows", "-r", type=int, default=0, help="行数 (0で自動)")
-@click.option("--overlap", "-l", type=int, default=5, help="重複率")
-@click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
-def main(image_path, output, rows, overlap, head_right):
+def get_parser():
     """
-    Fold a train image into a stack of images like Hans Ruijter's style
+    コマンドライン引数のパーサーを生成して返す関数
     """
-    img = cv2.imread(image_path)
-    canvas = hansify(img, head_right, rows, overlap)
-    if output:
-        cv2.imwrite(output, canvas)
+    parser = argparse.ArgumentParser(description="Fold a train image into a stack of images like Hans Ruijter's style")
+    parser.add_argument("image_path", help="入力画像ファイルのパス")
+    parser.add_argument("--output", "-o", help="出力ファイルのパス")
+    parser.add_argument("--rows", "-r", type=int, default=0, help="行数 (0で自動)")
+    parser.add_argument("--overlap", "-l", type=int, default=5, help="重複率")
+    parser.add_argument("--head-right", "-R", action="store_true", help="右端が先頭")
+    return parser
+
+
+def main():
+    parser = get_parser()
+    args = parser.parse_args()
+
+    img = cv2.imread(args.image_path)
+    canvas = hansify(img, args.head_right, args.rows, args.overlap)
+    if args.output:
+        cv2.imwrite(args.output, canvas)
     else:
-        cv2.imwrite(f"{image_path}.hans.png", canvas)
+        cv2.imwrite(f"{args.image_path}.hans.png", canvas)
 
 
 if __name__ == "__main__":

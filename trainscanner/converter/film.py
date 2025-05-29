@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import argparse
 import cv2
 import numpy as np
-import click
 
 
 def roundbox(img, p1, p2, r, color):
@@ -90,20 +90,29 @@ def filmify(img, label=""):
     return canvas
 
 
-@click.command()
-@click.argument("image_path")
-@click.option("--output", "-o", help="出力ファイルのパス")
-@click.option("--creative_commons_sign", "-c", help="Creative Commons sign")
-def main(image_path, output, creative_commons_sign):
+def get_parser():
     """
-    Add film perforations to the image
+    コマンドライン引数のパーサーを生成して返す関数
     """
-    img = cv2.imread(image_path)
-    canvas = filmify(img, label=creative_commons_sign)
-    if output:
-        cv2.imwrite(output, canvas)
+    parser = argparse.ArgumentParser(description="Add film perforations to the image")
+    parser.add_argument("image_path", help="入力画像ファイルのパス")
+    parser.add_argument("--output", "-o", help="出力ファイルのパス")
+    parser.add_argument("--creative_commons_sign", "-c", help="Creative Commons sign")
+    return parser
+
+
+
+
+def main():
+    parser = get_parser()
+    args = parser.parse_args()
+
+    img = cv2.imread(args.image_path)
+    canvas = filmify(img, label=args.creative_commons_sign)
+    if args.output:
+        cv2.imwrite(args.output, canvas)
     else:
-        cv2.imwrite(f"{image_path}.film.png", canvas)
+        cv2.imwrite(f"{args.image_path}.film.png", canvas)
 
 
 if __name__ == "__main__":

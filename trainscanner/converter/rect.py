@@ -3,7 +3,7 @@
 
 import cv2
 import numpy as np
-import click
+import argparse
 
 
 def rectify(img, rows=None, gap=3, head_right=True):  # gap in percent
@@ -37,22 +37,29 @@ def rectify(img, rows=None, gap=3, head_right=True):  # gap in percent
     return canvas
 
 
-@click.command()
-@click.argument("image_path")
-@click.option("--output", "-o", help="出力ファイルのパス")
-@click.option("--rows", "-r", type=int, default=None, help="行数")
-@click.option("--gap", "-g", type=int, default=0, help="マージン")
-@click.option("--head-right", "-R", is_flag=True, help="右端が先頭")
-def main(image_path, output, rows, gap, head_right):
+def get_parser():
     """
-    Fold a train image into a stack of images
+    コマンドライン引数のパーサーを生成して返す関数
     """
-    img = cv2.imread(image_path)
-    canvas = rectify(img, rows, gap, head_right)
-    if output:
-        cv2.imwrite(output, canvas)
+    parser = argparse.ArgumentParser(description="Fold a train image into a stack of images")
+    parser.add_argument("image_path", help="入力画像ファイルのパス")
+    parser.add_argument("--output", "-o", help="出力ファイルのパス")
+    parser.add_argument("--rows", "-r", type=int, help="行数")
+    parser.add_argument("--gap", "-g", type=int, default=0, help="マージン")
+    parser.add_argument("--head-right", "-R", action="store_true", help="右端が先頭")
+    return parser
+
+
+def main():
+    parser = get_parser()
+    args = parser.parse_args()
+
+    img = cv2.imread(args.image_path)
+    canvas = rectify(img, args.rows, args.gap, args.head_right)
+    if args.output:
+        cv2.imwrite(args.output, canvas)
     else:
-        cv2.imwrite(f"{image_path}.rect.png", canvas)
+        cv2.imwrite(f"{args.image_path}.rect.png", canvas)
 
 
 if __name__ == "__main__":
