@@ -66,64 +66,33 @@ class SettingsGUI(QWidget):
         self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
 
         # 各タブの内容を作成
-        tab_names = [
-            "Do nothing",
-            "Make a helical image",
-            "Make a rectangular image",
-            "Make a Hans-style image",
-            "Make a scrolling movie",
-            "Make a scrolling movie (Yamako style)"
-        ]
+        tab_labels = {
+            "None": "Do nothing",
+            "Helix": "Make a helical image",
+            "Rect": "Make a rectangular image",
+            "Hans": "Make a Hans-style image",
+            "Movie": "Make a scrolling movie",
+            "Movie2": "Make a scrolling movie (Yamako style)"
+        }
         self.tab_widgets = []
-        for name in tab_names:
+        for name in tab_labels:
             tab = QWidget()
             tab_layout = QVBoxLayout()
-            tab_layout.addWidget(QLabel(self.tr(name)))
+            tab_layout.addWidget(QLabel(self.tr(tab_labels[name])))
             tab.setLayout(tab_layout)
             self.tab_widget.addTab(tab, self.tr(name))
             self.tab_widgets.append(tab)
 
         finish_layout.addWidget(self.tab_widget)
-        # ラジオボタングループの作成
-        # self.image_type_group = QButtonGroup(self)
-        # self.btn_finish_none = QRadioButton(self.tr("Do nothing"))
-        # self.btn_finish_none.setChecked(True)  # デフォルトでチェック
-        # self.btn_finish_helix = QRadioButton(self.tr("Make a helical image"))
-        # self.btn_finish_rect = QRadioButton(self.tr("Make a rectangular image"))
-        # self.btn_finish_hans = QRadioButton(self.tr("Make a Hans-style image"))
-        # self.btn_finish_movie = QRadioButton(self.tr("Make a scrolling movie"))
-        # self.btn_finish_movie2 = QRadioButton(
-        #     self.tr("Make a scrolling movie (Yamako style)")
-        # )
 
         # ffmpegの確認
-        # self.has_ffmpeg = shutil.which("ffmpeg") is not None
-        # self.btn_finish_movie.setEnabled(self.has_ffmpeg)
-        # self.btn_finish_movie2.setEnabled(self.has_ffmpeg)
-        # if not self.has_ffmpeg:
-        #     self.btn_finish_movie.setToolTip(
-        #         self.tr(
-        #             "ffmpeg is not installed. Please install ffmpeg to use this feature."
-        #         )
-        #     )
-
-        # self.image_type_group.addButton(self.btn_finish_none)
-        # self.image_type_group.addButton(self.btn_finish_helix)
-        # self.image_type_group.addButton(self.btn_finish_rect)
-        # self.image_type_group.addButton(self.btn_finish_hans)
-        # self.image_type_group.addButton(self.btn_finish_movie)
-        # self.image_type_group.addButton(self.btn_finish_movie2)
-        # finish_layout.addWidget(self.btn_finish_none)
-        # finish_layout.addWidget(self.btn_finish_helix)
-        # finish_layout.addWidget(self.btn_finish_rect)
-        # finish_layout.addWidget(self.btn_finish_hans)
-        # finish_layout.addWidget(self.btn_finish_movie)
-        # finish_layout.addWidget(self.btn_finish_movie2)
-        # 水平線を追加
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        finish_layout.addWidget(line)
+        self.has_ffmpeg = shutil.which("ffmpeg") is not None
+        if not self.has_ffmpeg:
+            # 4: "Make a scrolling movie", 5: "Make a scrolling movie (Yamako style)"
+            self.tab_widgets[4].setEnabled(False)
+            self.tab_widgets[5].setEnabled(False)
+            self.tab_widget.setTabText(4, self.tr(tab_labels["Movie"] + " (ffmpeg required)"))
+            self.tab_widget.setTabText(5, self.tr(tab_labels["Movie2"] + " (ffmpeg required)"))
 
         # 矢印ボタンとテキストのレイアウト
         arrow_layout = QHBoxLayout()
@@ -153,11 +122,6 @@ class SettingsGUI(QWidget):
 
         finish_layout.addLayout(arrow_layout)
 
-        self.pbar = QProgressBar()
-        self.pbar.setValue(0)
-        self.pbar.setRange(0, 6)
-        finish_layout.addWidget(self.pbar)
-
         self.setLayout(finish_layout)
         self.setWindowTitle("Converter")
 
@@ -172,7 +136,6 @@ class SettingsGUI(QWidget):
     def start_process(self):
         logger = logging.getLogger()
         head_right = self.btn_right.isChecked()
-        self.pbar.setValue(0)
         if self.filename[-6:] == ".pngs/":
             self.filename = self.filename[:-1]
             cachedimage = CachedImage("inherit", dir=self.filename, disposal=False)
@@ -181,40 +144,25 @@ class SettingsGUI(QWidget):
         else:
             img = cv2.imread(self.filename)
         file_name = self.filename
-        self.pbar.setValue(1)
         if self.btn_finish_perf.isChecked():
             img = film.filmify(img)
-            self.pbar.setValue(2)
             file_name += ".film.png"
             cv2.imwrite(file_name, img)
-            self.pbar.setValue(3)
-        if self.btn_finish_helix.isChecked():
-            self.pbar.setValue(4)
+        if self.tab_widget.currentIndex() == 1:
             himg = helix.helicify(img)
-            self.pbar.setValue(5)
             cv2.imwrite(file_name + ".helix.png", himg)
-        elif self.btn_finish_rect.isChecked():
-            self.pbar.setValue(4)
+        elif self.tab_widget.currentIndex() == 2:
             rimg = rect.rectify(img, head_right=head_right)
-            self.pbar.setValue(5)
             cv2.imwrite(file_name + ".rect.png", rimg)
-        elif self.btn_finish_movie.isChecked():
-            self.pbar.setValue(4)
+        elif self.tab_widget.currentIndex() == 4:
             scroll.make_movie(file_name, head_right=head_right)
-            self.pbar.setValue(5)
-        elif self.btn_finish_movie2.isChecked():
-            self.pbar.setValue(4)
+        elif self.tab_widget.currentIndex() == 5:
             movie2.make_movie(file_name, head_right=head_right)
-            self.pbar.setValue(5)
-        elif self.btn_finish_hans.isChecked():
-            self.pbar.setValue(4)
+        elif self.tab_widget.currentIndex() == 3:
             hansimg = hans.hansify(img, head_right=head_right)
-            self.pbar.setValue(5)
             cv2.imwrite(file_name + ".hans.png", hansimg)
-        elif self.btn_finish_none.isChecked():
-            self.pbar.setValue(4)
-            self.pbar.setValue(5)
-        self.pbar.setValue(6)
+        elif self.tab_widget.currentIndex() == 0:
+            pass
 
     def dragEnterEvent(self, event):
         logger = logging.getLogger()
