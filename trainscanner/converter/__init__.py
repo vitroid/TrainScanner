@@ -29,7 +29,16 @@ def list_cli_options(parser: argparse.ArgumentParser):
             "required": action.required,
             "nargs": action.nargs,
             "default": action.default,
-            "type": str(action.type) if action.type else None,
+            "type": action.type if action.type else None,
         }
+        if opt["type"] in (int, float):
+            try:
+                help, minmax = opt["help"].split("--")
+                min, max = [float(x) for x in minmax.split(",")]
+            except ValueError:
+                min, max = 0, 100
+            opt["min"] = min
+            opt["max"] = max
+            opt["help"] = help
         options.append(opt)
     return options, parser.description

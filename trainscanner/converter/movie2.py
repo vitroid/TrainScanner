@@ -135,7 +135,7 @@ def make_movie(
             f'-i "{temp_dir}/frame_%06d.{ext}"',
             f"-c:v {encoder}",
             "-pix_fmt yuv420p",
-            f"-b:v {bitrate}" if bitrate else "",
+            f"-b:v {bitrate}M" if bitrate else "",
             f'"{output}"',
         ]
         cmd = " ".join(cmd)
@@ -166,7 +166,11 @@ def get_parser():
         "--fps", "-r", type=int, default=30, help="フレームレート -- 1,120"
     )
     parser.add_argument(
-        "--bitrate", "-b", type=int, help="ビットレート -- 1,1000000000"
+        "--bitrate",
+        "-b",
+        type=float,
+        default=8,
+        help="ビットレート (Mbit/s) -- 0.1,100",
     )
     parser.add_argument(
         "--png", "-p", action="store_true", help="中間ファイルをpngにする"

@@ -58,7 +58,7 @@ def make_movie(
         f"-i '{image_path}'",
         f"-vf scale={virtual_width}:{movie_h},crop={movie_w}:{movie_h}:{scroll_expression}:0",
         "-pix_fmt yuv420p",
-        f"-b:v {bitrate}" if bitrate else "",
+        f"-b:v {bitrate}M" if bitrate else "",
         f"-c:v {encoder}",
         f"-t {duration}",
         f"'{output}'",
@@ -90,7 +90,7 @@ def get_parser():
         "--fps", "-r", type=int, default=30, help="フレームレート -- 1,120"
     )
     parser.add_argument(
-        "--bitrate", "-b", type=int, help="ビットレート -- 1,1000000000"
+        "--bitrate", "-b", type=int, help="ビットレート (Mbit/s) -- 0.1,100"
     )
     parser.add_argument(
         "--encoder", "-e", type=str, default="libx264", help="mp4エンコーダー"

@@ -1,5 +1,5 @@
 import cv2
-from trainscanner import canvas
+from trainscanner.widget import canvas
 
 
 class ScaledCanvas(canvas.Canvas):

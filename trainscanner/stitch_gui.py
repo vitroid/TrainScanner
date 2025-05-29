@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
 from tiledimage import cachedimage as ci
 
 from trainscanner import stitch
-from trainscanner.scaledcanvas import ScaledCanvas
+from trainscanner.widget.scaledcanvas import ScaledCanvas
 
 
 # It is run in the thread.

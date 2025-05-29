@@ -4,8 +4,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QImage, QPainter
 from PyQt6.QtWidgets import QApplication, QSlider, QVBoxLayout, QWidget
 
-from trainscanner import qrangeslider as rs
-from trainscanner.imagebar import ImageBar
+from trainscanner.widget import qrangeslider as rs
+from trainscanner.widget.imagebar import ImageBar
 
 
 class ImageSelector2(QWidget):

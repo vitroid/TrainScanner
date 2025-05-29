@@ -116,9 +116,7 @@ def get_parser():
     )
     parser.add_argument("image_path", help="入力画像ファイルのパス")
     parser.add_argument("--output", "-o", help="出力ファイルのパス")
-    parser.add_argument(
-        "--margin", "-m", type=float, default=0, help="マージン -- 0,100"
-    )
+    parser.add_argument("--margin", "-m", type=int, default=0, help="マージン -- 0,100")
     parser.add_argument(
         "--aspect", "-a", type=float, default=2.0**0.5, help="アスペクト比 -- 0.1,10"
     )

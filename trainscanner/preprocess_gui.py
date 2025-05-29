@@ -21,8 +21,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
 
 from trainscanner import trainscanner, video
-from trainscanner.imageselector2 import ImageSelector2
-import trainscanner.qrangeslider as rs
+from trainscanner.widget.imageselector2 import ImageSelector2
+import trainscanner.widget.qrangeslider as rs
 
 
 perspectiveCSS = """

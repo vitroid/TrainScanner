@@ -44,6 +44,9 @@ from trainscanner.converter.rect import get_parser as rect_parser
 from trainscanner.converter.hans_style import get_parser as hans_parser
 from trainscanner.converter.scroll import get_parser as scroll_parser
 from trainscanner.converter.movie2 import get_parser as movie2_parser
+from trainscanner.widget.qfloatslider import QFloatSlider
+from trainscanner.widget.qlogslider import QLogSlider
+from trainscanner.widget.qvalueslider import QValueSlider
 from tiledimage.cachedimage import CachedImage
 
 # options handler
@@ -94,43 +97,66 @@ class SettingsGUI(QWidget):
             tab_layout.addWidget(QLabel(desc))
             # オプションの表示
             for option in options:
-                if option["type"] == "<class 'int'>":
+                if option["type"] in (int, float):
                     help = option["help"]
-                    try:
-                        help, minmax = help.split("--")
-                        min, max = [int(x) for x in minmax.split(",")]
-                    except ValueError:
-                        min, max = 0, 100
+                    min = option["min"]
+                    max = option["max"]
                     # sliderの左にラベルを付けたい。
                     hbox = QHBoxLayout()
                     label = QLabel(self.tr(help))
                     hbox.addWidget(label)
-                    slider = QSlider(Qt.Orientation.Horizontal)
-                    slider.setMinimum(min)
-                    slider.setMaximum(max)
-                    if option["default"] is not None:
-                        slider.setValue(int(option["default"]))
+                    if option["type"] == int:
+                        slider = QValueSlider()
+                        slider.setMinimum(int(min))
+                        slider.setMaximum(int(max))
+                        if option["default"] is not None:
+                            slider.setValue(int(option["default"]))
+                        else:
+                            slider.setValue(int(min))
+                        # スライダーの両端に最小値と最大値を表示したい。
+                        min_label = QLabel(f"{int(min)}")
+                        max_label = QLabel(f"{int(max)}")
                     else:
-                        slider.setValue(min)
-                    # スライダーの両端に最小値と最大値を表示したい。
-                    min_label = QLabel(str(min))
-                    max_label = QLabel(str(max))
+                        if 0 < min < max and max / min > 999:
+                            slider = QLogSlider(
+                                min_value=min, max_value=max, resolution=100
+                            )
+                        else:
+                            slider = QFloatSlider(
+                                min_value=min, max_value=max, resolution=100
+                            )
+                        slider.setMinimum(min)
+                        slider.setMaximum(max)
+                        if option["default"] is not None:
+                            slider.setValue(float(option["default"]))
+                        else:
+                            slider.setValue(min)
+                        # スライダーの両端に最小値と最大値を表示したい。
+                        min_label = QLabel(f"{min}")
+                        max_label = QLabel(f"{max}")
                     hbox.addWidget(min_label)
                     hbox.addWidget(slider)
                     hbox.addWidget(max_label)
                     tab_layout.addLayout(hbox)
-                elif option["type"] is None:
-                    print("checkbox", option["type"], None)
+                elif (
+                    option["type"] is None
+                    and option["nargs"] == 0
+                    and "-h" not in option["option_strings"]
+                    and "-R" not in option["option_strings"]
+                ):
                     checkbox = QCheckBox(self.tr(option["help"]))
                     # checkbox.setChecked(option["default"])
                     tab_layout.addWidget(checkbox)
-                # elif isinstance(option["type"], str):
-                #     print("text field")
-                #     lineedit = QLineEdit(self.tr(option["default"]))
-                #     tab_layout.addWidget(lineedit)
-                else:
-                    print(option["type"])
-                    tab_layout.addWidget(QLabel(self.tr(option["help"])))
+                elif option["type"] == str:
+                    # title付きのテキストフィールド
+                    hbox = QHBoxLayout()
+                    label = QLabel(self.tr(option["help"]))
+                    hbox.addWidget(label)
+                    lineedit = QLineEdit(self.tr(option["default"]))
+                    hbox.addWidget(lineedit)
+                    tab_layout.addLayout(hbox)
+                # else:
+                #     tab_layout.addWidget(QLabel(self.tr(option["help"])))
             tab.setLayout(tab_layout)
             self.tab_widget.addTab(tab, self.tr(converter))
             self.tab_widgets.append(tab)
