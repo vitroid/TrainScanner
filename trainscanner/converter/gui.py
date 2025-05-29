@@ -11,10 +11,10 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QProgressBar,
-    QRadioButton,
-    QButtonGroup,
+    QTabWidget,
     QLabel,
     QFrame,
+    QButtonGroup,
 )
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtCore import QTranslator, QLocale, Qt
@@ -61,41 +61,64 @@ class SettingsGUI(QWidget):
         self.btn_finish_perf = QCheckBox(self.tr("Add the film perforations"))
         finish_layout.addWidget(self.btn_finish_perf)
 
+        # タブウィジェットを作成
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
+
+        # 各タブの内容を作成
+        tab_names = [
+            "Do nothing",
+            "Make a helical image",
+            "Make a rectangular image",
+            "Make a Hans-style image",
+            "Make a scrolling movie",
+            "Make a scrolling movie (Yamako style)"
+        ]
+        self.tab_widgets = []
+        for name in tab_names:
+            tab = QWidget()
+            tab_layout = QVBoxLayout()
+            tab_layout.addWidget(QLabel(self.tr(name)))
+            tab.setLayout(tab_layout)
+            self.tab_widget.addTab(tab, self.tr(name))
+            self.tab_widgets.append(tab)
+
+        finish_layout.addWidget(self.tab_widget)
         # ラジオボタングループの作成
-        self.image_type_group = QButtonGroup(self)
-        self.btn_finish_none = QRadioButton(self.tr("Do nothing"))
-        self.btn_finish_none.setChecked(True)  # デフォルトでチェック
-        self.btn_finish_helix = QRadioButton(self.tr("Make a helical image"))
-        self.btn_finish_rect = QRadioButton(self.tr("Make a rectangular image"))
-        self.btn_finish_hans = QRadioButton(self.tr("Make a Hans-style image"))
-        self.btn_finish_movie = QRadioButton(self.tr("Make a scrolling movie"))
-        self.btn_finish_movie2 = QRadioButton(
-            self.tr("Make a scrolling movie (Yamako style)")
-        )
+        # self.image_type_group = QButtonGroup(self)
+        # self.btn_finish_none = QRadioButton(self.tr("Do nothing"))
+        # self.btn_finish_none.setChecked(True)  # デフォルトでチェック
+        # self.btn_finish_helix = QRadioButton(self.tr("Make a helical image"))
+        # self.btn_finish_rect = QRadioButton(self.tr("Make a rectangular image"))
+        # self.btn_finish_hans = QRadioButton(self.tr("Make a Hans-style image"))
+        # self.btn_finish_movie = QRadioButton(self.tr("Make a scrolling movie"))
+        # self.btn_finish_movie2 = QRadioButton(
+        #     self.tr("Make a scrolling movie (Yamako style)")
+        # )
 
         # ffmpegの確認
-        self.has_ffmpeg = shutil.which("ffmpeg") is not None
-        self.btn_finish_movie.setEnabled(self.has_ffmpeg)
-        self.btn_finish_movie2.setEnabled(self.has_ffmpeg)
-        if not self.has_ffmpeg:
-            self.btn_finish_movie.setToolTip(
-                self.tr(
-                    "ffmpeg is not installed. Please install ffmpeg to use this feature."
-                )
-            )
+        # self.has_ffmpeg = shutil.which("ffmpeg") is not None
+        # self.btn_finish_movie.setEnabled(self.has_ffmpeg)
+        # self.btn_finish_movie2.setEnabled(self.has_ffmpeg)
+        # if not self.has_ffmpeg:
+        #     self.btn_finish_movie.setToolTip(
+        #         self.tr(
+        #             "ffmpeg is not installed. Please install ffmpeg to use this feature."
+        #         )
+        #     )
 
-        self.image_type_group.addButton(self.btn_finish_none)
-        self.image_type_group.addButton(self.btn_finish_helix)
-        self.image_type_group.addButton(self.btn_finish_rect)
-        self.image_type_group.addButton(self.btn_finish_hans)
-        self.image_type_group.addButton(self.btn_finish_movie)
-        self.image_type_group.addButton(self.btn_finish_movie2)
-        finish_layout.addWidget(self.btn_finish_none)
-        finish_layout.addWidget(self.btn_finish_helix)
-        finish_layout.addWidget(self.btn_finish_rect)
-        finish_layout.addWidget(self.btn_finish_hans)
-        finish_layout.addWidget(self.btn_finish_movie)
-        finish_layout.addWidget(self.btn_finish_movie2)
+        # self.image_type_group.addButton(self.btn_finish_none)
+        # self.image_type_group.addButton(self.btn_finish_helix)
+        # self.image_type_group.addButton(self.btn_finish_rect)
+        # self.image_type_group.addButton(self.btn_finish_hans)
+        # self.image_type_group.addButton(self.btn_finish_movie)
+        # self.image_type_group.addButton(self.btn_finish_movie2)
+        # finish_layout.addWidget(self.btn_finish_none)
+        # finish_layout.addWidget(self.btn_finish_helix)
+        # finish_layout.addWidget(self.btn_finish_rect)
+        # finish_layout.addWidget(self.btn_finish_hans)
+        # finish_layout.addWidget(self.btn_finish_movie)
+        # finish_layout.addWidget(self.btn_finish_movie2)
         # 水平線を追加
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
