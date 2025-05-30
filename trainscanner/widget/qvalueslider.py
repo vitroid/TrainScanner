@@ -14,14 +14,18 @@ class ValueSliderHandle(QSlider):
     valueChanged = pyqtSignal(int)  # 値の変更を通知するシグナル
 
     def __init__(
-        self, min_value=0, max_value=100, value=0, label_format="{}", **kwargs
+        self,
+        min_value=0,
+        max_value=100,
+        value=0,
+        label_format="{}",
+        **kwargs,
     ):
         super().__init__(Qt.Orientation.Horizontal)
         self.setMinimum(min_value)
         self.setMaximum(max_value)
         self.setValue(value)
         self.label_format = label_format
-
         # その他の設定
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -29,6 +33,9 @@ class ValueSliderHandle(QSlider):
     def sizeHint(self):
         """推奨サイズを返す"""
         return QSize(100, 20)  # デフォルトのサイズ
+
+    def get_display_value(self):
+        return self.value()
 
     def paintEvent(self, event):
         """スライダーを描画"""
@@ -44,8 +51,8 @@ class ValueSliderHandle(QSlider):
         )
 
         # 現在の値を取得
-        value = self.value()
-        text = self.label_format.format(value)
+        display_value = self.get_display_value()
+        text = self.label_format.format(display_value)
 
         # テキストのサイズを計算
         font = QFont()
@@ -67,12 +74,14 @@ class ValueSliderHandle(QSlider):
 
         # スライダーの位置に基づいてハンドルの位置を計算
         pos = self.style().sliderPositionFromValue(
-            self.minimum(), self.maximum(), value, slider_rect.width()
+            self.minimum(), self.maximum(), self.value(), slider_rect.width()
         )
 
-        # ハンドルの矩形を作成
+        # ハンドルの矩形を作成（端での見切れを防ぐ）
         handle_rect = QRectF(
-            pos - handle_width // 2,  # 中央揃え
+            max(
+                0, min(pos - handle_width // 2, self.width() - handle_width)
+            ),  # 左右の端で見切れないように制限
             (self.height() - handle_height) // 2,
             handle_width,
             handle_height,
@@ -99,7 +108,11 @@ class QValueSlider(QWidget):
     valueChanged = pyqtSignal(int)  # 値の変更を通知するシグナル
 
     def __init__(
-        self, min_value=0, max_value=100, value=0, label_format="{}", **kwargs
+        self,
+        min_value=0,
+        max_value=100,
+        value=0,
+        **kwargs,
     ):
         super().__init__()
 
@@ -113,8 +126,7 @@ class QValueSlider(QWidget):
             min_value=min_value,
             max_value=max_value,
             value=value,
-            label_format=label_format,
-            **kwargs
+            **kwargs,
         )
         self.slider.valueChanged.connect(self._on_slider_value_changed)
 
@@ -125,7 +137,7 @@ class QValueSlider(QWidget):
         """スライダーの値が変更された時の処理"""
         self.valueChanged.emit(value)
 
-    def value(self):
+    def get_display_value(self):
         """現在の値を取得"""
         return self.slider.value()
 
@@ -150,3 +162,32 @@ class QValueSlider(QWidget):
         """有効/無効を設定"""
         super().setEnabled(enabled)
         self.slider.setEnabled(enabled)
+
+
+# 動作確認用テスト関数
+if __name__ == "__main__":
+    from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
+    import sys
+
+    def test():
+        app = QApplication(sys.argv)
+        win = QWidget()
+        layout = QVBoxLayout()
+        slider = QValueSlider(min_value=3, max_value=7, value=4)
+        label = QLabel(f"value: {slider.get_display_value():.2f}")
+
+        def on_value_changed(val):
+            label.setText(f"value: {val:.2f}")
+
+        slider.valueChanged.connect(on_value_changed)
+        layout.addWidget(slider)
+        layout.addWidget(label)
+        win.setLayout(layout)
+        win.setWindowTitle("QValueSlider Test")
+        win.show()
+        ret = app.exec()
+        # 最後に、sliderの値を表示
+        print(slider.get_display_value())
+        return ret
+
+    test()

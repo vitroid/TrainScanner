@@ -236,7 +236,8 @@ class Stitcher:
                     locations.append(cols)
         self.locations = locations
         self.total_frames = len(locations)
-        # self.alphas = dict()
+        if len(locations) == 0:
+            return
         # initial seek
         while self.currentFrame + 1 < self.locations[0][0]:
             logger.debug((self.currentFrame, self.locations[0][0]))
@@ -275,6 +276,8 @@ class Stitcher:
             yield self.getProgress()
 
     def _onestep(self):
+        if len(self.locations) == 0:
+            return False
         while self.currentFrame + 1 < self.locations[0][0]:
             self.currentFrame = self.vl.skip()
             if self.currentFrame == 0:

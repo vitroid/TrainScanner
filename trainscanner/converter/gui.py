@@ -45,12 +45,14 @@ from trainscanner.converter.hans_style import get_parser as hans_parser
 from trainscanner.converter.scroll import get_parser as scroll_parser
 from trainscanner.converter.movie2 import get_parser as movie2_parser
 from trainscanner.widget.qfloatslider import QFloatSlider
-from trainscanner.widget.qlogslider import QLogSlider
+from trainscanner.widget.qlogslider import LogSliderHandle
 from trainscanner.widget.qvalueslider import QValueSlider
 from tiledimage.cachedimage import CachedImage
 
 # options handler
 import sys
+
+from concurrent.futures import ThreadPoolExecutor
 
 
 # Drag and drop work. Buttons would not be necessary.
@@ -84,6 +86,7 @@ class SettingsGUI(QWidget):
             "scroll": list_cli_options(scroll_parser()),
             "movie": list_cli_options(movie2_parser()),
         }
+        self.getters = dict()
         # ffmpegの確認
         self.has_ffmpeg = shutil.which("ffmpeg") is not None
         self.tab_widgets = []
@@ -96,7 +99,15 @@ class SettingsGUI(QWidget):
                 tab.setEnabled(False)
             tab_layout.addWidget(QLabel(desc))
             # オプションの表示
+            self.getters[converter] = dict()
             for option in options:
+                # オプションのキーワードを取得
+                for option_keyword in option["option_strings"]:
+                    if option_keyword[:2] == "--":
+                        option_keyword = option_keyword[2:]
+                        break
+                else:
+                    continue
                 if option["type"] in (int, float):
                     help = option["help"]
                     min = option["min"]
@@ -116,14 +127,17 @@ class SettingsGUI(QWidget):
                         # スライダーの両端に最小値と最大値を表示したい。
                         min_label = QLabel(f"{int(min)}")
                         max_label = QLabel(f"{int(max)}")
-                    else:
-                        if 0 < min < max and max / min > 999:
-                            slider = QLogSlider(
-                                min_value=min, max_value=max, resolution=100
+                    else:  # float
+                        if 0 < min < max and max / min > 99:
+                            slider = QFloatSlider(
+                                float_min_value=min,
+                                float_max_value=max,
+                                sliderhandleclass=LogSliderHandle,
                             )
                         else:
                             slider = QFloatSlider(
-                                min_value=min, max_value=max, resolution=100
+                                float_min_value=min,
+                                float_max_value=max,
                             )
                         slider.setMinimum(min)
                         slider.setMaximum(max)
@@ -138,6 +152,7 @@ class SettingsGUI(QWidget):
                     hbox.addWidget(slider)
                     hbox.addWidget(max_label)
                     tab_layout.addLayout(hbox)
+                    self.getters[converter][option_keyword] = slider
                 elif (
                     option["type"] is None
                     and option["nargs"] == 0
@@ -147,6 +162,7 @@ class SettingsGUI(QWidget):
                     checkbox = QCheckBox(self.tr(option["help"]))
                     # checkbox.setChecked(option["default"])
                     tab_layout.addWidget(checkbox)
+                    self.getters[converter][option_keyword] = checkbox
                 elif option["type"] == str:
                     # title付きのテキストフィールド
                     hbox = QHBoxLayout()
@@ -155,6 +171,7 @@ class SettingsGUI(QWidget):
                     lineedit = QLineEdit(self.tr(option["default"]))
                     hbox.addWidget(lineedit)
                     tab_layout.addLayout(hbox)
+                    self.getters[converter][option_keyword] = lineedit
                 # else:
                 #     tab_layout.addWidget(QLabel(self.tr(option["help"])))
             tab.setLayout(tab_layout)
@@ -202,6 +219,10 @@ class SettingsGUI(QWidget):
         quit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
         quit_shortcut.activated.connect(QApplication.quit)
 
+        self.executor = ThreadPoolExecutor(
+            max_workers=4
+        )  # クラスの初期化時などで1回だけ作る
+
     def start_process(self):
         logger = logging.getLogger()
         head_right = self.btn_right.isChecked()
@@ -217,19 +238,36 @@ class SettingsGUI(QWidget):
         #     img = film.filmify(img)
         #     file_name += ".film.png"
         #     cv2.imwrite(file_name, img)
+
+        converter = self.tab_widget.tabText(self.tab_widget.currentIndex())
+        # gettersを使って、値を取得
+        args = dict()
+        for option_keyword, option in self.getters[converter].items():
+            if isinstance(option, QValueSlider):
+                args[option_keyword] = option.get_display_value()
+            elif isinstance(option, QLineEdit):
+                args[option_keyword] = option.text()
+            elif isinstance(option, QCheckBox):
+                args[option_keyword] = option.isChecked()
+        logger.debug(f"args: {args}")
         # tabのラベルで分岐
-        if self.tab_widget.tabText(self.tab_widget.currentIndex()) == "helix":
-            himg = helix.helicify(img)
+        self.executor.submit(
+            self.process_image, converter, img, file_name, head_right, args
+        )
+
+    def process_image(self, tab, img, file_name, head_right, args):
+        if tab == "helix":
+            himg = helix.helicify(img, **args)
             cv2.imwrite(file_name + ".helix.png", himg)
-        elif self.tab_widget.tabText(self.tab_widget.currentIndex()) == "rect":
-            rimg = rect.rectify(img, head_right=head_right)
+        elif tab == "rect":
+            rimg = rect.rectify(img, head_right=head_right, **args)
             cv2.imwrite(file_name + ".rect.png", rimg)
-        elif self.tab_widget.tabText(self.tab_widget.currentIndex()) == "scroll":
-            scroll.make_movie(file_name, head_right=head_right)
-        elif self.tab_widget.tabText(self.tab_widget.currentIndex()) == "movie":
-            movie2.make_movie(file_name, head_right=head_right)
-        elif self.tab_widget.tabText(self.tab_widget.currentIndex()) == "hans":
-            hansimg = hans.hansify(img, head_right=head_right)
+        elif tab == "scroll":
+            scroll.make_movie(file_name, head_right=head_right, **args)
+        elif tab == "movie":
+            movie2.make_movie(file_name, head_right=head_right, **args)
+        elif tab == "hans":
+            hansimg = hans.hansify(img, head_right=head_right, **args)
             cv2.imwrite(file_name + ".hans.png", hansimg)
 
     def dragEnterEvent(self, event):

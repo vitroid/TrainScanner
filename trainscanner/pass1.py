@@ -443,7 +443,7 @@ class Pass1:
         Add leading frames to tspos.
         """
         logger = getLogger()
-        logger.info("Adding leading frames to tspos.")
+        logger.info(f"Adding leading frames to tspos. {self.tspos}")
 
         if len(self.tspos) < self.params.estimate:
             return
@@ -603,14 +603,18 @@ class Pass1:
                     ddy = max(deltay) - min(deltay)
                     # if the displacements are almost constant in the last 5 frames,
                     if params.antishake <= ddx or params.antishake <= ddy:
-                        logger.info("Wait ({0} {1} {2})".format(nframe, dx, dy))
+                        logger.debug(
+                            f"Wait for the camera to stabilize ({nframe} {dx} {dy})"
+                        )
                         continue
                     else:
                         # 速度は安定した．
                         guess_mode = True
+                        logger.debug(f"The camera is stabilized. {nframe} {dx} {dy}")
                         # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
                         # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
                 # 変位をそのまま採用する．
+                logger.debug(f"Accept the motion ({nframe} {dx} {dy})")
                 velx = dx
                 vely = dy
                 match_fail = 0
@@ -627,19 +631,15 @@ class Pass1:
 
                         break
                     logger.info(
-                        "Skip ({0} {1} {2} +{3}/{4})".format(
-                            nframe, dx, dy, match_fail, params.trailing
-                        )
+                        f"Ignore a small motion ({nframe} {dx} {dy} +{match_fail}/{params.trailing})"
                     )
                     # believe the last velx and vely
                 else:
                     # not guess mode, not large motion: just ignore.
-                    logger.info("Still ({0} {1} {2})".format(nframe, dx, dy))
+                    logger.info(f"Still frame ({nframe} {dx} {dy})")
                     continue
 
-            logger.info(
-                "Scan {0} {2} {3} #{1}".format(nframe, np.amax(diff), velx, vely)
-            )
+            logger.info(f"Capture {nframe} {velx} {vely} #{np.amax(diff)}")
             absx += velx
             absy += vely
             self.canvas = canvas_size(self.canvas, cropped, absx, absy)
@@ -647,7 +647,10 @@ class Pass1:
         # end of capture
 
         # 最後の、match_failフレームを削除する。
-        self.tspos = self.tspos[:-match_fail]
+        logger.debug(f"tspos before: {self.tspos} {match_fail}")
+        if match_fail > 0:
+            self.tspos = self.tspos[:-match_fail]
+        logger.debug(f"tspos after: {self.tspos}")
         # 10枚ほど余分に削る。
         # self.tspos = self.tspos[:-10]
         # self.tspos = self.tspos[10:]
@@ -660,7 +663,7 @@ class Pass1:
         Action after the loop
         """
         logger = getLogger()
-        if self.canvas is None:
+        if self.canvas is None or len(self.tspos) == 0:
             logger.error("No motion detected.")
             return
         self.tsconf += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)

@@ -153,7 +153,7 @@ def get_parser():
     parser.add_argument("image_path", help="入力画像ファイルのパス")
     parser.add_argument("--output", "-o", help="出力ファイルのパス")
     parser.add_argument(
-        "--duration", "-d", type=float, help="動画の長さ（秒） -- 0.1,1000"
+        "--duration", "-d", type=float, default=8, help="動画の長さ（秒） -- 0.1,1000"
     )
     parser.add_argument(
         "--height", "-H", type=int, default=1080, help="目標の高さ -- 100,4096"
