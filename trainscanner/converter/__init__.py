@@ -35,10 +35,10 @@ def list_cli_options(parser: argparse.ArgumentParser):
             try:
                 help, minmax = opt["help"].split("--")
                 min, max = [float(x) for x in minmax.split(",")]
+                opt["help"] = help
+                opt["min"] = min
+                opt["max"] = max
             except ValueError:
-                min, max = 0, 100
-            opt["min"] = min
-            opt["max"] = max
-            opt["help"] = help
+                pass
         options.append(opt)
     return options, parser.description

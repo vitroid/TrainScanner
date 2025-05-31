@@ -7,6 +7,7 @@ import shutil
 import logging
 from tqdm import tqdm
 import sys
+from trainscanner import _
 
 
 def make_movie(
@@ -148,37 +149,56 @@ def get_parser():
     コマンドライン引数のパーサーを生成して返す関数
     """
     parser = argparse.ArgumentParser(
-        description="Make a movie with a thumbnail from a train image"
+        description=_("Make a movie with a thumbnail from a train image")
     )
-    parser.add_argument("image_path", help="入力画像ファイルのパス")
-    parser.add_argument("--output", "-o", help="出力ファイルのパス")
+    parser.add_argument("image_path", help=_("Path of the input image file"))
+    parser.add_argument("--output", "-o", help=_("Path of the output file"))
     parser.add_argument(
-        "--duration", "-d", type=float, default=8, help="動画の長さ（秒） -- 0.1,1000"
+        "--duration",
+        "-d",
+        type=float,
+        default=8,
+        help=_("Duration of the movie (seconds) -- 0.1,1000"),
     )
     parser.add_argument(
-        "--height", "-H", type=int, default=1080, help="目標の高さ -- 100,4096"
+        "--height",
+        "-H",
+        type=int,
+        default=1080,
+        help=_("Height of the movie -- 100,4096"),
     )
     parser.add_argument(
-        "--width", "-W", type=int, default=1920, help="目標の幅 -- 100,4096"
+        "--width",
+        "-W",
+        type=int,
+        default=1920,
+        help=_("Width of the movie -- 100,4096"),
     )
-    parser.add_argument("--head-right", "-R", action="store_true", help="右端が先頭")
     parser.add_argument(
-        "--fps", "-r", type=int, default=30, help="フレームレート -- 1,120"
+        "--head-right",
+        "-R",
+        action="store_true",
+        help=_("The train heads to the right."),
+    )
+    parser.add_argument(
+        "--fps", "-r", type=int, default=30, help=_("Frame rate -- 1,120")
     )
     parser.add_argument(
         "--bitrate",
         "-b",
         type=float,
         default=8,
-        help="ビットレート (Mbit/s) -- 0.1,100",
+        help=_("Bitrate (Mbit/s) -- 0.1,100"),
     )
     parser.add_argument(
-        "--png", "-p", action="store_true", help="中間ファイルをpngにする"
+        "--png", "-p", action="store_true", help=_("Intermediate files are png")
     )
-    parser.add_argument("--alternating", "-a", action="store_true", help="前進+後退")
-    parser.add_argument("--accel", "-A", action="store_true", help="加速")
     parser.add_argument(
-        "--encoder", "-e", type=str, default="libx264", help="mp4エンコーダー"
+        "--alternating", "-a", action="store_true", help=_("Go back and forth")
+    )
+    parser.add_argument("--accel", "-A", action="store_true", help=_("Acceleration"))
+    parser.add_argument(
+        "--encoder", "-e", type=str, default="libx264", help=_("mp4 encoder")
     )
     return parser
 

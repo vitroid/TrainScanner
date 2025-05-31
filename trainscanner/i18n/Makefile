@@ -1,6 +1,6 @@
 all: trainscanner_ja.ts trainscanner_ja.qm trainscanner_fr.ts trainscanner_fr.qm
 
-trainscanner_%.ts: ../trainscanner_gui.py ../converter/gui.py
+trainscanner_%.ts: ../trainscanner_gui.py ../converter/gui.py ../converter/hans_style.py ../converter/scroll.py ../converter/rect.py ../converter/helix.py ../converter/movie2.py
 	pylupdate6 --ts $@ $^
 
 linguist:

@@ -110,6 +110,7 @@ class SettingsGUI(QWidget):
                     continue
                 if option["type"] in (int, float):
                     help = option["help"]
+                    print(help, option)
                     min = option["min"]
                     max = option["max"]
                     # sliderの左にラベルを付けたい。

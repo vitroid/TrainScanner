@@ -114,11 +114,11 @@ def get_parser():
     parser = argparse.ArgumentParser(
         description="Make a helical strip from a train image"
     )
-    parser.add_argument("image_path", help="入力画像ファイルのパス")
-    parser.add_argument("--output", "-o", help="出力ファイルのパス")
-    parser.add_argument("--margin", "-m", type=int, default=0, help="マージン -- 0,100")
+    parser.add_argument("image_path", help="Path of the input image file")
+    parser.add_argument("--output", "-o", help="Path of the output file")
+    parser.add_argument("--margin", "-m", type=int, default=0, help="Margin -- 0,100")
     parser.add_argument(
-        "--aspect", "-a", type=float, default=2.0**0.5, help="アスペクト比 -- 0.1,10"
+        "--aspect", "-a", type=float, default=2.0**0.5, help="Aspect ratio -- 0.1,10"
     )
     return parser
 

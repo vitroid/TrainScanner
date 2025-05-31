@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.23.1
+Version 0.24.0
 
 # TrainScanner の使い方
 
@@ -44,15 +44,22 @@ helicify longimage.png
 ```
 
 ```
-Usage: helicify [OPTIONS] IMAGE_PATH
+usage: helix.py [-h] [--output OUTPUT] [--margin MARGIN] [--aspect ASPECT]
+                image_path
 
-  Make a helical strip from a train image
+Make a helical strip from a train image
 
-Options:
-  -o, --output TEXT   出力ファイルのパス
-  -m, --margin FLOAT  マージン
-  -a, --aspect FLOAT  アスペクト比
-  --help              Show this message and exit.
+positional arguments:
+  image_path            入力画像ファイルのパス
+
+options:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+                        出力ファイルのパス
+  --margin MARGIN, -m MARGIN
+                        マージン -- 0,100
+  --aspect ASPECT, -a ASPECT
+                        アスペクト比 -- 0.1,10
 
 ```
 
@@ -65,16 +72,21 @@ rectify longimage.png
 ```
 
 ```
-Usage: rectify [OPTIONS] IMAGE_PATH
+usage: rect.py [-h] [--output OUTPUT] [--rows ROWS] [--gap GAP] [--head-right]
+               image_path
 
-  Fold a train image into a stack of images
+Fold a train image into a stack of images
 
-Options:
-  -o, --output TEXT   出力ファイルのパス
-  -r, --rows INTEGER  行数
-  -g, --gap INTEGER   マージン
-  -R, --head-right    右端が先頭
-  --help              Show this message and exit.
+positional arguments:
+  image_path            入力画像ファイルのパス
+
+options:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+                        出力ファイルのパス
+  --rows ROWS, -r ROWS  行数 -- 2,100
+  --gap GAP, -g GAP     マージン(パーセント) -- 0,100
+  --head-right, -R      右端が先頭
 }}
 ```
 
@@ -87,15 +99,21 @@ filmify longimage.png
 ```
 
 ```
-Usage: filmify [OPTIONS] IMAGE_PATH
+usage: film.py [-h] [--output OUTPUT]
+               [--creative_commons_sign CREATIVE_COMMONS_SIGN]
+               image_path
 
-  Add film perforations to the image
+Add film perforations to the image
 
-Options:
-  -o, --output TEXT               出力ファイルのパス
-  -c, --creative_commons_sign TEXT
-                                  Creative Commons sign
-  --help                          Show this message and exit.
+positional arguments:
+  image_path            入力画像ファイルのパス
+
+options:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+                        出力ファイルのパス
+  --creative_commons_sign CREATIVE_COMMONS_SIGN, -c CREATIVE_COMMONS_SIGN
+                        Creative Commons sign
 
 ```
 
@@ -108,16 +126,23 @@ hansify longimage.png
 ```
 
 ```
-Usage: hansify [OPTIONS] IMAGE_PATH
+usage: hans_style.py [-h] [--output OUTPUT] [--rows ROWS] [--overlap OVERLAP]
+                     [--head-right]
+                     image_path
 
-  Fold a train image into a stack of images like Hans Ruijter's style
+Fold a train image into a stack of images like Hans Ruijter's style
 
-Options:
-  -o, --output TEXT      出力ファイルのパス
-  -r, --rows INTEGER     行数 (0で自動)
-  -l, --overlap INTEGER  重複率
-  -R, --head-right       右端が先頭
-  --help                 Show this message and exit.
+positional arguments:
+  image_path            入力画像ファイルのパス
+
+options:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+                        出力ファイルのパス
+  --rows ROWS, -r ROWS  行数 (0で自動) -- 0,100
+  --overlap OVERLAP, -l OVERLAP
+                        重複率 -- 0,100
+  --head-right, -R      右端が先頭
 
 ```
 
@@ -130,20 +155,32 @@ movify longimage.png
 ```
 
 ```
-Usage: movify [OPTIONS] IMAGE_PATH
+usage: scroll.py [-h] [--output OUTPUT] [--duration DURATION]
+                 [--height HEIGHT] [--width WIDTH] [--head-right] [--fps FPS]
+                 [--bitrate BITRATE] [--encoder ENCODER]
+                 image_path
 
-  Make a movie from a train image
+Make a movie from a train image
 
-Options:
-  -o, --output TEXT      出力ファイルのパス
-  -d, --duration FLOAT   動画の長さ（秒）
-  -h, --height INTEGER   目標の高さ
-  -w, --width INTEGER    目標の幅
-  -R, --head-right       右端が先頭
-  -r, --fps INTEGER      フレームレート
-  -b, --bitrate INTEGER  ビットレート
-  -e, --encoder TEXT     mp4エンコーダー
-  --help                 Show this message and exit.
+positional arguments:
+  image_path            入力画像ファイルのパス
+
+options:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+                        出力ファイルのパス
+  --duration DURATION, -d DURATION
+                        動画の長さ（秒） -- 0.1,1000
+  --height HEIGHT, -H HEIGHT
+                        目標の高さ -- 100,4096
+  --width WIDTH, -W WIDTH
+                        目標の幅 -- 100,4096
+  --head-right, -R      右端が先頭
+  --fps FPS, -r FPS     フレームレート -- 1,120
+  --bitrate BITRATE, -b BITRATE
+                        ビットレート (Mbit/s) -- 0.1,100
+  --encoder ENCODER, -e ENCODER
+                        mp4エンコーダー
 
 ```
 
@@ -156,23 +193,36 @@ movify2 longimage.png
 ```
 
 ```
-Usage: movify2 [OPTIONS] IMAGE_PATH
+usage: movie2.py [-h] [--output OUTPUT] [--duration DURATION]
+                 [--height HEIGHT] [--width WIDTH] [--head-right] [--fps FPS]
+                 [--bitrate BITRATE] [--png] [--alternating] [--accel]
+                 [--encoder ENCODER]
+                 image_path
 
-  Make a movie with a thumbnailfrom a train image
+Make a movie with a thumbnail from a train image
 
-Options:
-  -o, --output TEXT      出力ファイルのパス
-  -d, --duration FLOAT   動画の長さ（秒）
-  -h, --height INTEGER   目標の高さ
-  -w, --width INTEGER    目標の幅
-  -R, --head-right       右端が先頭
-  -r, --fps INTEGER      フレームレート
-  -b, --bitrate INTEGER  ビットレート
-  -p, --png              中間ファイルをpngにする
-  -a, --alternating      前進+後退
-  -A, --accel            加速
-  -e, --encoder TEXT     mp4エンコーダー
-  --help                 Show this message and exit.
+positional arguments:
+  image_path            入力画像ファイルのパス
+
+options:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+                        出力ファイルのパス
+  --duration DURATION, -d DURATION
+                        動画の長さ（秒） -- 0.1,1000
+  --height HEIGHT, -H HEIGHT
+                        目標の高さ -- 100,4096
+  --width WIDTH, -W WIDTH
+                        目標の幅 -- 100,4096
+  --head-right, -R      右端が先頭
+  --fps FPS, -r FPS     フレームレート -- 1,120
+  --bitrate BITRATE, -b BITRATE
+                        ビットレート (Mbit/s) -- 0.1,100
+  --png, -p             中間ファイルをpngにする
+  --alternating, -a     前進+後退
+  --accel, -A           加速
+  --encoder ENCODER, -e ENCODER
+                        mp4エンコーダー
 
 ```
 

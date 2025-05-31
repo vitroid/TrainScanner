@@ -4,31 +4,35 @@
 import cv2
 import numpy as np
 import argparse
+from trainscanner import _
 
 
-def hansify(img, head_right=True, rows=0, overlap=10):
+def hansify(img, head_right=True, aspect=2**0.5, overlap=10, width=0):
     """
     Hans Ruijter's style
     """
-    h, w = img.shape[0:2]
+    h, w = img.shape[:2]
 
-    if rows == 0:
-        # canvasの形状が3:2に近くなるように行数を計算
-        # w/N:h*N = 3:2
-        # 3hN = 2w/N
-        # NN = 2w/3h
-        # N = sqrt(2w/3h)
-        rows = int(np.sqrt(2 * w / 3 / h) + 0.5)
+    a = [999]
+    for rows in range(1, 100):
+
+        hh = h * rows
+        # ====+         ww1 = ww + A
+        #   +====+     ww  = ww
+        #       +===== ww1 = ww + A
+        # ww1 + (rows-2)*ww + ww1 = = ww*rows+2A = w
+        # ww*overlap/100 = A
+        # So, ww*(rows+overlap/50) = w
+
+        ww = int(w / (rows + overlap / 50))
+        a.append(np.abs(ww / hh - aspect))
+
+    rows = np.argmin(a)
+    print(rows)
 
     hh = h * rows
-    # ====+         ww1 = ww + A
-    #   +====+     ww  = ww
-    #       +===== ww1 = ww + A
-    # ww1 + (rows-2)*ww + ww1 = = ww*rows+2A = w
-    # ww*overlap/100 = A
-    # So, ww*(rows+overlap/50) = w
-
     ww = int(w / (rows + overlap / 50))
+
     A = ww * overlap // 100
 
     neww = ww + 2 * A
@@ -46,7 +50,11 @@ def hansify(img, head_right=True, rows=0, overlap=10):
             canvas[thh + i * h : thh + (i + 1) * h, 0:neww, :] = img[
                 :, i * ww : (i + 1) * ww + 2 * A, :
             ]
-    return canvas
+    if width > 0:
+        height = int((hh + thh) / neww * width)
+        return cv2.resize(canvas, (width, height), interpolation=cv2.INTER_CUBIC)
+    else:
+        return canvas
 
 
 def get_parser():
@@ -54,15 +62,35 @@ def get_parser():
     コマンドライン引数のパーサーを生成して返す関数
     """
     parser = argparse.ArgumentParser(
-        description="Fold a train image into a stack of images like Hans Ruijter's style"
+        description=_(
+            "Fold a train image into a stack of images like Hans Ruijter's style"
+        )
     )
-    parser.add_argument("image_path", help="入力画像ファイルのパス")
-    parser.add_argument("--output", "-o", help="出力ファイルのパス")
+    parser.add_argument("image_path", help=_("Path of the input image file"))
+    parser.add_argument("--output", "-o", help=_("Path of the output file"))
     parser.add_argument(
-        "--rows", "-r", type=int, default=0, help="行数 (0で自動) -- 0,100"
+        "--aspect", "-a", type=float, default=2**0.5, help=_("Aspect ratio -- 0.1,10")
     )
-    parser.add_argument("--overlap", "-l", type=int, default=5, help="重複率 -- 0,100")
-    parser.add_argument("--head-right", "-R", action="store_true", help="右端が先頭")
+    parser.add_argument(
+        "--overlap",
+        "-l",
+        type=int,
+        default=5,
+        help=_("Overlap rate (percent) -- 0,100"),
+    )
+    parser.add_argument(
+        "--head-right",
+        "-R",
+        action="store_true",
+        help=_("The train heads to the right."),
+    )
+    parser.add_argument(
+        "--width",
+        "-W",
+        type=int,
+        default=0,
+        help=_("Width (pixels, 0 for original image size) -- 0,10000"),
+    )
     return parser
 
 
@@ -71,7 +99,7 @@ def main():
     args = parser.parse_args()
 
     img = cv2.imread(args.image_path)
-    canvas = hansify(img, args.head_right, args.rows, args.overlap)
+    canvas = hansify(img, args.head_right, args.aspect, args.overlap, args.width)
     if args.output:
         cv2.imwrite(args.output, canvas)
     else:

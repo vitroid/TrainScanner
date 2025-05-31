@@ -4,6 +4,7 @@
 import cv2
 import numpy as np
 import argparse
+from trainscanner import _
 
 
 def rectify(img, rows=None, gap=3, head_right=True):  # gap in percent
@@ -42,13 +43,20 @@ def get_parser():
     コマンドライン引数のパーサーを生成して返す関数
     """
     parser = argparse.ArgumentParser(
-        description="Fold a train image into a stack of images"
+        description=_("Fold a train image into a stack of images")
     )
-    parser.add_argument("image_path", help="入力画像ファイルのパス")
-    parser.add_argument("--output", "-o", help="出力ファイルのパス")
-    parser.add_argument("--rows", "-r", type=int, help="行数 -- 2,100")
-    parser.add_argument("--gap", "-g", type=int, default=0, help="マージン(%) -- 0,100")
-    parser.add_argument("--head-right", "-R", action="store_true", help="右端が先頭")
+    parser.add_argument("image_path", help=_("Path of the input image file"))
+    parser.add_argument("--output", "-o", help=_("Path of the output file"))
+    parser.add_argument("--rows", "-r", type=int, help=_("Number of rows -- 2,100"))
+    parser.add_argument(
+        "--gap", "-g", type=int, default=0, help=_("Margin (percent) -- 0,100")
+    )
+    parser.add_argument(
+        "--head-right",
+        "-R",
+        action="store_true",
+        help=_("The train heads to the right."),
+    )
     return parser
 
 
