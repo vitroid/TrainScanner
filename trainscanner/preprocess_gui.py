@@ -23,6 +23,7 @@ from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
 from trainscanner import trainscanner, video
 from trainscanner.widget.imageselector2 import ImageSelector2
 import trainscanner.widget.qrangeslider as rs
+from trainscanner.i18n import tr
 
 
 perspectiveCSS = """
@@ -414,13 +415,13 @@ class EditorGUI(QWidget):
         self.imageselector2.slider.endValueChanged.connect(self.frameChanged)
         imageselector_layout = QHBoxLayout()
         imageselector_layout.addWidget(self.imageselector2)
-        imageselector_gbox = QGroupBox(self.tr("1. Specify the frame range"))
+        imageselector_gbox = QGroupBox(tr("1. Specify the frame range"))
         imageselector_gbox.setLayout(imageselector_layout)
 
-        # finish_layout_gbox = QGroupBox(self.tr("4. Finish"))
+        # finish_layout_gbox = QGroupBox(tr("4. Finish"))
         # finish_layout = QVBoxLayout()
         # https://www.tutorialspoint.com/pyqt/pyqt_qcheckbox_widget.htm
-        self.start_button = QPushButton(self.tr("Stich"), self)
+        self.start_button = QPushButton(tr("Stich"), self)
         self.start_button.clicked.connect(self.settings.start_process)
         # finish_layout.addWidget(self.start_button)
 
@@ -472,19 +473,19 @@ class EditorGUI(QWidget):
 
     def rotation_deformation_control(self):
         layout = QHBoxLayout()
-        self.btn = QPushButton(self.tr("-90"))
+        self.btn = QPushButton(tr("-90"))
         self.btn.clicked.connect(self.angle_sub90)
         layout.addWidget(self.btn)
-        self.btn = QPushButton(self.tr("-1"))
+        self.btn = QPushButton(tr("-1"))
         self.btn.clicked.connect(self.angle_dec)
         layout.addWidget(self.btn)
-        layout.addWidget(QLabel(self.tr("rotation")))
-        self.angle_label = QLabel("0 " + self.tr("degrees"))
+        layout.addWidget(QLabel(tr("rotation")))
+        self.angle_label = QLabel("0 " + tr("degrees"))
         layout.addWidget(self.angle_label)
-        self.btn = QPushButton(self.tr("+1"))
+        self.btn = QPushButton(tr("+1"))
         self.btn.clicked.connect(self.angle_inc)
         layout.addWidget(self.btn)
-        self.btn = QPushButton(self.tr("+90"))
+        self.btn = QPushButton(tr("+90"))
         self.btn.clicked.connect(self.angle_add90)
         layout.addWidget(self.btn)
         return layout
@@ -553,7 +554,7 @@ class EditorGUI(QWidget):
 
         # left_paneのレイアウト
         left_pane_layout = QVBoxLayout()
-        left_pane_title = QGroupBox(self.tr("2. Repair deformation"))
+        left_pane_title = QGroupBox(tr("2. Repair deformation"))
         left_pane_layout.addWidget(left_pane_title)
 
         # left medium layout
@@ -590,7 +591,7 @@ class EditorGUI(QWidget):
 
         right_pane_layout = QVBoxLayout()
         # 右側のパネルのタイトル
-        right_pane_title = QGroupBox(self.tr("3. Motion Detection and Slit"))
+        right_pane_title = QGroupBox(tr("3. Motion Detection and Slit"))
         right_pane_layout.addWidget(right_pane_title)
 
         # crop_image_layoutとcrop_sliderを横に並べ
@@ -601,7 +602,7 @@ class EditorGUI(QWidget):
 
         # slit_sliderのラベルと本体を横に並べ、
         second_box = QHBoxLayout()
-        slit_slider_label = QLabel(self.tr("Slit position"))
+        slit_slider_label = QLabel(tr("Slit position"))
         second_box.addWidget(slit_slider_label)
         second_box.addWidget(self.slit_slider)
 
@@ -632,7 +633,7 @@ class EditorGUI(QWidget):
     def angle_inc(self):
         self.angle_degree += 1
         self.angle_degree %= 360
-        self.angle_label.setText("{0} ".format(self.angle_degree) + self.tr("degrees"))
+        self.angle_label.setText("{0} ".format(self.angle_degree) + tr("degrees"))
         self.updateTimeLine(
             FrameInfo(
                 every_n_frames=0,
@@ -644,7 +645,7 @@ class EditorGUI(QWidget):
     def angle_dec(self):
         self.angle_degree -= 1
         self.angle_degree %= 360
-        self.angle_label.setText("{0} ".format(self.angle_degree) + self.tr("degrees"))
+        self.angle_label.setText("{0} ".format(self.angle_degree) + tr("degrees"))
         self.updateTimeLine(
             FrameInfo(
                 every_n_frames=0,
@@ -656,7 +657,7 @@ class EditorGUI(QWidget):
     def angle_add90(self):
         self.angle_degree += 90
         self.angle_degree %= 360
-        self.angle_label.setText("{0} ".format(self.angle_degree) + self.tr("degrees"))
+        self.angle_label.setText("{0} ".format(self.angle_degree) + tr("degrees"))
         self.updateTimeLine(
             FrameInfo(
                 every_n_frames=0,
@@ -668,7 +669,7 @@ class EditorGUI(QWidget):
     def angle_sub90(self):
         self.angle_degree -= 90
         self.angle_degree %= 360
-        self.angle_label.setText("{0} ".format(self.angle_degree) + self.tr("degrees"))
+        self.angle_label.setText("{0} ".format(self.angle_degree) + tr("degrees"))
         self.updateTimeLine(
             FrameInfo(
                 every_n_frames=0,
