@@ -4,7 +4,9 @@
 import cv2
 import numpy as np
 import argparse
-from trainscanner import _
+from trainscanner.i18n import tr
+import logging
+import os
 
 
 def hansify(img, head_right=True, aspect=2**0.5, overlap=10, width=0):
@@ -62,39 +64,53 @@ def get_parser():
     コマンドライン引数のパーサーを生成して返す関数
     """
     parser = argparse.ArgumentParser(
-        description=_(
+        description=tr(
             "Fold a train image into a stack of images like Hans Ruijter's style"
         )
     )
-    parser.add_argument("image_path", help=_("Path of the input image file"))
-    parser.add_argument("--output", "-o", help=_("Path of the output file"))
+    parser.add_argument("image_path", help=tr("Path of the input image file"))
+    parser.add_argument("--output", "-o", help=tr("Path of the output file"))
     parser.add_argument(
-        "--aspect", "-a", type=float, default=2**0.5, help=_("Aspect ratio -- 0.1,10")
+        "--aspect",
+        "-a",
+        type=float,
+        default=2**0.5,
+        help=tr("Aspect ratio") + "-- 0.1,10",
     )
     parser.add_argument(
         "--overlap",
         "-l",
         type=int,
         default=5,
-        help=_("Overlap rate (percent) -- 0,100"),
+        help=tr("Overlap rate (percent)") + "-- 0,100",
     )
     parser.add_argument(
         "--head-right",
         "-R",
         action="store_true",
-        help=_("The train heads to the right."),
+        help=tr("The train heads to the right."),
     )
     parser.add_argument(
         "--width",
         "-W",
         type=int,
         default=0,
-        help=_("Width (pixels, 0 for original image size) -- 0,10000"),
+        help=tr("Width (pixels, 0 for original image size)") + "-- 0,10000",
     )
     return parser
 
 
 def main():
+    # デバッグ出力を設定
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger()
+    logger.debug(f"LANG environment variable: {os.environ.get('LANG', '')}")
+
+    # 翻訳を初期化
+    from trainscanner.i18n import init_translations
+
+    init_translations()
+
     parser = get_parser()
     args = parser.parse_args()
 

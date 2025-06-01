@@ -9,11 +9,8 @@ from PyQt6.QtWidgets import (
     QApplication,
     QPushButton,
     QCheckBox,
-    QFileDialog,
-    QProgressBar,
     QTabWidget,
     QLabel,
-    QFrame,
     QButtonGroup,
     QLineEdit,
     QSlider,
@@ -37,17 +34,18 @@ from trainscanner.converter import scroll
 from trainscanner.converter import helix
 from trainscanner.converter import rect
 from trainscanner.converter import hans_style as hans
-from trainscanner.converter import movie2
+from trainscanner.converter import movie
 from trainscanner.converter import list_cli_options
 from trainscanner.converter.helix import get_parser as helix_parser
 from trainscanner.converter.rect import get_parser as rect_parser
 from trainscanner.converter.hans_style import get_parser as hans_parser
 from trainscanner.converter.scroll import get_parser as scroll_parser
-from trainscanner.converter.movie2 import get_parser as movie2_parser
+from trainscanner.converter.movie import get_parser as movie2_parser
 from trainscanner.widget.qfloatslider import QFloatSlider
 from trainscanner.widget.qlogslider import LogSliderHandle
 from trainscanner.widget.qvalueslider import QValueSlider
 from tiledimage.cachedimage import CachedImage
+from trainscanner.i18n import tr
 
 # options handler
 import sys
@@ -67,11 +65,11 @@ class SettingsGUI(QWidget):
         finish_layout = QVBoxLayout()
 
         # 説明文を追加
-        instruction = QLabel(self.tr("Drag & drop an image strip"))
+        instruction = QLabel(tr("Drag & drop an image strip"))
         instruction.setAlignment(Qt.AlignmentFlag.AlignCenter)
         finish_layout.addWidget(instruction)
 
-        # self.btn_finish_perf = QCheckBox(self.tr("Add the film perforations"))
+        # self.btn_finish_perf = QCheckBox(tr("Add the film perforations"))
         # finish_layout.addWidget(self.btn_finish_perf)
 
         # タブウィジェットを作成
@@ -80,24 +78,43 @@ class SettingsGUI(QWidget):
 
         # 各タブの内容を作成
         converters = {
-            "hans": list_cli_options(hans_parser()),
-            "rect": list_cli_options(rect_parser()),
-            "helix": list_cli_options(helix_parser()),
-            "scroll": list_cli_options(scroll_parser()),
-            "movie": list_cli_options(movie2_parser()),
+            "hans": {
+                "internal_name": "hans_style",
+                "options_list": list_cli_options(hans_parser()),
+            },
+            "rect": {
+                "internal_name": "rect",
+                "options_list": list_cli_options(rect_parser()),
+            },
+            "helix": {
+                "internal_name": "helix",
+                "options_list": list_cli_options(helix_parser()),
+            },
+            "scroll": {
+                "internal_name": "scroll",
+                "options_list": list_cli_options(scroll_parser()),
+            },
+            "movie": {
+                "internal_name": "movie",
+                "options_list": list_cli_options(movie2_parser()),
+            },
         }
         self.getters = dict()
         # ffmpegの確認
         self.has_ffmpeg = shutil.which("ffmpeg") is not None
         self.tab_widgets = []
-        for converter, (options, description) in converters.items():
+        for converter, contents in converters.items():
+            internal_name = contents["internal_name"]
+            options, description = contents["options_list"]
+
             tab = QWidget()
             tab_layout = QVBoxLayout()
-            desc = self.tr(description)
-            if not self.has_ffmpeg and converter in ["movie", "movie2"]:
+            desc = tr(description)
+            if not self.has_ffmpeg and converter in ["movie", "scroll"]:
                 desc += " (ffmpeg required)"
                 tab.setEnabled(False)
             tab_layout.addWidget(QLabel(desc))
+
             # オプションの表示
             self.getters[converter] = dict()
             for option in options:
@@ -110,12 +127,12 @@ class SettingsGUI(QWidget):
                     continue
                 if option["type"] in (int, float):
                     help = option["help"]
-                    print(help, option)
+                    # print(help, option)
                     min = option["min"]
                     max = option["max"]
                     # sliderの左にラベルを付けたい。
                     hbox = QHBoxLayout()
-                    label = QLabel(self.tr(help))
+                    label = QLabel(tr(help))
                     hbox.addWidget(label)
                     if option["type"] == int:
                         slider = QValueSlider()
@@ -160,23 +177,23 @@ class SettingsGUI(QWidget):
                     and "-h" not in option["option_strings"]
                     and "-R" not in option["option_strings"]
                 ):
-                    checkbox = QCheckBox(self.tr(option["help"]))
+                    checkbox = QCheckBox(tr(option["help"]))
                     # checkbox.setChecked(option["default"])
                     tab_layout.addWidget(checkbox)
                     self.getters[converter][option_keyword] = checkbox
                 elif option["type"] == str:
                     # title付きのテキストフィールド
                     hbox = QHBoxLayout()
-                    label = QLabel(self.tr(option["help"]))
+                    label = QLabel(tr(option["help"]))
                     hbox.addWidget(label)
-                    lineedit = QLineEdit(self.tr(option["default"]))
+                    lineedit = QLineEdit(tr(option["default"]))
                     hbox.addWidget(lineedit)
                     tab_layout.addLayout(hbox)
                     self.getters[converter][option_keyword] = lineedit
                 # else:
-                #     tab_layout.addWidget(QLabel(self.tr(option["help"])))
+                #     tab_layout.addWidget(QLabel(tr(option["help"])))
             tab.setLayout(tab_layout)
-            self.tab_widget.addTab(tab, self.tr(converter))
+            self.tab_widget.addTab(tab, tr(converter))
             self.tab_widgets.append(tab)
 
         finish_layout.addWidget(self.tab_widget)
@@ -196,7 +213,7 @@ class SettingsGUI(QWidget):
         arrow_layout.addWidget(self.btn_left)
 
         # "Go"テキスト
-        go_label = QLabel(self.tr("Direction"))
+        go_label = QLabel(tr("Direction"))
         go_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         arrow_layout.addWidget(go_label)
 
@@ -210,7 +227,7 @@ class SettingsGUI(QWidget):
         finish_layout.addLayout(arrow_layout)
 
         self.setLayout(finish_layout)
-        self.setWindowTitle("Converter")
+        self.setWindowTitle(tr("Converter"))
 
         # Command-Wで閉じるショートカットを追加
         close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
@@ -266,7 +283,7 @@ class SettingsGUI(QWidget):
         elif tab == "scroll":
             scroll.make_movie(file_name, head_right=head_right, **args)
         elif tab == "movie":
-            movie2.make_movie(file_name, head_right=head_right, **args)
+            movie.make_movie(file_name, head_right=head_right, **args)
         elif tab == "hans":
             hansimg = hans.hansify(img, head_right=head_right, **args)
             cv2.imwrite(file_name + ".hans.png", hansimg)
@@ -323,24 +340,42 @@ def main():
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
+    logger = logging.getLogger()
     app = QApplication(sys.argv)
     translator = QTranslator(app)
     path = os.path.dirname(trainscanner.__file__)
-    print(path)
+    logger.debug(f"Application path: {path}")
 
     # まずLANG環境変数を確認
     lang = os.environ.get("LANG", "").split("_")[0]
+    logger.debug(f"LANG environment variable: {lang}")
 
     # LANGが設定されていない場合はQLocaleを使用
     if not lang:
         locale = QLocale()
         lang = locale.name().split("_")[0]
+        logger.debug(f"Using QLocale language: {lang}")
 
+    qm_path = None
     if lang == "ja":
-        translator.load(path + "/i18n/trainscanner_ja")
+        qm_path = path + "/i18n/trainscanner_ja"
     elif lang == "fr":
-        translator.load(path + "/i18n/trainscanner_fr")
-    app.installTranslator(translator)
+        qm_path = path + "/i18n/trainscanner_fr"
+
+    if qm_path:
+        logger.debug(f"Loading Qt translations from: {qm_path}")
+        if translator.load(qm_path):
+            logger.debug("Successfully loaded Qt translations")
+            app.installTranslator(translator)
+        else:
+            logger.error("Failed to load Qt translations")
+
+    # 独自の翻訳システムを初期化
+    from trainscanner.i18n import init_translations
+
+    logger.debug("Initializing custom translation system")
+    init_translations()
+
     se = SettingsGUI()
     se.show()
     se.raise_()

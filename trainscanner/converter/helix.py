@@ -6,6 +6,7 @@ import numpy as np
 import math
 import logging
 import argparse
+from trainscanner.i18n import tr
 
 
 # Determine tilt angle by Newton-Raphson method
@@ -112,13 +113,19 @@ def add_margin(img, margin):
 
 def get_parser():
     parser = argparse.ArgumentParser(
-        description="Make a helical strip from a train image"
+        description=tr("Make a helical strip from a train image")
     )
-    parser.add_argument("image_path", help="Path of the input image file")
-    parser.add_argument("--output", "-o", help="Path of the output file")
-    parser.add_argument("--margin", "-m", type=int, default=0, help="Margin -- 0,100")
+    parser.add_argument("image_path", help=tr("Path of the input image file"))
+    parser.add_argument("--output", "-o", help=tr("Path of the output file"))
     parser.add_argument(
-        "--aspect", "-a", type=float, default=2.0**0.5, help="Aspect ratio -- 0.1,10"
+        "--margin", "-m", type=int, default=0, help=tr("Margin") + "-- 0,100"
+    )
+    parser.add_argument(
+        "--aspect",
+        "-a",
+        type=float,
+        default=2.0**0.5,
+        help=tr("Aspect ratio") + "-- 0.1,10",
     )
     return parser
 

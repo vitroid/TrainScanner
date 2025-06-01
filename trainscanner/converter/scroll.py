@@ -2,7 +2,7 @@ from PIL import Image
 import subprocess
 import argparse
 import sys
-from trainscanner import _
+from trainscanner.i18n import tr
 
 
 def make_movie(
@@ -74,44 +74,48 @@ def get_parser():
     """
     コマンドライン引数のパーサーを生成して返す関数
     """
-    parser = argparse.ArgumentParser(description=_("Make a movie from a train image"))
-    parser.add_argument("image_path", help=_("Path of the input image file"))
-    parser.add_argument("--output", "-o", help=_("Path of the output file"))
+    parser = argparse.ArgumentParser(description=tr("Make a movie from a train image"))
+    parser.add_argument("image_path", help=tr("Path of the input image file"))
+    parser.add_argument("--output", "-o", help=tr("Path of the output file"))
     parser.add_argument(
         "--duration",
         "-d",
         type=float,
         default=8,
-        help=_("Duration of the movie (seconds) -- 0.1,1000"),
+        help=tr("Duration of the movie (seconds)") + "-- 0.1,1000",
     )
     parser.add_argument(
         "--height",
         "-H",
         type=int,
         default=1080,
-        help=_("Height of the movie (pixels) -- 100,4096"),
+        help=tr("Height of the movie (pixels)") + "-- 100,4096",
     )
     parser.add_argument(
         "--width",
         "-W",
         type=int,
         default=1920,
-        help=_("Width of the movie (pixels) -- 100,4096"),
+        help=tr("Width of the movie (pixels)") + "-- 100,4096",
     )
     parser.add_argument(
         "--head-right",
         "-R",
         action="store_true",
-        help=_("The train heads to the right."),
+        help=tr("The train heads to the right."),
     )
     parser.add_argument(
-        "--fps", "-r", type=int, default=30, help=_("Frame rate -- 1,120")
+        "--fps", "-r", type=int, default=30, help=tr("Frame rate") + "-- 1,120"
     )
     parser.add_argument(
-        "--bitrate", "-b", type=float, default=8, help=_("Bitrate (Mbit/s) -- 0.1,100")
+        "--bitrate",
+        "-b",
+        type=float,
+        default=8,
+        help=tr("Bitrate (Mbit/s)") + "-- 0.1,100",
     )
     parser.add_argument(
-        "--encoder", "-e", type=str, default="libx264", help=_("mp4 encoder")
+        "--encoder", "-e", type=str, default="libx264", help=tr("mp4 encoder")
     )
     return parser
 

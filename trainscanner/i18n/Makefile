@@ -1,13 +1,16 @@
-all: trainscanner_ja.ts trainscanner_ja.qm trainscanner_fr.ts trainscanner_fr.qm
+QTPATH=/usr/local/Cellar/qt/6.9.0/bin
+SRCS=../trainscanner_gui.py ../converter/gui.py ../converter/hans_style.py ../converter/scroll.py ../converter/rect.py ../converter/helix.py ../converter/movie.py
+all: trainscanner_ja.ts trainscanner_fr.ts
 
-trainscanner_%.ts: ../trainscanner_gui.py ../converter/gui.py ../converter/hans_style.py ../converter/scroll.py ../converter/rect.py ../converter/helix.py ../converter/movie2.py
-	pylupdate6 --ts $@ $^
+trainscanner_%.ts: $(SRCS) Makefile extract.py
+	python3 extract.py --ts $@ $(SRCS)
+
 
 linguist:
-	/usr/local/Cellar/qt/6.9.0/bin/Linguist trainscanner_ja.ts
-	/usr/local/Cellar/qt/6.9.0/bin/Linguist trainscanner_fr.ts
+	$(QTPATH)/Linguist trainscanner_ja.ts
+	$(QTPATH)/Linguist trainscanner_fr.ts
 
 qm: trainscanner_ja.qm trainscanner_fr.qm
 
 trainscanner_%.qm: trainscanner_%.ts
-	/usr/local/Cellar/qt/6.9.0/bin/lrelease trainscanner_$*.ts
+	$(QTPATH)/lrelease trainscanner_$*.ts
