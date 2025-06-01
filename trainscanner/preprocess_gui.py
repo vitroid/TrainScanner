@@ -23,7 +23,7 @@ from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
 from trainscanner import trainscanner, video
 from trainscanner.widget.imageselector2 import ImageSelector2
 import trainscanner.widget.qrangeslider as rs
-from trainscanner.i18n import tr
+from trainscanner.i18n import tr, init_translations
 
 
 perspectiveCSS = """
@@ -363,6 +363,8 @@ class EditorGUI(QWidget):
     def __init__(self, settings, parent=None, filename=None, params=None):
         super(EditorGUI, self).__init__(parent)
 
+        init_translations()
+
         # ショートカットの設定
         close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
         close_shortcut.activated.connect(self.close)
@@ -633,7 +635,7 @@ class EditorGUI(QWidget):
     def angle_inc(self):
         self.angle_degree += 1
         self.angle_degree %= 360
-        self.angle_label.setText("{0} ".format(self.angle_degree) + tr("degrees"))
+        self.angle_label.setText(f'{self.angle_degree} {tr("degrees")}')
         self.updateTimeLine(
             FrameInfo(
                 every_n_frames=0,
@@ -645,7 +647,7 @@ class EditorGUI(QWidget):
     def angle_dec(self):
         self.angle_degree -= 1
         self.angle_degree %= 360
-        self.angle_label.setText("{0} ".format(self.angle_degree) + tr("degrees"))
+        self.angle_label.setText(f'{self.angle_degree} {tr("degrees")}')
         self.updateTimeLine(
             FrameInfo(
                 every_n_frames=0,
@@ -657,7 +659,7 @@ class EditorGUI(QWidget):
     def angle_add90(self):
         self.angle_degree += 90
         self.angle_degree %= 360
-        self.angle_label.setText("{0} ".format(self.angle_degree) + tr("degrees"))
+        self.angle_label.setText(f'{self.angle_degree} {tr("degrees")}')
         self.updateTimeLine(
             FrameInfo(
                 every_n_frames=0,
@@ -669,7 +671,7 @@ class EditorGUI(QWidget):
     def angle_sub90(self):
         self.angle_degree -= 90
         self.angle_degree %= 360
-        self.angle_label.setText("{0} ".format(self.angle_degree) + tr("degrees"))
+        self.angle_label.setText(f'{self.angle_degree} {tr("degrees")}')
         self.updateTimeLine(
             FrameInfo(
                 every_n_frames=0,
@@ -819,22 +821,8 @@ def main():
     # pyqt_set_trace()
     basicConfig(level=WARN, format="%(asctime)s %(levelname)s %(message)s")
     app = QApplication(sys.argv)
-    translator = QTranslator(app)
     path = os.path.dirname(trainscanner.__file__)
 
-    # まずLANG環境変数を確認
-    lang = os.environ.get("LANG", "").split("_")[0]
-
-    # LANGが設定されていない場合はQLocaleを使用
-    if not lang:
-        locale = QLocale()
-        lang = locale.name().split("_")[0]
-
-    if lang == "ja":
-        translator.load(path + "/i18n/trainscanner_ja")
-    elif lang == "fr":
-        translator.load(path + "/i18n/trainscanner_fr")
-    app.installTranslator(translator)
     se = SettingsGUI()
     se.show()
     se.raise_()

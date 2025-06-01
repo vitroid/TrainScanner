@@ -4,7 +4,7 @@
 import cv2
 import numpy as np
 import argparse
-from trainscanner.i18n import tr
+from trainscanner.i18n import tr, init_translations
 
 
 def rectify(img, rows=None, overlap=3, head_right=True):  # overlap in percent
@@ -67,6 +67,8 @@ def get_parser():
 
 
 def main():
+    init_translations()
+
     parser = get_parser()
     args = parser.parse_args()
 

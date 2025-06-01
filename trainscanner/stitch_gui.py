@@ -28,6 +28,7 @@ from tiledimage import cachedimage as ci
 
 from trainscanner import stitch
 from trainscanner.widget.scaledcanvas import ScaledCanvas
+from trainscanner.i18n import init_translations, tr
 
 
 # It is run in the thread.
@@ -181,7 +182,10 @@ class StitcherUI(QDialog):
     def __init__(self, argv, terminate, parent=None):
         logger = getLogger()
         super(StitcherUI, self).__init__(parent)
-        self.setWindowTitle("Stitcher Preview")
+
+        init_translations()
+
+        self.setWindowTitle(tr("Stitcher Preview"))
         stitcher = stitch.Stitcher(argv=argv)
         tilesize = (128, 512)  # can be smaller for smaller working memory
         cachesize = 10
@@ -261,7 +265,7 @@ class StitcherUI(QDialog):
 
     def stitch_finished(self):
         # ボタンの機能を変える。
-        self.btnStop.setText("Crop + Finish")
+        self.btnStop.setText(tr("Crop + Finish"))
         self.btnStop.clicked.connect(self.crop_finished)
 
         # ここで、tiledimageを読みこみ、スケールし、canvasをさしかえる。

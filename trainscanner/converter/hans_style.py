@@ -4,7 +4,7 @@
 import cv2
 import numpy as np
 import argparse
-from trainscanner.i18n import tr
+from trainscanner.i18n import tr, init_translations
 import logging
 import os
 
@@ -102,13 +102,11 @@ def get_parser():
 
 def main():
     # デバッグ出力を設定
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger()
     logger.debug(f"LANG environment variable: {os.environ.get('LANG', '')}")
 
     # 翻訳を初期化
-    from trainscanner.i18n import init_translations
-
     init_translations()
 
     parser = get_parser()

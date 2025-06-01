@@ -7,7 +7,7 @@ import shutil
 import logging
 from tqdm import tqdm
 import sys
-from trainscanner.i18n import tr
+from trainscanner.i18n import tr, init_translations
 
 
 def make_movie(
@@ -204,6 +204,8 @@ def get_parser():
 
 
 def main():
+    init_translations()
+
     parser = get_parser()
     args = parser.parse_args()
 

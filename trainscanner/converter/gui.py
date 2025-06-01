@@ -342,33 +342,10 @@ def main():
     )
     logger = logging.getLogger()
     app = QApplication(sys.argv)
-    translator = QTranslator(app)
     path = os.path.dirname(trainscanner.__file__)
     logger.debug(f"Application path: {path}")
 
     # まずLANG環境変数を確認
-    lang = os.environ.get("LANG", "").split("_")[0]
-    logger.debug(f"LANG environment variable: {lang}")
-
-    # LANGが設定されていない場合はQLocaleを使用
-    if not lang:
-        locale = QLocale()
-        lang = locale.name().split("_")[0]
-        logger.debug(f"Using QLocale language: {lang}")
-
-    qm_path = None
-    if lang == "ja":
-        qm_path = path + "/i18n/trainscanner_ja"
-    elif lang == "fr":
-        qm_path = path + "/i18n/trainscanner_fr"
-
-    if qm_path:
-        logger.debug(f"Loading Qt translations from: {qm_path}")
-        if translator.load(qm_path):
-            logger.debug("Successfully loaded Qt translations")
-            app.installTranslator(translator)
-        else:
-            logger.error("Failed to load Qt translations")
 
     # 独自の翻訳システムを初期化
     from trainscanner.i18n import init_translations

@@ -8,11 +8,13 @@ from logging import getLogger, INFO, basicConfig
 from jinja2 import Environment, FileSystemLoader
 import json
 import toml
-
+from trainscanner.i18n import tr, init_translations
 
 basicConfig(level=INFO, format="%(levelname)s %(message)s")
 logger = getLogger()
 logger.debug("Debug mode.")
+
+init_translations()
 
 
 def add_prefix(L: list[str], prefix: str = "    "):
@@ -32,8 +34,8 @@ project |= {
     "usage_helicify": get_usage("helix", "helicify"),
     "usage_filmify": get_usage("film", "filmify"),
     "usage_rectify": get_usage("rect", "rectify"),
-    "usage_movify": get_usage("scroll", "movify"),
-    "usage_movify2": get_usage("movie2", "movify2"),
+    "usage_scrollify": get_usage("scroll", "scrollify"),
+    "usage_movify": get_usage("movie", "movify"),
 }
 
 # テンプレートの内容を標準入力から読み込む

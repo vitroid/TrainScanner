@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.24.0
+Version 0.24.2
 
 # TrainScanner の使い方
 
@@ -31,7 +31,7 @@ TrainScanner で作成した画像は巨大でしかも長大なので、その�
 ts_converter
 ```
 
-これは、次節のコマンドのラッパーです。細かいオプションを利用したい場合はコマンドを利用して下さい。
+これは、次節のコマンドに GUI を付与したものです。
 
 ## コマンドラインからの利用
 
@@ -47,19 +47,19 @@ helicify longimage.png
 usage: helix.py [-h] [--output OUTPUT] [--margin MARGIN] [--aspect ASPECT]
                 image_path
 
-Make a helical strip from a train image
+らせん画像を作る
 
 positional arguments:
-  image_path            入力画像ファイルのパス
+  image_path            入力ファイルのパス
 
 options:
   -h, --help            show this help message and exit
   --output OUTPUT, -o OUTPUT
                         出力ファイルのパス
   --margin MARGIN, -m MARGIN
-                        マージン -- 0,100
+                        マージン (pixel)-- 0,100
   --aspect ASPECT, -a ASPECT
-                        アスペクト比 -- 0.1,10
+                        アスペクト比-- 0.1,10
 
 ```
 
@@ -72,22 +72,24 @@ rectify longimage.png
 ```
 
 ```
-usage: rect.py [-h] [--output OUTPUT] [--rows ROWS] [--gap GAP] [--head-right]
+usage: rect.py [-h] [--output OUTPUT] [--rows ROWS] [--overlap OVERLAP]
+               [--head-right]
                image_path
 
-Fold a train image into a stack of images
+ぶつ切り山積み
 
 positional arguments:
-  image_path            入力画像ファイルのパス
+  image_path            入力ファイルのパス
 
 options:
   -h, --help            show this help message and exit
   --output OUTPUT, -o OUTPUT
                         出力ファイルのパス
-  --rows ROWS, -r ROWS  行数 -- 2,100
-  --gap GAP, -g GAP     マージン(パーセント) -- 0,100
-  --head-right, -R      右端が先頭
-}}
+  --rows ROWS, -r ROWS  段数-- 2,100
+  --overlap OVERLAP, -l OVERLAP
+                        端の重複部分の幅 (パーセント)-- 0,100
+  --head-right, -R      列車は右向きに進む
+
 ```
 
 ### `filmify`: 長い写真をフィルム風にするツール
@@ -126,32 +128,35 @@ hansify longimage.png
 ```
 
 ```
-usage: hans_style.py [-h] [--output OUTPUT] [--rows ROWS] [--overlap OVERLAP]
-                     [--head-right]
+usage: hans_style.py [-h] [--output OUTPUT] [--aspect ASPECT]
+                     [--overlap OVERLAP] [--head-right] [--width WIDTH]
                      image_path
 
 Fold a train image into a stack of images like Hans Ruijter's style
 
 positional arguments:
-  image_path            入力画像ファイルのパス
+  image_path            入力ファイルのパス
 
 options:
   -h, --help            show this help message and exit
   --output OUTPUT, -o OUTPUT
                         出力ファイルのパス
-  --rows ROWS, -r ROWS  行数 (0で自動) -- 0,100
+  --aspect ASPECT, -a ASPECT
+                        アスペクト比-- 0.1,10
   --overlap OVERLAP, -l OVERLAP
-                        重複率 -- 0,100
-  --head-right, -R      右端が先頭
+                        端の重複部分の幅 (パーセント)-- 0,100
+  --head-right, -R      列車は右向きに進む
+  --width WIDTH, -W WIDTH
+                        画像の幅 (ピクセル, 変更しないなら0)-- 0,10000
 
 ```
 
-### `movify`: スクロール動画を生成するツール
+### `scrollify`: スクロール動画を生成するツール
 
 一定速度でスクロールする動画を生成します。
 
 ```shell
-movify longimage.png
+scrollify longimage.png
 ```
 
 ```
@@ -160,69 +165,68 @@ usage: scroll.py [-h] [--output OUTPUT] [--duration DURATION]
                  [--bitrate BITRATE] [--encoder ENCODER]
                  image_path
 
-Make a movie from a train image
+列車の長い写真からムービーを作る
 
 positional arguments:
-  image_path            入力画像ファイルのパス
+  image_path            入力ファイルのパス
 
 options:
   -h, --help            show this help message and exit
   --output OUTPUT, -o OUTPUT
                         出力ファイルのパス
   --duration DURATION, -d DURATION
-                        動画の長さ（秒） -- 0.1,1000
+                        ムービーの尺 (秒)-- 0.1,1000
   --height HEIGHT, -H HEIGHT
-                        目標の高さ -- 100,4096
+                        ムービーの高さ (pixels)-- 100,4096
   --width WIDTH, -W WIDTH
-                        目標の幅 -- 100,4096
-  --head-right, -R      右端が先頭
-  --fps FPS, -r FPS     フレームレート -- 1,120
+                        ムービーの幅 (pixels)-- 100,4096
+  --head-right, -R      列車は右向きに進む
+  --fps FPS, -r FPS     フレームレート (fps)-- 1,120
   --bitrate BITRATE, -b BITRATE
-                        ビットレート (Mbit/s) -- 0.1,100
+                        ビットレート (Mbit/s)-- 0.1,100
   --encoder ENCODER, -e ENCODER
-                        mp4エンコーダー
+                        mp4エンコーダ
 
 ```
 
-### `movify2`: スクロール動画を生成するツール 2
+### `movify`: サムネイル付きスクロール動画を生成するツール
 
 [@yamakox](https://x.com/yamakox)さん風のスクロール動画を生成します。
 
 ```shell
-movify2 longimage.png
+movify longimage.png
 ```
 
 ```
-usage: movie2.py [-h] [--output OUTPUT] [--duration DURATION]
-                 [--height HEIGHT] [--width WIDTH] [--head-right] [--fps FPS]
-                 [--bitrate BITRATE] [--png] [--alternating] [--accel]
-                 [--encoder ENCODER]
-                 image_path
+usage: movie.py [-h] [--output OUTPUT] [--duration DURATION] [--height HEIGHT]
+                [--width WIDTH] [--head-right] [--fps FPS] [--bitrate BITRATE]
+                [--png] [--alternating] [--accel] [--encoder ENCODER]
+                image_path
 
-Make a movie with a thumbnail from a train image
+サムネイル付きのムービーを生成(Yamako式)
 
 positional arguments:
-  image_path            入力画像ファイルのパス
+  image_path            入力ファイルのパス
 
 options:
   -h, --help            show this help message and exit
   --output OUTPUT, -o OUTPUT
                         出力ファイルのパス
   --duration DURATION, -d DURATION
-                        動画の長さ（秒） -- 0.1,1000
+                        ムービーの尺 (秒)-- 0.1,1000
   --height HEIGHT, -H HEIGHT
-                        目標の高さ -- 100,4096
+                        ムービーの高さ (pixels)-- 100,4096
   --width WIDTH, -W WIDTH
-                        目標の幅 -- 100,4096
-  --head-right, -R      右端が先頭
-  --fps FPS, -r FPS     フレームレート -- 1,120
+                        ムービーの幅 (pixels)-- 100,4096
+  --head-right, -R      列車は右向きに進む
+  --fps FPS, -r FPS     フレームレート (fps)-- 1,120
   --bitrate BITRATE, -b BITRATE
                         ビットレート (Mbit/s) -- 0.1,100
-  --png, -p             中間ファイルをpngにする
-  --alternating, -a     前進+後退
+  --png, -p             高画質な中間ファイル
+  --alternating, -a     行ったり来たり
   --accel, -A           加速
   --encoder ENCODER, -e ENCODER
-                        mp4エンコーダー
+                        mp4エンコーダ
 
 ```
 

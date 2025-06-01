@@ -14,6 +14,7 @@ from logging import getLogger, basicConfig, WARN, DEBUG, INFO
 from tiledimage import cachedimage as ci
 from trainscanner import trainscanner
 from trainscanner import video
+from trainscanner.i18n import init_translations, tr
 
 
 class AlphaMask:
@@ -146,6 +147,9 @@ class Stitcher:
 
     def __init__(self, argv):
         logger = getLogger()
+
+        init_translations()
+
         parser = prepare_parser()
         # これが一番スマートなんだが、動かないので、手動で--fileをさがして処理を行う。
         # parser.add_argument('--file', type=open, action=LoadFromFile)

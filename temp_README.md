@@ -56,7 +56,7 @@ rectify longimage.png
 ```
 
 ```
-{{ usage_rectify }}}}
+{{ usage_rectify }}
 ```
 
 ### `filmify`: 長い写真をフィルム風にするツール
@@ -83,9 +83,21 @@ hansify longimage.png
 {{ usage_hansify }}
 ```
 
-### `movify`: スクロール動画を生成するツール
+### `scrollify`: スクロール動画を生成するツール
 
 一定速度でスクロールする動画を生成します。
+
+```shell
+scrollify longimage.png
+```
+
+```
+{{ usage_scrollify }}
+```
+
+### `movify`: サムネイル付きスクロール動画を生成するツール
+
+[@yamakox](https://x.com/yamakox)さん風のスクロール動画を生成します。
 
 ```shell
 movify longimage.png
@@ -93,18 +105,6 @@ movify longimage.png
 
 ```
 {{ usage_movify }}
-```
-
-### `movify2`: スクロール動画を生成するツール 2
-
-[@yamakox](https://x.com/yamakox)さん風のスクロール動画を生成します。
-
-```shell
-movify2 longimage.png
-```
-
-```
-{{ usage_movify2 }}
 ```
 
 <!-- ### `shakereduction.py`: 手振れ補正 (試験中)

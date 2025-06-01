@@ -6,7 +6,7 @@ import numpy as np
 import math
 import logging
 import argparse
-from trainscanner.i18n import tr
+from trainscanner.i18n import tr, init_translations
 
 
 # Determine tilt angle by Newton-Raphson method
@@ -131,12 +131,17 @@ def get_parser():
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG)
+
+    init_translations()
+
     parser = get_parser()
     args = parser.parse_args()
+
     """
     Make a helical strip from a train image
     """
-    logging.basicConfig(level=logging.INFO)
+
     img = cv2.imread(args.image_path)
     canvas2 = helicify(img, aspect=args.aspect)
     if args.margin != 0:
