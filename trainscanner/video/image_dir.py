@@ -6,6 +6,7 @@ Wrapper for video systems
 """
 
 import cv2
+import os
 
 
 class VideoLoader(object):
@@ -22,11 +23,11 @@ class VideoLoader(object):
         )
 
     def next(self):
+        if self.nframe >= len(self.filenames):
+            return 0, None
         filename = self.filenames[self.nframe]
         frame = cv2.imread(filename)
         self.nframe += 1
-        if frame is None:
-            return 0, frame
         return self.nframe, frame
 
     def skip(self):
