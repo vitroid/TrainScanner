@@ -464,10 +464,10 @@ class SettingsGUI(QWidget):
             self.trailing_slider.setValue(p1["trailing"])
 
         else:
+            # self.filenameがディレクトリの場合も処理は同じ。
+            self.filename = self.filename.rstrip("/")
             self.editor = EditorGUI(self, filename=self.filename)
-        # dir = os.path.dirname(self.filename)
-        # base = os.path.basename(self.filename)
-        # self.filename = "sample3.mov"
+
         self.editor.show()
 
         # we shall set editor's values here.
