@@ -5,18 +5,6 @@ import numpy as np
 import sys
 from dataclasses import dataclass
 
-# ムービーを読みこみ、背景を検出する。
-
-
-def video_iter(filename):
-    cap = cv2.VideoCapture(filename)
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            cap.release()
-            return
-        yield frame
-
 
 @dataclass
 class Focus:

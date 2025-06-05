@@ -10,25 +10,75 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QImage, QPixmap
-from trainscanner.shake_reduction2 import video_iter, antishake
+from trainscanner.video import VideoLoader
+from trainscanner.shake_reduction2 import antishake
 import sys
 import os
+
+
+def video_iter(filename: str):
+    video_loader = VideoLoader(filename)
+    while True:
+        frame_index, frame = video_loader.next()
+        if frame_index == 0:
+            break
+        yield frame
+
+
+class DropArea(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setText("ここに動画ファイルをDrag & Dropして下さい")
+        self.setStyleSheet(
+            """
+            QLabel {
+                border: 2px dashed #aaa;
+                border-radius: 5px;
+                padding: 20px;
+                background-color: #f0f0f0;
+                font-size: 14px;
+            }
+        """
+        )
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        if files:
+            self.parent().process_video(files[0])
 
 
 class ImageWindow(QMainWindow):
     colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
 
-    def __init__(self, image=None):
+    def __init__(self):
         super().__init__()
         self.rectangles = []
         self.drawing = False
         self.start_point = None
-        self.current_image = image
-        self.original_image = image  # 元の画像を保持
+        self.current_image = None
+        self.original_image = None
+        self.video_path = None
 
         # ウィンドウの設定
         self.setWindowTitle("画像選択")
         self.setGeometry(100, 100, 1200, 800)
+
+        # ドロップエリアの設定
+        self.drop_area = DropArea(self)
+        self.setCentralWidget(self.drop_area)
+
+    def process_video(self, video_path):
+        self.video_path = video_path
+        video_frames = video_iter(video_path)
+        frame = next(video_frames)
 
         # スクロールエリアの設定
         self.scroll_area = QScrollArea()
@@ -45,14 +95,9 @@ class ImageWindow(QMainWindow):
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.image_label)
 
-        # # 最初のフレームを読み込む
-        # for frame in video_iter("examples/sample2.mov"):
-        #     self.original_image = frame.copy()
-        #     self.current_image = frame.copy()
-        #     break
-
-        if self.current_image is not None:
-            self.display_image()
+        self.original_image = frame.copy()
+        self.current_image = frame.copy()
+        self.display_image()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -211,6 +256,20 @@ class ImageWindow(QMainWindow):
     def get_rectangles(self):
         return self.rectangles
 
+    def closeEvent(self, event):
+        if self.video_path and self.rectangles:
+            # ビデオをまきもどす
+            video_frames = video_iter(self.video_path)
+            rects = self.get_rectangles()
+            rects = qt_to_cv(rects)
+            os.makedirs(f"{self.video_path}.dir", exist_ok=True)
+            with open(f"{self.video_path}.dir/log.txt", "w") as logfile:
+                for i, frame in enumerate(
+                    antishake(video_frames, rects, logfile=logfile)
+                ):
+                    cv2.imwrite(f"{self.video_path}.dir/{i:06d}.png", frame)
+        event.accept()
+
 
 def qt_to_cv(rects):
     cv_rects = []
@@ -224,30 +283,10 @@ def qt_to_cv(rects):
 
 
 def main():
-    import sys
-
-    if len(sys.argv) > 1:
-        video_path = sys.argv[1]
-    else:
-        video_path = "examples/sample5.mov"
-    video_frames = video_iter(video_path)
-    os.makedirs(f"{video_path}.dir", exist_ok=True)
-    frame = next(video_frames)
     app = QApplication(sys.argv)
-
-    window = ImageWindow(frame)
+    window = ImageWindow()
     window.show()
     app.exec()
-
-    # ビデオをまきもどす
-    video_frames = video_iter(video_path)
-    rects = window.get_rectangles()
-    rects = qt_to_cv(rects)
-    with open(f"{video_path}.dir/log.txt", "w") as logfile:
-        for i, frame in enumerate(antishake(video_frames, rects, logfile=logfile)):
-            cv2.imshow("deshaked", frame)
-            cv2.imwrite(f"{video_path}.dir/{i:06d}.png", frame)
-            cv2.waitKey(1)
 
 
 if __name__ == "__main__":
