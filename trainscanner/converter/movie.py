@@ -20,7 +20,7 @@ def make_movie(
     fps: int = 30,
     alternating: bool = False,
     png: bool = False,
-    bitrate: int = None,
+    crf: int = None,
     accel: bool = False,
     encoder: str = "libx264",
 ):
@@ -136,7 +136,7 @@ def make_movie(
             f'-i "{temp_dir}/frame_%06d.{ext}"',
             f"-c:v {encoder}",
             "-pix_fmt yuv420p",
-            f"-b:v {bitrate}M" if bitrate else "",
+            f"-crf {crf}" if crf else "",
             f'"{output}"',
         ]
         cmd = " ".join(cmd)
@@ -158,7 +158,7 @@ def get_parser():
         "-d",
         type=float,
         default=8,
-        help=tr("Duration of the movie (seconds)") + "-- 0.1,1000",
+        help=tr("Duration of the movie (seconds)") + "-- 10,1000",
     )
     parser.add_argument(
         "--height",
@@ -184,11 +184,11 @@ def get_parser():
         "--fps", "-r", type=int, default=30, help=tr("Frame rate") + "-- 1,120"
     )
     parser.add_argument(
-        "--bitrate",
-        "-b",
-        type=float,
-        default=8,
-        help=tr("Bitrate (Mbit/s)") + " -- 0.1,100",
+        "--crf",
+        "-c",
+        type=int,
+        default=21,
+        help=tr("CRF (Constant Rate Factor)") + " -- 16,30",
     )
     parser.add_argument(
         "--png", "-p", action="store_true", help=tr("Intermediate files are png")
@@ -219,7 +219,7 @@ def main():
         args.fps,
         args.alternating,
         args.png,
-        args.bitrate,
+        args.crf,
         args.accel,
         args.encoder,
     )
