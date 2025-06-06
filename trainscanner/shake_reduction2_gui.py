@@ -175,10 +175,22 @@ class ImageWindow(QMainWindow):
         # ウィンドウの設定
         self.setWindowTitle("画像選択")
         self.setGeometry(100, 100, 400, 300)
+        self.setAcceptDrops(True)  # ここでウィンドウ自体がDropを受け付ける
 
         # ドロップエリアの設定
         self.drop_area = DropArea(self)
         self.setCentralWidget(self.drop_area)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        if files:
+            self.process_video(files[0])
 
     def process_video(self, video_path):
         # 状態リセット
