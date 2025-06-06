@@ -56,7 +56,7 @@ def antishake(video_iter, foci, max_shift=5, logfile=None):
         )
         if logfile is not None:
             logfile.write(f"{x} {y} {w} {h}\n")
-    cv2.imshow("match_areas", frame0)
+    # cv2.imshow("match_areas", frame0)
 
     for frame2 in video_iter:
         gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY).astype(np.int32)
@@ -87,9 +87,9 @@ def antishake(video_iter, foci, max_shift=5, logfile=None):
         if logfile is not None:
             logfile.write(f"{focus.shift[0]} {focus.shift[1]}\n")
         if len(match_areas) == 1:
-            cv2.imshow(
-                "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)
-            )
+            # cv2.imshow(
+            #     "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)
+            # )
             m = match_areas[0]
             yield np.roll(
                 frame2,
