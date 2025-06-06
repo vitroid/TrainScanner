@@ -65,13 +65,10 @@ class DropArea(QLabel):
             self.parent().process_video(files[0])
 
 
-class HelpOverlay(QDialog):
+class HelpDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setWindowTitle("操作方法")
 
         # メインの白背景Widget
         main_widget = QWidget(self)
@@ -80,7 +77,6 @@ class HelpOverlay(QDialog):
             background: #fff;
             border-radius: 16px;
             border: 1px solid #ccc;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.15);
         """
         )
         layout = QVBoxLayout(self)
@@ -96,9 +92,10 @@ class HelpOverlay(QDialog):
         help_text = """
         <h2 style='margin-top:0;'>操作方法</h2>
         <ol style='font-size:15px;'>
-            <li>マウスの左ボタンをドラッグして長方形を描画します</li>
+            <li>マウスの左ボタンをドラッグして、背景(列車にかぶらない場所)に長方形を描きます</li>
+            <li>車体と距離が近い場所(線路など)で、平滑でない場所が望ましいです</li>
             <li>長方形1つを指定した場合は、その部分が固定されるように画像を平行移動します</li>
-            <li>長方形2つを指定した場合は、1つ目の長方形が固定され、もう一方で回転も補正します</li>
+            <li>長方形2つを指定した場合は、長方形0が固定され、長方形1で回転も補正します</li>
             <li>Deleteキーで長方形を消去できます</li>
             <li>「処理開始」ボタンをクリックして補正を開始します。</li>
         </ol>
@@ -129,34 +126,7 @@ class HelpOverlay(QDialog):
         close_button.clicked.connect(self.close)
         inner_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-    def showEvent(self, event):
-        super().showEvent(event)
         self.adjustSize()
-        if self.parent():
-            parent = self.parent()
-            x = parent.x() + (parent.width() - self.width()) // 2
-            y = parent.y() + (parent.height() - self.height()) // 2
-            self.move(x, y)
-
-    def paintEvent(self, event):
-        # うっすら暗い背景
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(0, 0, 0, 80))
-
-    def mousePressEvent(self, event):
-        event.accept()
-
-    def mouseMoveEvent(self, event):
-        event.accept()
-
-    def mouseReleaseEvent(self, event):
-        event.accept()
-
-    def keyPressEvent(self, event):
-        if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            self.close()
-        else:
-            super().keyPressEvent(event)
 
 
 class ImageWindow(QMainWindow):
@@ -254,7 +224,7 @@ class ImageWindow(QMainWindow):
         self.display_image()
         # ヘルプは最初の1回だけ表示
         if not self.help_shown:
-            help_overlay = HelpOverlay(self)
+            help_overlay = HelpDialog(self)
             help_overlay.exec()
             self.help_shown = True
 
