@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.24.2
+Version 0.25.0
 
 # TrainScanner の使い方
 
@@ -22,6 +22,16 @@ pip install git+https://github.com/vitroid/TrainScanner.git
 ## ドキュメント
 
 [Wiki](https://github.com/vitroid/TrainScanner/wiki)
+
+## 手ぶれ補正
+
+手持ち撮影でもきれいにつながるように、`trainscanner`で列車をつなぐ前に、手ぶれをとりのぞくツールです。
+
+```shell
+antishake
+```
+
+ムービーが画像ファイルに展開されるので、それなりのディスク容量が必要です。生成した画像ファイルの束は、ディレクトリごと`trainscanner`で読みこめます。
 
 ## 各種コンバータ
 
@@ -199,8 +209,8 @@ movify longimage.png
 
 ```
 usage: movie.py [-h] [--output OUTPUT] [--duration DURATION] [--height HEIGHT]
-                [--width WIDTH] [--head-right] [--fps FPS] [--bitrate BITRATE]
-                [--png] [--alternating] [--accel] [--encoder ENCODER]
+                [--width WIDTH] [--head-right] [--fps FPS] [--crf CRF] [--png]
+                [--alternating] [--accel] [--encoder ENCODER]
                 image_path
 
 サムネイル付きのムービーを生成(Yamako式)
@@ -213,15 +223,14 @@ options:
   --output OUTPUT, -o OUTPUT
                         出力ファイルのパス
   --duration DURATION, -d DURATION
-                        ムービーの尺 (秒)-- 0.1,1000
+                        ムービーの尺 (秒)-- 10,1000
   --height HEIGHT, -H HEIGHT
                         ムービーの高さ (pixels)-- 100,4096
   --width WIDTH, -W WIDTH
                         ムービーの幅 (pixels)-- 100,4096
   --head-right, -R      列車は右向きに進む
   --fps FPS, -r FPS     フレームレート (fps)-- 1,120
-  --bitrate BITRATE, -b BITRATE
-                        ビットレート (Mbit/s) -- 0.1,100
+  --crf CRF, -c CRF     CRF (Constant Rate Factor) -- 16,30
   --png, -p             高画質な中間ファイル
   --alternating, -a     行ったり来たり
   --accel, -A           加速

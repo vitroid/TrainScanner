@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trainscanner"
-version = "0.24.2"
+version = "0.25.0"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]
@@ -19,7 +19,7 @@ pillow = "^11.2.1"
 trainscanner        = 'trainscanner.trainscanner_gui:main'
 trainscanner_pass1  = 'trainscanner.pass1_gui:main'
 trainscanner_stitch = 'trainscanner.stitch_gui:main'
-trainscanner_shakereduction = 'trainscanner.shakereduction:main'
+antishake           = 'trainscanner.shake_reduction2_gui:main'
 filmify             = 'trainscanner.converter.film:main'
 rectify             = 'trainscanner.converter.rect:main'
 helicify            = 'trainscanner.converter.helix:main'
@@ -31,6 +31,7 @@ movify              = 'trainscanner.converter.movie:main'
 [tool.poetry.group.dev.dependencies]
 jinja2 = "^3.1.6"
 toml = "^0.10.2"
+matplotlib = "^3.10.3"
 
 [build-system]
 requires = ["poetry-core"]

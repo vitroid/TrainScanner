@@ -1,17 +1,15 @@
 import cv2
-import numpy as np
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
     QLabel,
     QVBoxLayout,
     QWidget,
-    QScrollArea,
     QPushButton,
     QDialog,
 )
-from PyQt6.QtCore import Qt, QPoint
-from PyQt6.QtGui import QImage, QPixmap, QPainter, QColor
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QImage, QPixmap, QShortcut, QKeySequence
 from trainscanner.video import VideoLoader
 from trainscanner.shake_reduction2 import antishake
 import sys
@@ -150,6 +148,10 @@ class ImageWindow(QMainWindow):
         # ドロップエリアの設定
         self.drop_area = DropArea(self)
         self.setCentralWidget(self.drop_area)
+
+        # ショートカットの設定
+        close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_shortcut.activated.connect(self.close)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
