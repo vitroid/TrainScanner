@@ -13,7 +13,15 @@ class Focus:
     match_area: np.ndarray
 
 
-def antishake(video_iter, foci, max_shift=10, logfile=None):
+def paddings(x, y, w, h, shape):
+    top = max(0, -y)
+    bottom = max(0, y + h - shape[0])
+    left = max(0, -x)
+    right = max(0, x + w - shape[1])
+    return top, bottom, left, right
+
+
+def antishake(video_iter, foci, max_shift=5, logfile=None):
     """最初のフレームの、指定された領域内の画像が動かないように、各フレームを平行移動する。
 
     全自動で位置あわせしたいのだが、現実的には、列車のすぐそばで位置あわせしないと、列車のぶれを止めきれない。
@@ -61,11 +69,14 @@ def antishake(video_iter, foci, max_shift=10, logfile=None):
                     focus.shift[1] - max_shift, focus.shift[1] + max_shift + 1
                 ):
                     x, y, w, h = focus.rect
+                    x += dx
+                    y += dy
+                    top, bottom, left, right = paddings(x, y, w, h, gray2.shape)
                     match_area = gray2[
-                        y + dy : y + dy + h,
-                        x + dx : x + dx + w,
+                        y + top : y + h - bottom, x + left : x + w - right
                     ]
-                    diff = np.sum((focus.match_area - match_area) ** 2)
+                    original_area = focus.match_area[top : h - bottom, left : w - right]
+                    diff = np.mean((original_area - match_area) ** 2)
                     # print(dx, dy, diff, focus.match_area.shape, match_area.shape)
                     if diff < max_diff:
                         max_diff = diff
