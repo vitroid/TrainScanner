@@ -199,17 +199,17 @@ class ImageWindow(QMainWindow):
             display_image = self.original_image.copy()
 
             # 既存の長方形を描画
-            for i, rect in enumerate(self.rectangles, 1):
-                cv2.rectangle(display_image, rect[0], rect[1], self.colors[i], 1)
+            for i, rect in enumerate(self.rectangles):
+                cv2.rectangle(display_image, rect[0], rect[1], self.colors[i], 2)
                 # 番号を描画
                 cv2.putText(
                     display_image,
                     str(i),
                     (rect[1][0] - 20, rect[0][1] + 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
+                    2,
                     self.colors[i],
-                    1,
+                    2,
                 )
 
             # 現在描画中の長方形を描画
@@ -238,17 +238,17 @@ class ImageWindow(QMainWindow):
 
                 # 画像を更新
                 display_image = self.original_image.copy()
-                for i, rect in enumerate(self.rectangles, 1):
-                    cv2.rectangle(display_image, rect[0], rect[1], self.colors[i], 1)
+                for i, rect in enumerate(self.rectangles):
+                    cv2.rectangle(display_image, rect[0], rect[1], self.colors[i], 2)
                     # 番号を描画
                     cv2.putText(
                         display_image,
                         str(i),
                         (rect[1][0] - 20, rect[0][1] + 20),
                         cv2.FONT_HERSHEY_SIMPLEX,
-                        1,
+                        2,  # scale
                         self.colors[i],
-                        1,
+                        2,  # thickness
                     )
                 self.current_image = display_image
                 self.display_image()
@@ -267,7 +267,9 @@ class ImageWindow(QMainWindow):
                 for i, frame in enumerate(
                     antishake(video_frames, rects, logfile=logfile)
                 ):
-                    cv2.imwrite(f"{self.video_path}.dir/{i:06d}.png", frame)
+                    outfilename = f"{self.video_path}.dir/{i:06d}.png"
+                    print(outfilename)
+                    cv2.imwrite(outfilename, frame)
         event.accept()
 
 
