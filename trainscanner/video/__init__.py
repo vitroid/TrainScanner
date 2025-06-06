@@ -12,6 +12,7 @@ import os
 
 
 def VideoLoader(filename: str):
+    filename = filename.rstrip("/")
     if os.path.isdir(filename):
         return image_dir.VideoLoader(filename)
     ostype = sys.platform

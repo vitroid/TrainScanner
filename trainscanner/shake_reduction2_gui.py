@@ -8,9 +8,10 @@ from PyQt6.QtWidgets import (
     QWidget,
     QScrollArea,
     QPushButton,
+    QDialog,
 )
 from PyQt6.QtCore import Qt, QPoint
-from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtGui import QImage, QPixmap, QPainter, QColor
 from trainscanner.video import VideoLoader
 from trainscanner.shake_reduction2 import antishake
 import sys
@@ -64,6 +65,100 @@ class DropArea(QLabel):
             self.parent().process_video(files[0])
 
 
+class HelpOverlay(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+        # メインの白背景Widget
+        main_widget = QWidget(self)
+        main_widget.setStyleSheet(
+            """
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+        """
+        )
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(main_widget)
+
+        # 内部レイアウト
+        inner_layout = QVBoxLayout(main_widget)
+        inner_layout.setContentsMargins(32, 32, 32, 24)
+        inner_layout.setSpacing(16)
+
+        # 説明テキスト
+        help_text = """
+        <h2 style='margin-top:0;'>操作方法</h2>
+        <ol style='font-size:15px;'>
+            <li>マウスの左ボタンをドラッグして長方形を描画します</li>
+            <li>長方形1つを指定した場合は、その部分が固定されるように画像を平行移動します</li>
+            <li>長方形2つを指定した場合は、1つ目の長方形が固定され、もう一方で回転も補正します</li>
+            <li>Deleteキーで長方形を消去できます</li>
+            <li>「処理開始」ボタンをクリックして補正を開始します。</li>
+        </ol>
+        """
+        help_label = QLabel(help_text)
+        help_label.setWordWrap(True)
+        help_label.setStyleSheet("color:#222;font-size:15px;")
+        inner_layout.addWidget(help_label)
+
+        # 閉じるボタン
+        close_button = QPushButton("閉じる")
+        close_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px 32px;
+                border-radius: 6px;
+                font-size: 15px;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """
+        )
+        close_button.clicked.connect(self.close)
+        inner_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.adjustSize()
+        if self.parent():
+            parent = self.parent()
+            x = parent.x() + (parent.width() - self.width()) // 2
+            y = parent.y() + (parent.height() - self.height()) // 2
+            self.move(x, y)
+
+    def paintEvent(self, event):
+        # うっすら暗い背景
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(0, 0, 0, 80))
+
+    def mousePressEvent(self, event):
+        event.accept()
+
+    def mouseMoveEvent(self, event):
+        event.accept()
+
+    def mouseReleaseEvent(self, event):
+        event.accept()
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.close()
+        else:
+            super().keyPressEvent(event)
+
+
 class ImageWindow(QMainWindow):
     colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
 
@@ -75,16 +170,25 @@ class ImageWindow(QMainWindow):
         self.current_image = None
         self.original_image = None
         self.video_path = None
+        self.help_shown = False  # ヘルプ表示済みフラグ
 
         # ウィンドウの設定
         self.setWindowTitle("画像選択")
-        self.setGeometry(100, 100, 400, 300)  # 初期サイズを小さく
+        self.setGeometry(100, 100, 400, 300)
 
         # ドロップエリアの設定
         self.drop_area = DropArea(self)
         self.setCentralWidget(self.drop_area)
 
     def process_video(self, video_path):
+        # 状態リセット
+        self.rectangles = []
+        self.drawing = False
+        self.start_point = None
+        self.current_image = None
+        self.original_image = None
+        self.video_path = None
+
         self.video_path = video_path
         video_frames = video_iter(video_path)
         frame = next(video_frames)
@@ -136,6 +240,11 @@ class ImageWindow(QMainWindow):
         self.original_image = frame.copy()
         self.current_image = frame.copy()
         self.display_image()
+        # ヘルプは最初の1回だけ表示
+        if not self.help_shown:
+            help_overlay = HelpOverlay(self)
+            help_overlay.exec()
+            self.help_shown = True
 
     def start_processing(self):
         if self.video_path and self.rectangles:
@@ -159,6 +268,7 @@ class ImageWindow(QMainWindow):
                         self.display_image()
                         QApplication.processEvents()  # GUIの更新を強制
 
+            # print("処理完了")
             # 処理完了後、ドロップエリアに戻る
             self.current_image = None
             self.original_image = None
@@ -337,11 +447,7 @@ class ImageWindow(QMainWindow):
             self.display_image()
 
     def closeEvent(self, event):
-        # 処理中でない場合のみイベントを受け入れる
-        if self.video_path is None:
-            event.accept()
-        else:
-            event.ignore()
+        event.accept()
 
 
 def qt_to_cv(rects):
