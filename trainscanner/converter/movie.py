@@ -112,8 +112,8 @@ def movie_iter(
 
 
 def make_movie(
-    image: str,
-    output: str,
+    image: np.ndarray,
+    basename: str,
     head_right: bool = False,
     duration: float = 8,
     height: int = 1080,
@@ -125,13 +125,21 @@ def make_movie(
     accel: bool = False,
     encoder: str = "libx264",
     thumbnail: bool = False,
+    imageseq: bool = False,
 ):
     if png:
         ext = "png"
     else:
         ext = "jpg"
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    if imageseq:
+        output = basename.replace(".png", ".dir")
+    else:
+        output = basename.replace(".png", ".mp4")
+
+    if imageseq:
+        # make dir named output
+        os.makedirs(output, exist_ok=True)
         for i, frame in enumerate(
             movie_iter(
                 image,
@@ -145,22 +153,39 @@ def make_movie(
                 thumbnail,
             )
         ):
-            frame_path = os.path.join(temp_dir, f"frame_{i:06d}.{ext}")
+            frame_path = os.path.join(output, f"frame_{i:06d}.{ext}")
             cv2.imwrite(frame_path, frame)
+    else:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for i, frame in enumerate(
+                movie_iter(
+                    image,
+                    head_right,
+                    duration,
+                    height,
+                    width,
+                    fps,
+                    alternating,
+                    accel,
+                    thumbnail,
+                )
+            ):
+                frame_path = os.path.join(temp_dir, f"frame_{i:06d}.{ext}")
+                cv2.imwrite(frame_path, frame)
 
-        cmd = [
-            "ffmpeg",
-            "-y",
-            f"-framerate {fps}",
-            f'-i "{temp_dir}/frame_%06d.{ext}"',
-            f"-c:v {encoder}",
-            "-pix_fmt yuv420p",
-            f"-crf {crf}" if crf else "",
-            f'"{output}"',
-        ]
-        cmd = " ".join(cmd)
-        print(cmd)
-        subprocess.run(cmd, shell=True)
+            cmd = [
+                "ffmpeg",
+                "-y",
+                f"-framerate {fps}",
+                f'-i "{temp_dir}/frame_%06d.{ext}"',
+                f"-c:v {encoder}",
+                "-pix_fmt yuv420p",
+                f"-crf {crf}" if crf else "",
+                f'"{output}"',
+            ]
+            cmd = " ".join(cmd)
+            print(cmd)
+            subprocess.run(cmd, shell=True)
 
 
 def get_parser():
@@ -223,6 +248,12 @@ def get_parser():
         action="store_true",
         help=tr("Add a thumbnail (Yamako style)"),
     )
+    parser.add_argument(
+        "--imageseq",
+        "-i",
+        action="store_true",
+        help=tr("Make a sequence of images"),
+    )
     return parser
 
 
@@ -232,13 +263,11 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
-    output = args.image_path.replace(".png", ".ymk.mp4")
-
     image = cv2.imread(args.image_path)
 
     make_movie(
         image,
-        output,
+        basename=args.image_path,
         head_right=args.head_right,
         duration=args.duration,
         height=args.height,
@@ -250,6 +279,7 @@ def main():
         accel=args.accel,
         encoder=args.encoder,
         thumbnail=args.thumbnail,
+        imageseq=args.imageseq,
     )
 
 

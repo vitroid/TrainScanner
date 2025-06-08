@@ -334,10 +334,21 @@ class SettingsGUI(QWidget):
             elif isinstance(option, QCheckBox):
                 args[option_keyword] = option.isChecked()
         logger.debug(f"args: {args}")
-        # tabのラベルで分岐
-        self.executor.submit(
-            self.process_image, converter, img, file_name, head_right, args
-        )
+
+        # スタートボタンを無効化
+        self.start_button.setEnabled(False)
+        self.start_button.setText(tr("Converting..."))
+
+        try:
+            # 同期的に処理を実行
+            self.process_image(converter, img, file_name, head_right, args)
+            logger.info(f"Conversion completed: {file_name}")
+        except Exception as e:
+            logger.error(f"Conversion failed: {str(e)}")
+        finally:
+            # スタートボタンを再度有効化
+            self.start_button.setEnabled(True)
+            self.start_button.setText(tr("Start Conversion"))
 
     def process_image(self, tab, img, file_name, head_right, args):
         if tab == "helix":
@@ -347,7 +358,7 @@ class SettingsGUI(QWidget):
             rimg = rect.rectify(img, head_right=head_right, **args)
             cv2.imwrite(file_name + ".rect.png", rimg)
         elif tab == "movie":
-            movie.make_movie(img, file_name + ".mp4", head_right=head_right, **args)
+            movie.make_movie(img, basename=file_name, head_right=head_right, **args)
 
     def dragEnterEvent(self, event):
         logger = logging.getLogger()
