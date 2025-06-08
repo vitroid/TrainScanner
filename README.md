@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.26.1
+Version 0.26.2
 
 # TrainScanner の使い方
 
@@ -145,6 +145,7 @@ movify longimage.png
 usage: movie.py [-h] [--output OUTPUT] [--duration DURATION] [--height HEIGHT]
                 [--width WIDTH] [--head-right] [--fps FPS] [--crf CRF] [--png]
                 [--alternating] [--accel] [--encoder ENCODER] [--thumbnail]
+                [--imageseq]
                 image_path
 
 列車の長い写真からムービーを作る
@@ -171,6 +172,7 @@ options:
   --encoder ENCODER, -e ENCODER
                         mp4エンコーダ
   --thumbnail, -t       Add a thumbnail (Yamako style)
+  --imageseq, -i        Make a sequence of images
 
 ```
 
