@@ -8,6 +8,8 @@ from PyQt6.QtCore import QPoint
 from PyQt6.QtGui import QImage, QPainter
 from PyQt6.QtWidgets import QApplication, QFrame, QLabel
 
+from trainscanner.widget import cv2toQImage
+
 
 class ImageBar(QLabel):
     def __init__(self):
@@ -48,14 +50,6 @@ class ImageBar(QLabel):
     def setThumbs(self, thumbs):
         self.thumbs = thumbs
         self.repaint()
-
-
-def cv2toQImage(cv2image):
-    """Convert OpenCV image to QImage"""
-    height, width = cv2image.shape[:2]
-    # BGR to RGB conversion
-    rgb_image = cv2.cvtColor(cv2image, cv2.COLOR_BGR2RGB)
-    return QImage(rgb_image.data, width, height, width * 3, QImage.Format.Format_RGB888)
 
 
 def main():

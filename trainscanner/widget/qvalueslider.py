@@ -11,8 +11,6 @@ from PyQt6.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
 
 
 class ValueSliderHandle(QSlider):
-    valueChanged = pyqtSignal(int)  # 値の変更を通知するシグナル
-
     def __init__(
         self,
         min_value=0,
