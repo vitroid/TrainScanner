@@ -55,8 +55,6 @@ def movie_iter(
     # 全フレーム数
     total_frames = int(duration * fps)
 
-    single_frame = np.full((height, width, 3), 255, dtype=np.uint8)
-
     frame_pointers = [0] * total_frames
     if accel:
         # 等加速度
@@ -86,6 +84,8 @@ def movie_iter(
     # 各フレームを生成
     # for frame in tqdm(range(total_frames)):
     for frame in tqdm(range(len(frame_pointers))):
+        # for frame in range(len(frame_pointers)):
+        single_frame = np.zeros((height, width, 3), dtype=np.uint8)
         # 現在のスクロール位置を計算
         current_scroll = frame_pointers[frame]
 
