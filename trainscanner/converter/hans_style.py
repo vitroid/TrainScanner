@@ -30,7 +30,6 @@ def hansify(img, head_right=True, aspect=2**0.5, overlap=10, width=0):
         a.append(np.abs(ww / hh - aspect))
 
     rows = np.argmin(a)
-    print(rows)
 
     hh = h * rows
     ww = int(w / (rows + overlap / 50))
