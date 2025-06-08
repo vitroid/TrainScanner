@@ -28,6 +28,7 @@ import logging
 import os
 import subprocess
 import shutil
+from itertools import cycle
 
 # final image tranformation
 import trainscanner
@@ -472,16 +473,18 @@ class SettingsGUI(QWidget):
         preview_height = preview_width * args["height"] // args["width"]
 
         # フレームイテレータを生成
-        self.movie_frames = movie.movie_iter(
-            img,
-            head_right=head_right,
-            duration=args["duration"],
-            height=preview_height,  # プレビュー用のサイズ
-            width=preview_width,
-            fps=10,  # プレビュー用のフレームレート
-            alternating=args["alternating"],
-            accel=args["accel"],
-            thumbnail=args["thumbnail"],
+        self.movie_frames = cycle(
+            movie.movie_iter(
+                img,
+                head_right=head_right,
+                duration=args["duration"],
+                height=preview_height,  # プレビュー用のサイズ
+                width=preview_width,
+                fps=10,  # プレビュー用のフレームレート
+                alternating=args["alternating"],
+                accel=args["accel"],
+                thumbnail=args["thumbnail"],
+            )
         )
 
         # タイマーを作成して開始
