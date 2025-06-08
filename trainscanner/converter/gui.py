@@ -14,8 +14,9 @@ from PyQt6.QtWidgets import (
     QButtonGroup,
     QLineEdit,
     QSlider,
+    QSplitter,
 )
-from PyQt6.QtGui import QKeySequence, QShortcut
+from PyQt6.QtGui import QKeySequence, QShortcut, QPixmap, QImage
 from PyQt6.QtCore import QTranslator, QLocale, Qt
 import cv2
 import numpy as np
@@ -51,9 +52,25 @@ from trainscanner.i18n import tr
 import sys
 
 from concurrent.futures import ThreadPoolExecutor
-
+from trainscanner.widget import cv2toQImage
 
 # Drag and drop work. Buttons would not be necessary.
+
+
+def image_loader(filename, width=None):
+    if filename[-6:] == ".pngs/":
+        filename = filename[:-1]
+        cachedimage = CachedImage("inherit", dir=filename, disposal=False)
+        current_image = cachedimage.get_region(None)
+    else:
+        current_image = cv2.imread(filename)
+    if width:
+        # アスペクト比を保ったまま幅を5000にする。
+        current_image = cv2.resize(
+            current_image,
+            (width, current_image.shape[0] * width // current_image.shape[1]),
+        )
+    return current_image
 
 
 # https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
@@ -61,8 +78,20 @@ class SettingsGUI(QWidget):
     def __init__(self, parent=None):
         super(SettingsGUI, self).__init__(parent)
         self.setAcceptDrops(True)
+        self.current_image = None  # 現在の画像を保持
+        self.logger = logging.getLogger(__name__)  # クラス固有のロガーを作成
 
+        # メインの水平レイアウトを作成
+        main_layout = QHBoxLayout()
+
+        # 左側のウィジェット（既存の設定部分）
+        left_widget = QWidget()
         finish_layout = QVBoxLayout()
+
+        # ファイルパス表示用のラベルを追加
+        self.file_path_label = QLabel(tr("No file selected"))
+        self.file_path_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        finish_layout.addWidget(self.file_path_label)
 
         # 説明文を追加
         instruction = QLabel(tr("Drag & drop an image strip"))
@@ -75,6 +104,9 @@ class SettingsGUI(QWidget):
         # タブウィジェットを作成
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
+        self.tab_widget.currentChanged.connect(
+            self.on_tab_changed
+        )  # タブ切り替え時のシグナルを接続
 
         # 各タブの内容を作成
         converters = {
@@ -127,10 +159,8 @@ class SettingsGUI(QWidget):
                     continue
                 if option["type"] in (int, float):
                     help = option["help"]
-                    # print(help, option)
                     min = option["min"]
                     max = option["max"]
-                    # sliderの左にラベルを付けたい。
                     hbox = QHBoxLayout()
                     label = QLabel(tr(help))
                     hbox.addWidget(label)
@@ -142,7 +172,13 @@ class SettingsGUI(QWidget):
                             slider.setValue(int(option["default"]))
                         else:
                             slider.setValue(int(min))
-                        # スライダーの両端に最小値と最大値を表示したい。
+                        self.logger.debug(
+                            f"Connecting valueChanged signal for {option_keyword}"
+                        )
+                        # スライダーの値変更を監視
+                        slider.valueChanged.connect(
+                            lambda v, k=option_keyword: self.on_value_changed(k, v)
+                        )
                         min_label = QLabel(f"{int(min)}")
                         max_label = QLabel(f"{int(max)}")
                     else:  # float
@@ -163,7 +199,13 @@ class SettingsGUI(QWidget):
                             slider.setValue(float(option["default"]))
                         else:
                             slider.setValue(min)
-                        # スライダーの両端に最小値と最大値を表示したい。
+                        self.logger.debug(
+                            f"Connecting valueChanged signal for {option_keyword}"
+                        )
+                        # スライダーの値変更を監視
+                        slider.valueChanged.connect(
+                            lambda v, k=option_keyword: self.on_value_changed(k, v)
+                        )
                         min_label = QLabel(f"{min}")
                         max_label = QLabel(f"{max}")
                     hbox.addWidget(min_label)
@@ -178,15 +220,25 @@ class SettingsGUI(QWidget):
                     and "-R" not in option["option_strings"]
                 ):
                     checkbox = QCheckBox(tr(option["help"]))
-                    # checkbox.setChecked(option["default"])
+                    self.logger.debug(
+                        f"Connecting stateChanged signal for {option_keyword}"
+                    )
+                    checkbox.stateChanged.connect(
+                        lambda state, k=option_keyword: self.on_value_changed(k, state)
+                    )
                     tab_layout.addWidget(checkbox)
                     self.getters[converter][option_keyword] = checkbox
                 elif option["type"] == str:
-                    # title付きのテキストフィールド
                     hbox = QHBoxLayout()
                     label = QLabel(tr(option["help"]))
                     hbox.addWidget(label)
                     lineedit = QLineEdit(tr(option["default"]))
+                    self.logger.debug(
+                        f"Connecting textChanged signal for {option_keyword}"
+                    )
+                    lineedit.textChanged.connect(
+                        lambda text, k=option_keyword: self.on_value_changed(k, text)
+                    )
                     hbox.addWidget(lineedit)
                     tab_layout.addLayout(hbox)
                     self.getters[converter][option_keyword] = lineedit
@@ -203,6 +255,10 @@ class SettingsGUI(QWidget):
 
         # 矢印ラジオボタングループの作成
         self.arrow_group = QButtonGroup(self)
+        self.logger.debug("Connecting buttonClicked signal for arrow group")
+        self.arrow_group.buttonClicked.connect(
+            lambda button: self.on_value_changed("direction", button)
+        )
 
         # 左向き矢印ボタン
         self.btn_left = QPushButton("←")
@@ -226,7 +282,34 @@ class SettingsGUI(QWidget):
 
         finish_layout.addLayout(arrow_layout)
 
-        self.setLayout(finish_layout)
+        # スタートボタンを追加
+        self.start_button = QPushButton(tr("Start Conversion"))
+        self.start_button.setEnabled(False)  # 初期状態は無効
+        self.start_button.clicked.connect(self.start_process)
+        finish_layout.addWidget(self.start_button)
+
+        left_widget.setLayout(finish_layout)
+
+        # 右側のプレビュー用ウィジェット
+        right_widget = QWidget()
+        preview_layout = QVBoxLayout()
+
+        # プレビュー用のラベル
+        self.preview_label = QLabel(tr("Preview"))
+        self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview_label.setMinimumSize(400, 400)  # 最小サイズを設定
+        preview_layout.addWidget(self.preview_label)
+
+        right_widget.setLayout(preview_layout)
+
+        # スプリッターを作成して左右のウィジェットを配置
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(left_widget)
+        splitter.addWidget(right_widget)
+        splitter.setSizes([400, 400])  # 初期サイズを設定
+
+        main_layout.addWidget(splitter)
+        self.setLayout(main_layout)
         self.setWindowTitle(tr("Converter"))
 
         # Command-Wで閉じるショートカットを追加
@@ -244,18 +327,8 @@ class SettingsGUI(QWidget):
     def start_process(self):
         logger = logging.getLogger()
         head_right = self.btn_right.isChecked()
-        if self.filename[-6:] == ".pngs/":
-            self.filename = self.filename[:-1]
-            cachedimage = CachedImage("inherit", dir=self.filename, disposal=False)
-            logger.debug(":: {0}".format(cachedimage))
-            img = cachedimage.get_region(None)
-        else:
-            img = cv2.imread(self.filename)
+        img = image_loader(self.filename)
         file_name = self.filename
-        # if self.btn_finish_perf.isChecked():
-        #     img = film.filmify(img)
-        #     file_name += ".film.png"
-        #     cv2.imwrite(file_name, img)
 
         converter = self.tab_widget.tabText(self.tab_widget.currentIndex())
         # gettersを使って、値を取得
@@ -305,11 +378,6 @@ class SettingsGUI(QWidget):
         for mimetype in mimeData.formats():
             logger.debug("MIMEType: {0}".format(mimetype))
             logger.debug("Data: {0}".format(mimeData.data(mimetype)))
-        # Open only when:
-        # 1. Only file is given
-        # 3. and the mimetipe is text/uri-list
-        # 2. That has the regular extension.
-        logger.debug("len:{0}".format(len(mimeData.formats())))
         mimetypes = [
             mimetype for mimetype in mimeData.formats() if mimetype == "text/uri-list"
         ]
@@ -323,9 +391,101 @@ class SettingsGUI(QWidget):
                 logger.debug("Data: {0}".format(parsed))
                 if parsed.scheme == "file":
                     self.filename = url2pathname(parsed.path)
-                    # Start immediately
-                    self.start_process()
-        # or just ignore
+                    # ファイルパスを表示
+                    self.file_path_label.setText(self.filename)
+                    # スタートボタンを有効化
+                    self.start_button.setEnabled(True)
+                    # 画像を読み込んで保持
+                    self.current_image = image_loader(self.filename, width=5000)
+                    # 現在のタブのプレビューを更新
+                    self.update_preview(
+                        self.tab_widget.tabText(self.tab_widget.currentIndex())
+                    )
+
+    def on_tab_changed(self, index):
+        """タブが切り替わった時に呼ばれる関数"""
+        if self.current_image is None:
+            return
+
+        converter = self.tab_widget.tabText(index)
+        self.update_preview(converter)
+
+    def update_preview(self, converter):
+        """プレビューを更新する関数"""
+        self.logger.debug(f"update_preview called for {converter}")
+        if self.current_image is None:
+            self.logger.debug("No image loaded")
+            return
+
+        self.logger.debug(f"Current image shape: {self.current_image.shape}")
+        # 現在の設定値を取得
+        args = self.get_current_args(converter)
+        head_right = self.btn_right.isChecked()
+
+        # 各コンバーターに対応するプレビュー関数を呼び出す
+        preview_func = getattr(self, f"preview_{converter}", None)
+        self.logger.debug(f"preview_func: {preview_func} {converter} {args}")
+        if preview_func:
+            preview_func(self.current_image, head_right, args)
+
+    def get_current_args(self, converter):
+        """現在の設定値を取得する関数"""
+        args = dict()
+        for option_keyword, option in self.getters[converter].items():
+            if isinstance(option, QValueSlider):
+                args[option_keyword] = option.get_display_value()
+            elif isinstance(option, QLineEdit):
+                args[option_keyword] = option.text()
+            elif isinstance(option, QCheckBox):
+                args[option_keyword] = option.isChecked()
+        return args
+
+    def _create_slider_callback(self, key):
+        """スライダーの値変更時のコールバック関数を作成"""
+
+        def callback(value):
+            self.logger.debug(f"Slider {key} value changed to: {value}")
+            self.on_value_changed(key, value)
+
+        return callback
+
+    def on_value_changed(self, key, value):
+        """GUI要素の値が変更された時に呼ばれる関数"""
+        self.logger.debug(f"on_value_changed called with key: {key}, value: {value}")
+        if self.current_image is None:
+            return
+
+        converter = self.tab_widget.tabText(self.tab_widget.currentIndex())
+        self.logger.debug(f"Updating preview for converter: {converter}")
+        self.update_preview(converter)
+
+    # 以下は各コンバーターのプレビュー関数のテンプレート
+    def preview_helix(self, img, head_right, args):
+        """helixコンバーターのプレビュー"""
+        # ここにプレビュー表示のコードを実装
+        pass
+
+    def preview_rect(self, img, head_right, args):
+        """rectコンバーターのプレビュー"""
+        # ここにプレビュー表示のコードを実装
+        pass
+
+    def preview_scroll(self, img, head_right, args):
+        """scrollコンバーターのプレビュー"""
+        # ここにプレビュー表示のコードを実装
+        pass
+
+    def preview_movie(self, img, head_right, args):
+        """movieコンバーターのプレビュー"""
+        # ここにプレビュー表示のコードを実装
+        pass
+
+    def preview_hans(self, img, head_right, args):
+        """hansコンバーターのプレビュー"""
+        args["width"] = 300
+        self.logger.info(f"preview_hans called: {img.shape}")
+        hansimg = hans.hansify(img, head_right=head_right, **args)
+        self.preview_label.setPixmap(QPixmap.fromImage(cv2toQImage(hansimg)))
 
 
 # for pyinstaller
