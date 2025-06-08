@@ -1,4 +1,5 @@
-from PIL import Image, ImageDraw
+import cv2
+import numpy as np
 import subprocess
 import argparse
 import os
@@ -8,37 +9,36 @@ import logging
 from tqdm import tqdm
 import sys
 from trainscanner.i18n import tr, init_translations
+import time
 
 
-def make_movie(
-    image_path: str,
+def movie_iter(
+    image: np.ndarray,
     head_right: bool = False,
-    output: str = None,
     duration: float = None,
     height: int = 1080,
     width: int = 1920,
     fps: int = 30,
     alternating: bool = False,
-    png: bool = False,
-    crf: int = None,
     accel: bool = False,
-    encoder: str = "libx264",
+    thumbnail: bool = False,
 ):
     """横スクロール動画を生成します。"""
     logger = logging.getLogger()
 
-    if not output:
-        output = image_path.replace(".png", ".ymk.mp4")
-
-    image = Image.open(image_path)
-    iw, ih = image.size
-    print(f"Input image size: {iw}x{ih}")
+    ih, iw = image.shape[:2]
 
     if not duration:
         duration = 2 * iw / ih
 
-    tn_height = ih * width // iw
-    thumbnail = image.resize((width, tn_height), Image.Resampling.LANCZOS)
+    if thumbnail:
+        tn_height = ih * width // iw
+        thumbnail_image = cv2.resize(
+            image, (width, tn_height), interpolation=cv2.INTER_LANCZOS4
+        )
+    else:
+        tn_height = 0
+        thumbnail_image = None
 
     viewport_height = height - tn_height
     if viewport_height < tn_height:
@@ -47,26 +47,18 @@ def make_movie(
     scaled_iw = iw * viewport_height // ih
 
     # 画像をスケーリング
-    scaled = image.resize((scaled_iw, viewport_height), Image.Resampling.LANCZOS)
-
-    print(f"Output video size: {width}x{height}")
-    print(f"Thumbnail size: {width}x{tn_height}")
-
+    scaled = cv2.resize(
+        image, (scaled_iw, viewport_height), interpolation=cv2.INTER_LINEAR
+    )
     # スクロールの総移動量を計算
     total_scroll = scaled_iw - width
     # 全フレーム数
     total_frames = int(duration * fps)
 
-    single_frame = Image.new("RGB", (width, height), (255, 255, 255))
-
-    if png:
-        ext = "png"
-    else:
-        ext = "jpg"
+    single_frame = np.full((height, width, 3), 255, dtype=np.uint8)
 
     frame_pointers = [0] * total_frames
     if accel:
-
         # 等加速度
         # 加速度aとすると、a (total_frames/2)**2 = total_scroll/2
         # よって、
@@ -85,49 +77,76 @@ def make_movie(
     if head_right:
         frame_pointers = frame_pointers[::-1]
 
+    if alternating:
+        frame_pointers = frame_pointers + frame_pointers[::-1]
+
     # 一時ディレクトリを作成して管理
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # フレームレート
-        total_frames = int(duration * fps)
+    # フレームレート
 
-        # 各フレームを生成
-        for frame in tqdm(range(total_frames)):
-            # 現在のスクロール位置を計算
-            current_scroll = frame_pointers[frame]
+    # 各フレームを生成
+    # for frame in tqdm(range(total_frames)):
+    for frame in tqdm(range(len(frame_pointers))):
+        # 現在のスクロール位置を計算
+        current_scroll = frame_pointers[frame]
 
-            single_frame.paste(thumbnail, (0, 0))
+        # 必要な部分を切り出し
+        cropped = scaled[:, current_scroll : current_scroll + width]
+        single_frame[tn_height:] = cropped
 
-            # 必要な部分を切り出し
-            cropped = scaled.crop(
-                (current_scroll, 0, current_scroll + width, viewport_height)
-            )
-            single_frame.paste(cropped, (0, tn_height))
+        if thumbnail:
+            single_frame[:tn_height] = thumbnail_image
 
             marker_x = current_scroll * width // scaled_iw
             marker_width = width * width // scaled_iw
 
             # ビューポート領域を四角で囲む
-            draw = ImageDraw.Draw(single_frame)
-            # 太さ2ピクセルの赤い線で四角を描画
-            draw.rectangle(
-                [(marker_x, 0), (marker_x + marker_width, tn_height)],
-                outline=(255, 0, 0),
-                width=2,
+            cv2.rectangle(
+                single_frame,
+                (marker_x, 0),
+                (marker_x + marker_width, tn_height),
+                (0, 0, 255),
+                2,
             )
 
-            # フレームを保存
-            frame_path = os.path.join(temp_dir, f"frame_{frame:06d}.{ext}")
-            single_frame.save(frame_path)
+        yield single_frame
 
-            # -loop_alternateの場合は、テンポラリ画像フォルダーに逆順の画像を作成する。
-            # 実際に作成するのではなく、シンボリックリンクを作成する。
-            if alternating:
-                os.link(
-                    frame_path,
-                    os.path.join(
-                        temp_dir, f"frame_{total_frames*2-1 - frame:06d}.{ext}"
-                    ),
-                )
+
+def make_movie(
+    image: str,
+    output: str,
+    head_right: bool = False,
+    duration: float = 8,
+    height: int = 1080,
+    width: int = 1920,
+    fps: int = 30,
+    alternating: bool = False,
+    png: bool = False,
+    crf: int = None,
+    accel: bool = False,
+    encoder: str = "libx264",
+    thumbnail: bool = False,
+):
+    if png:
+        ext = "png"
+    else:
+        ext = "jpg"
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for i, frame in enumerate(
+            movie_iter(
+                image,
+                head_right,
+                duration,
+                height,
+                width,
+                fps,
+                alternating,
+                accel,
+                thumbnail,
+            )
+        ):
+            frame_path = os.path.join(temp_dir, f"frame_{i:06d}.{ext}")
+            cv2.imwrite(frame_path, frame)
 
         cmd = [
             "ffmpeg",
@@ -148,9 +167,7 @@ def get_parser():
     """
     コマンドライン引数のパーサーを生成して返す関数
     """
-    parser = argparse.ArgumentParser(
-        description=tr("Make a movie with a thumbnail from a train image")
-    )
+    parser = argparse.ArgumentParser(description=tr("Make a movie from a train image"))
     parser.add_argument("image_path", help=tr("Path of the input image file"))
     parser.add_argument("--output", "-o", help=tr("Path of the output file"))
     parser.add_argument(
@@ -200,6 +217,12 @@ def get_parser():
     parser.add_argument(
         "--encoder", "-e", type=str, default="libx264", help=tr("mp4 encoder")
     )
+    parser.add_argument(
+        "--thumbnail",
+        "-t",
+        action="store_true",
+        help=tr("Add a thumbnail (Yamako style)"),
+    )
     return parser
 
 
@@ -209,19 +232,24 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
+    output = args.image_path.replace(".png", ".ymk.mp4")
+
+    image = cv2.imread(args.image_path)
+
     make_movie(
-        args.image_path,
-        args.head_right,
-        args.output,
-        args.duration,
-        args.height,
-        args.width,
-        args.fps,
-        args.alternating,
-        args.png,
-        args.crf,
-        args.accel,
-        args.encoder,
+        image,
+        output,
+        head_right=args.head_right,
+        duration=args.duration,
+        height=args.height,
+        width=args.width,
+        fps=args.fps,
+        alternating=args.alternating,
+        png=args.png,
+        crf=args.crf,
+        accel=args.accel,
+        encoder=args.encoder,
+        thumbnail=args.thumbnail,
     )
 
 

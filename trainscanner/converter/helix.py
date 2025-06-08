@@ -35,7 +35,7 @@ def rn_sine(w, h, aspect=2.0**0.5):
     return t
 
 
-def helicify(img, aspect=2.0**0.5):
+def helicify(img, aspect=2.0**0.5, width: int = None):
     """
     Helicify and project on a A-size paper proportion.
     Note: it fails when the strip is too short.
@@ -96,19 +96,12 @@ def helicify(img, aspect=2.0**0.5):
         pady : pady + int(py), padx - xofs : padx - xofs + int(px), :
     ]
 
-    return canvas2
-
-
-def add_margin(img, margin):
-    h, w = img.shape[:2]
-    if h > w:
-        m = int(h * margin / 100)
+    if width > 0:
+        canvas_h, canvas_w = canvas2.shape[:2]
+        height = canvas_h * width // canvas_w
+        return cv2.resize(canvas2, (width, height), interpolation=cv2.INTER_CUBIC)
     else:
-        m = int(w * margin / 100)
-    canvas2 = np.zeros((h + m * 2, w + m * 2, 3), np.uint8)
-    canvas2[:, :, :] = 255
-    canvas2[m : m + h, m : m + w, :] = img[:, :, :]
-    return canvas2
+        return canvas2
 
 
 def get_parser():
@@ -118,14 +111,18 @@ def get_parser():
     parser.add_argument("image_path", help=tr("Path of the input image file"))
     parser.add_argument("--output", "-o", help=tr("Path of the output file"))
     parser.add_argument(
-        "--margin", "-m", type=int, default=0, help=tr("Margin") + "-- 0,100"
-    )
-    parser.add_argument(
         "--aspect",
         "-a",
         type=float,
         default=2.0**0.5,
         help=tr("Aspect ratio") + "-- 0.1,10",
+    )
+    parser.add_argument(
+        "--width",
+        "-W",
+        type=int,
+        default=0,
+        help=tr("Width (pixels, 0 for original image size)") + "-- 0,10000",
     )
     return parser
 
@@ -143,9 +140,7 @@ def main():
     """
 
     img = cv2.imread(args.image_path)
-    canvas2 = helicify(img, aspect=args.aspect)
-    if args.margin != 0:
-        canvas2 = add_margin(canvas2, args.margin)
+    canvas2 = helicify(img, aspect=args.aspect, width=args.width)
     if args.output:
         cv2.imwrite(args.output, canvas2)
     else:

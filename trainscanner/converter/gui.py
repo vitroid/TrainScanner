@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
     QSplitter,
 )
 from PyQt6.QtGui import QKeySequence, QShortcut, QPixmap, QImage
-from PyQt6.QtCore import QTranslator, QLocale, Qt
+from PyQt6.QtCore import QTranslator, QLocale, Qt, QTimer
 import cv2
 import numpy as np
 import math
@@ -31,16 +31,12 @@ import shutil
 
 # final image tranformation
 import trainscanner
-from trainscanner.converter import scroll
 from trainscanner.converter import helix
 from trainscanner.converter import rect
-from trainscanner.converter import hans_style as hans
 from trainscanner.converter import movie
 from trainscanner.converter import list_cli_options
 from trainscanner.converter.helix import get_parser as helix_parser
 from trainscanner.converter.rect import get_parser as rect_parser
-from trainscanner.converter.hans_style import get_parser as hans_parser
-from trainscanner.converter.scroll import get_parser as scroll_parser
 from trainscanner.converter.movie import get_parser as movie2_parser
 from trainscanner.widget.qfloatslider import QFloatSlider
 from trainscanner.widget.qlogslider import LogSliderHandle
@@ -80,6 +76,8 @@ class SettingsGUI(QWidget):
         self.setAcceptDrops(True)
         self.current_image = None  # 現在の画像を保持
         self.logger = logging.getLogger(__name__)  # クラス固有のロガーを作成
+        self.movie_preview_timer = None  # 動画プレビュー用のタイマー
+        self.movie_frames = None  # 動画フレームのイテレータ
 
         # メインの水平レイアウトを作成
         main_layout = QHBoxLayout()
@@ -110,10 +108,6 @@ class SettingsGUI(QWidget):
 
         # 各タブの内容を作成
         converters = {
-            "hans": {
-                "internal_name": "hans_style",
-                "options_list": list_cli_options(hans_parser()),
-            },
             "rect": {
                 "internal_name": "rect",
                 "options_list": list_cli_options(rect_parser()),
@@ -121,10 +115,6 @@ class SettingsGUI(QWidget):
             "helix": {
                 "internal_name": "helix",
                 "options_list": list_cli_options(helix_parser()),
-            },
-            "scroll": {
-                "internal_name": "scroll",
-                "options_list": list_cli_options(scroll_parser()),
             },
             "movie": {
                 "internal_name": "movie",
@@ -142,7 +132,9 @@ class SettingsGUI(QWidget):
             tab = QWidget()
             tab_layout = QVBoxLayout()
             desc = tr(description)
-            if not self.has_ffmpeg and converter in ["movie", "scroll"]:
+            if not self.has_ffmpeg and converter in [
+                "movie",
+            ]:
                 desc += " (ffmpeg required)"
                 tab.setEnabled(False)
             tab_layout.addWidget(QLabel(desc))
@@ -353,13 +345,8 @@ class SettingsGUI(QWidget):
         elif tab == "rect":
             rimg = rect.rectify(img, head_right=head_right, **args)
             cv2.imwrite(file_name + ".rect.png", rimg)
-        elif tab == "scroll":
-            scroll.make_movie(file_name, head_right=head_right, **args)
         elif tab == "movie":
-            movie.make_movie(file_name, head_right=head_right, **args)
-        elif tab == "hans":
-            hansimg = hans.hansify(img, head_right=head_right, **args)
-            cv2.imwrite(file_name + ".hans.png", hansimg)
+            movie.make_movie(img, file_name + ".mp4", head_right=head_right, **args)
 
     def dragEnterEvent(self, event):
         logger = logging.getLogger()
@@ -404,6 +391,12 @@ class SettingsGUI(QWidget):
 
     def on_tab_changed(self, index):
         """タブが切り替わった時に呼ばれる関数"""
+        # 動画プレビューのタイマーを停止
+        if self.movie_preview_timer is not None:
+            self.movie_preview_timer.stop()
+            self.movie_preview_timer = None
+            self.movie_frames = None
+
         if self.current_image is None:
             return
 
@@ -463,29 +456,56 @@ class SettingsGUI(QWidget):
     def preview_helix(self, img, head_right, args):
         """helixコンバーターのプレビュー"""
         # ここにプレビュー表示のコードを実装
-        pass
-
-    def preview_rect(self, img, head_right, args):
-        """rectコンバーターのプレビュー"""
-        # ここにプレビュー表示のコードを実装
-        pass
-
-    def preview_scroll(self, img, head_right, args):
-        """scrollコンバーターのプレビュー"""
-        # ここにプレビュー表示のコードを実装
-        pass
+        args["width"] = 300
+        rectimg = helix.helicify(img, **args)
+        self.preview_label.setPixmap(QPixmap.fromImage(cv2toQImage(rectimg)))
 
     def preview_movie(self, img, head_right, args):
         """movieコンバーターのプレビュー"""
-        # ここにプレビュー表示のコードを実装
-        pass
 
-    def preview_hans(self, img, head_right, args):
-        """hansコンバーターのプレビュー"""
+        # 既存のタイマーを停止
+        if self.movie_preview_timer is not None:
+            self.movie_preview_timer.stop()
+            self.movie_preview_timer = None
+
+        preview_width = 300
+        preview_height = preview_width * args["height"] // args["width"]
+
+        # フレームイテレータを生成
+        self.movie_frames = movie.movie_iter(
+            img,
+            head_right=head_right,
+            duration=args["duration"],
+            height=preview_height,  # プレビュー用のサイズ
+            width=preview_width,
+            fps=10,  # プレビュー用のフレームレート
+            alternating=args["alternating"],
+            accel=args["accel"],
+            thumbnail=args["thumbnail"],
+        )
+
+        # タイマーを作成して開始
+        self.movie_preview_timer = QTimer(self)
+        self.movie_preview_timer.timeout.connect(self._update_movie_preview)
+        self.movie_preview_timer.start(100)  # 100msごとに更新
+
+    def _update_movie_preview(self):
+        """動画プレビューのフレームを更新"""
+        try:
+            frame = next(self.movie_frames)
+            self.preview_label.setPixmap(QPixmap.fromImage(cv2toQImage(frame)))
+        except StopIteration:
+            # フレームが終了したら最初から再生
+            self.movie_preview_timer.stop()
+            self.movie_preview_timer = None
+            # プレビューを再開
+            self.update_preview(self.tab_widget.tabText(self.tab_widget.currentIndex()))
+
+    def preview_rect(self, img, head_right, args):
+        """rectコンバーターのプレビュー"""
         args["width"] = 300
-        self.logger.info(f"preview_hans called: {img.shape}")
-        hansimg = hans.hansify(img, head_right=head_right, **args)
-        self.preview_label.setPixmap(QPixmap.fromImage(cv2toQImage(hansimg)))
+        rectimg = rect.rectify(img, head_right=head_right, **args)
+        self.preview_label.setPixmap(QPixmap.fromImage(cv2toQImage(rectimg)))
 
 
 # for pyinstaller
