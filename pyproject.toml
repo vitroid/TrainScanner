@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trainscanner"
-version = "0.25.0"
+version = "0.26.0"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]
@@ -23,9 +23,7 @@ antishake           = 'trainscanner.shake_reduction2_gui:main'
 filmify             = 'trainscanner.converter.film:main'
 rectify             = 'trainscanner.converter.rect:main'
 helicify            = 'trainscanner.converter.helix:main'
-hansify             = 'trainscanner.converter.hans_style:main'
 ts_converter        = 'trainscanner.converter.gui:main'
-scrollify           = 'trainscanner.converter.scroll:main'
 movify              = 'trainscanner.converter.movie:main'
 
 [tool.poetry.group.dev.dependencies]

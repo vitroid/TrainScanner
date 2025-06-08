@@ -57,7 +57,7 @@ helicify longimage.png
 {{ usage_helicify }}
 ```
 
-### `rectify`: 長い画像をらせんにするツール 2
+### `rectify`: 長い画像を何段かに切りわけるツール
 
 長い画像を、定型用紙に入るように「円筒に巻く」プログラムです。こちらは、画像がななめにならない代わり、円筒をのりづけする時にずらす必要があります。
 
@@ -81,33 +81,9 @@ filmify longimage.png
 {{ usage_filmify }}
 ```
 
-### `hansify`: 長い画像を切ってみやすくするツール
+### `movify`: スクロール動画を生成するツール
 
-最上段に列車の全体像、その下に拡大写真の断片がスタック表示されます。コマンド名は考案者の Hans Ruijter によります。
-
-```shell
-hansify longimage.png
-```
-
-```
-{{ usage_hansify }}
-```
-
-### `scrollify`: スクロール動画を生成するツール
-
-一定速度でスクロールする動画を生成します。
-
-```shell
-scrollify longimage.png
-```
-
-```
-{{ usage_scrollify }}
-```
-
-### `movify`: サムネイル付きスクロール動画を生成するツール
-
-[@yamakox](https://x.com/yamakox)さん風のスクロール動画を生成します。
+スクロール動画を生成します。
 
 ```shell
 movify longimage.png

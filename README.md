@@ -23,7 +23,7 @@ pip install git+https://github.com/vitroid/TrainScanner.git
 
 [Wiki](https://github.com/vitroid/TrainScanner/wiki)
 
-## 手ぶれ補正
+## 前処理: 手ぶれ補正
 
 手持ち撮影でもきれいにつながるように、`trainscanner`で列車をつなぐ前に、手ぶれをとりのぞくツールです。
 
@@ -33,7 +33,7 @@ antishake
 
 ムービーが画像ファイルに展開されるので、それなりのディスク容量が必要です。生成した画像ファイルの束は、ディレクトリごと`trainscanner`で読みこめます。
 
-## 各種コンバータ
+## 後処理: 各種コンバータ
 
 TrainScanner で作成した画像は巨大でしかも長大なので、そのままでは取り扱いにくいため、見易いようにいろんな変換プログラムを準備しました。
 
@@ -54,7 +54,7 @@ helicify longimage.png
 ```
 
 ```
-usage: helix.py [-h] [--output OUTPUT] [--margin MARGIN] [--aspect ASPECT]
+usage: helix.py [-h] [--output OUTPUT] [--aspect ASPECT] [--width WIDTH]
                 image_path
 
 らせん画像を作る
@@ -66,14 +66,14 @@ options:
   -h, --help            show this help message and exit
   --output OUTPUT, -o OUTPUT
                         出力ファイルのパス
-  --margin MARGIN, -m MARGIN
-                        マージン (pixel)-- 0,100
   --aspect ASPECT, -a ASPECT
                         アスペクト比-- 0.1,10
+  --width WIDTH, -W WIDTH
+                        画像の幅 (ピクセル, 変更しないなら0)-- 0,10000
 
 ```
 
-### `rectify`: 長い画像をらせんにするツール 2
+### `rectify`: 長い画像を何段かに切りわけるツール
 
 長い画像を、定型用紙に入るように「円筒に巻く」プログラムです。こちらは、画像がななめにならない代わり、円筒をのりづけする時にずらす必要があります。
 
@@ -82,8 +82,8 @@ rectify longimage.png
 ```
 
 ```
-usage: rect.py [-h] [--output OUTPUT] [--rows ROWS] [--overlap OVERLAP]
-               [--head-right]
+usage: rect.py [-h] [--output OUTPUT] [--aspect ASPECT] [--overlap OVERLAP]
+               [--head-right] [--thumbnail] [--width WIDTH]
                image_path
 
 ぶつ切り山積み
@@ -95,10 +95,14 @@ options:
   -h, --help            show this help message and exit
   --output OUTPUT, -o OUTPUT
                         出力ファイルのパス
-  --rows ROWS, -r ROWS  段数-- 2,100
+  --aspect ASPECT, -a ASPECT
+                        アスペクト比-- 0.1,10
   --overlap OVERLAP, -l OVERLAP
                         端の重複部分の幅 (パーセント)-- 0,100
   --head-right, -R      列車は右向きに進む
+  --thumbnail, -t       Add a thumbnail image (Hans Ruijter's style)
+  --width WIDTH, -W WIDTH
+                        画像の幅 (ピクセル, 変更しないなら0)-- 0,10000
 
 ```
 
@@ -129,79 +133,9 @@ options:
 
 ```
 
-### `hansify`: 長い画像を切ってみやすくするツール
+### `movify`: スクロール動画を生成するツール
 
-最上段に列車の全体像、その下に拡大写真の断片がスタック表示されます。コマンド名は考案者の Hans Ruijter によります。
-
-```shell
-hansify longimage.png
-```
-
-```
-usage: hans_style.py [-h] [--output OUTPUT] [--aspect ASPECT]
-                     [--overlap OVERLAP] [--head-right] [--width WIDTH]
-                     image_path
-
-Fold a train image into a stack of images like Hans Ruijter's style
-
-positional arguments:
-  image_path            入力ファイルのパス
-
-options:
-  -h, --help            show this help message and exit
-  --output OUTPUT, -o OUTPUT
-                        出力ファイルのパス
-  --aspect ASPECT, -a ASPECT
-                        アスペクト比-- 0.1,10
-  --overlap OVERLAP, -l OVERLAP
-                        端の重複部分の幅 (パーセント)-- 0,100
-  --head-right, -R      列車は右向きに進む
-  --width WIDTH, -W WIDTH
-                        画像の幅 (ピクセル, 変更しないなら0)-- 0,10000
-
-```
-
-### `scrollify`: スクロール動画を生成するツール
-
-一定速度でスクロールする動画を生成します。
-
-```shell
-scrollify longimage.png
-```
-
-```
-usage: scroll.py [-h] [--output OUTPUT] [--duration DURATION]
-                 [--height HEIGHT] [--width WIDTH] [--head-right] [--fps FPS]
-                 [--bitrate BITRATE] [--encoder ENCODER]
-                 image_path
-
-列車の長い写真からムービーを作る
-
-positional arguments:
-  image_path            入力ファイルのパス
-
-options:
-  -h, --help            show this help message and exit
-  --output OUTPUT, -o OUTPUT
-                        出力ファイルのパス
-  --duration DURATION, -d DURATION
-                        ムービーの尺 (秒)-- 0.1,1000
-  --height HEIGHT, -H HEIGHT
-                        ムービーの高さ (pixels)-- 100,4096
-  --width WIDTH, -W WIDTH
-                        ムービーの幅 (pixels)-- 100,4096
-  --head-right, -R      列車は右向きに進む
-  --fps FPS, -r FPS     フレームレート (fps)-- 1,120
-  --bitrate BITRATE, -b BITRATE
-                        ビットレート (Mbit/s)-- 0.1,100
-  --encoder ENCODER, -e ENCODER
-                        mp4エンコーダ
-
-```
-
-### `movify`: サムネイル付きスクロール動画を生成するツール
-
-[@yamakox](https://x.com/yamakox)さん風のスクロール動画を生成します。
+スクロール動画を生成します。
 
 ```shell
 movify longimage.png
@@ -210,10 +144,10 @@ movify longimage.png
 ```
 usage: movie.py [-h] [--output OUTPUT] [--duration DURATION] [--height HEIGHT]
                 [--width WIDTH] [--head-right] [--fps FPS] [--crf CRF] [--png]
-                [--alternating] [--accel] [--encoder ENCODER]
+                [--alternating] [--accel] [--encoder ENCODER] [--thumbnail]
                 image_path
 
-サムネイル付きのムービーを生成(Yamako式)
+列車の長い写真からムービーを作る
 
 positional arguments:
   image_path            入力ファイルのパス
@@ -236,6 +170,7 @@ options:
   --accel, -A           加速
   --encoder ENCODER, -e ENCODER
                         mp4エンコーダ
+  --thumbnail, -t       Add a thumbnail (Yamako style)
 
 ```
 
