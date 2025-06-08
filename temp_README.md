@@ -23,7 +23,7 @@ pip install git+https://github.com/vitroid/TrainScanner.git
 
 [Wiki](https://github.com/vitroid/TrainScanner/wiki)
 
-## 手ぶれ補正
+## 前処理: 手ぶれ補正
 
 手持ち撮影でもきれいにつながるように、`trainscanner`で列車をつなぐ前に、手ぶれをとりのぞくツールです。
 
@@ -33,7 +33,7 @@ antishake
 
 ムービーが画像ファイルに展開されるので、それなりのディスク容量が必要です。生成した画像ファイルの束は、ディレクトリごと`trainscanner`で読みこめます。
 
-## 各種コンバータ
+## 後処理: 各種コンバータ
 
 TrainScanner で作成した画像は巨大でしかも長大なので、そのままでは取り扱いにくいため、見易いようにいろんな変換プログラムを準備しました。
 
