@@ -19,14 +19,11 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QKeySequence, QShortcut, QPixmap, QImage
 from PyQt6.QtCore import QTranslator, QLocale, Qt, QTimer
 import cv2
-import numpy as np
-import math
-import time
 import logging
+import importlib
 
 # File handling
 import os
-import subprocess
 import shutil
 from itertools import cycle
 
@@ -70,6 +67,48 @@ def image_loader(filename, width=None):
     return current_image
 
 
+def get_converters():
+    # trainscanner.converter配下のモジュールを自動で読み込む
+    converters = dict()
+
+    # 1. 組み込みのコンバーターを読み込む
+    import trainscanner.converter
+
+    for _, module_name, is_pkg in pkgutil.iter_modules(trainscanner.converter.__path__):
+        if not is_pkg:  # パッケージではなくモジュールの場合のみ
+            module = importlib.import_module(f"trainscanner.converter.{module_name}")
+            converters[module_name] = {
+                "module": module,
+                "options_list": list_cli_options(module.get_parser()),
+            }
+
+    # 2. エントリーポイントを通じて登録されたコンバーターを読み込む
+    try:
+        from importlib import metadata
+
+        for entry_point in metadata.entry_points().select(
+            group="trainscanner.converters"
+        ):
+            try:
+                # モジュールパスを取得（最後の:以降を除く）
+                module_path = entry_point.value.split(":")[0]
+                # モジュールを直接読み込む
+                module = importlib.import_module(module_path)
+                converters[entry_point.name] = {
+                    "module": module,
+                    "options_list": list_cli_options(module.get_parser()),
+                }
+            except Exception as e:
+                logging.getLogger(__name__).warning(
+                    f"Failed to load converter {entry_point.name}: {str(e)}"
+                )
+    except ImportError:
+        # importlib.metadataが利用できない場合はスキップ
+        pass
+
+    return converters
+
+
 # https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class SettingsGUI(QWidget):
     def __init__(self, parent=None):
@@ -107,27 +146,14 @@ class SettingsGUI(QWidget):
             self.on_tab_changed
         )  # タブ切り替え時のシグナルを接続
 
-        # 各タブの内容を作成
-        converters = {
-            "rect": {
-                "internal_name": "rect",
-                "options_list": list_cli_options(rect_parser()),
-            },
-            "helix": {
-                "internal_name": "helix",
-                "options_list": list_cli_options(helix_parser()),
-            },
-            "movie": {
-                "internal_name": "movie",
-                "options_list": list_cli_options(movie2_parser()),
-            },
-        }
+        self.converters = get_converters()
+
         self.getters = dict()
         # ffmpegの確認
         self.has_ffmpeg = shutil.which("ffmpeg") is not None
         self.tab_widgets = []
-        for converter, contents in converters.items():
-            internal_name = contents["internal_name"]
+        for converter, contents in self.converters.items():
+            module = contents["module"]
             options, description = contents["options_list"]
 
             tab = QWidget()
@@ -358,14 +384,15 @@ class SettingsGUI(QWidget):
             self.start_button.setText(tr("Start Conversion"))
 
     def process_image(self, tab, img, file_name, head_right, args):
-        if tab == "helix":
-            himg = helix.helicify(img, **args)
-            cv2.imwrite(file_name + ".helix.png", himg)
-        elif tab == "rect":
-            rimg = rect.rectify(img, head_right=head_right, **args)
-            cv2.imwrite(file_name + ".rect.png", rimg)
-        elif tab == "movie":
-            movie.make_movie(img, basename=file_name, head_right=head_right, **args)
+        converter = self.converters[tab]
+        module = converter["module"]
+        if hasattr(module, "convert"):
+            rimg = module.convert(img, head_right=head_right, **args)
+            cv2.imwrite(f"{file_name}.{tab}.png", rimg)
+        elif hasattr(module, "make_movie"):
+            module.make_movie(img, basename=file_name, head_right=head_right, **args)
+        else:
+            raise ValueError(f"Converter {tab} has no convert method")
 
     def dragEnterEvent(self, event):
         logger = logging.getLogger()
@@ -442,10 +469,7 @@ class SettingsGUI(QWidget):
         head_right = self.btn_right.isChecked()
 
         # 各コンバーターに対応するプレビュー関数を呼び出す
-        preview_func = getattr(self, f"preview_{converter}", None)
-        self.logger.debug(f"preview_func: {preview_func} {converter} {args}")
-        if preview_func:
-            preview_func(self.current_image, head_right, args)
+        self.preview(converter, self.current_image, head_right, args)
 
     def get_current_args(self, converter):
         """現在の設定値を取得する関数"""
@@ -478,44 +502,46 @@ class SettingsGUI(QWidget):
         self.logger.debug(f"Updating preview for converter: {converter}")
         self.update_preview(converter)
 
-    # 以下は各コンバーターのプレビュー関数のテンプレート
-    def preview_helix(self, img, head_right, args):
-        """helixコンバーターのプレビュー"""
-        # ここにプレビュー表示のコードを実装
-        args["width"] = 300
-        rectimg = helix.helicify(img, **args)
-        self.preview_label.setPixmap(QPixmap.fromImage(cv2toQImage(rectimg)))
+    def preview(self, tab, img, head_right, args):
+        converter = self.converters[tab]
+        module = converter["module"]
+        if hasattr(module, "convert"):
+            # image converter
+            args["head_right"] = head_right
+            args["width"] = 300
+            rimg = module.convert(img, **args)
+            self.preview_label.setPixmap(QPixmap.fromImage(cv2toQImage(rimg)))
+        elif hasattr(module, "make_movie"):
+            # movie converter
 
-    def preview_movie(self, img, head_right, args):
-        """movieコンバーターのプレビュー"""
+            # 既存のタイマーを停止
+            if self.movie_preview_timer is not None:
+                self.movie_preview_timer.stop()
+                self.movie_preview_timer = None
 
-        # 既存のタイマーを停止
-        if self.movie_preview_timer is not None:
-            self.movie_preview_timer.stop()
-            self.movie_preview_timer = None
+            preview_width = 300
+            if "height" in args:
+                preview_height = preview_width * args["height"] // args["width"]
+            else:
+                preview_height = preview_width
+            args["head_right"] = head_right
+            args["width"] = preview_width
+            args["height"] = preview_height
+            args["fps"] = 10
 
-        preview_width = 300
-        preview_height = preview_width * args["height"] // args["width"]
-
-        # フレームイテレータを生成
-        self.movie_frames = cycle(
-            movie.movie_iter(
-                img,
-                head_right=head_right,
-                duration=args["duration"],
-                height=preview_height,  # プレビュー用のサイズ
-                width=preview_width,
-                fps=10,  # プレビュー用のフレームレート
-                alternating=args["alternating"],
-                accel=args["accel"],
-                thumbnail=args["thumbnail"],
+            # フレームイテレータを生成
+            self.movie_frames = cycle(
+                module.movie_iter(
+                    img,
+                    **args,
+                )
             )
-        )
-
-        # タイマーを作成して開始
-        self.movie_preview_timer = QTimer(self)
-        self.movie_preview_timer.timeout.connect(self._update_movie_preview)
-        self.movie_preview_timer.start(100)  # 100msごとに更新
+            # タイマーを作成して開始
+            self.movie_preview_timer = QTimer(self)
+            self.movie_preview_timer.timeout.connect(self._update_movie_preview)
+            self.movie_preview_timer.start(100)  # 100msごとに更新
+        else:
+            raise ValueError(f"Converter {tab} has no preview method")
 
     def _update_movie_preview(self):
         """動画プレビューのフレームを更新"""
@@ -528,12 +554,6 @@ class SettingsGUI(QWidget):
             self.movie_preview_timer = None
             # プレビューを再開
             self.update_preview(self.tab_widget.tabText(self.tab_widget.currentIndex()))
-
-    def preview_rect(self, img, head_right, args):
-        """rectコンバーターのプレビュー"""
-        args["width"] = 300
-        rectimg = rect.rectify(img, head_right=head_right, **args)
-        self.preview_label.setPixmap(QPixmap.fromImage(cv2toQImage(rectimg)))
 
 
 # for pyinstaller
