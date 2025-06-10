@@ -35,14 +35,17 @@ def rn_sine(w, h, aspect=2.0**0.5):
     return t
 
 
-def helicify(img, aspect=2.0**0.5, width: int = None):
+def convert(img, aspect=2.0**0.5, width: int = None, head_right=True, **kwargs):
     """
     Helicify and project on a A-size paper proportion.
     Note: it fails when the strip is too short.
     """
     logger = logging.getLogger(__name__)
+    logger.debug(f"Ignored options: {kwargs}")
 
     h, w = img.shape[0:2]
+    if head_right:
+        img = cv2.flip(img, 1)
     # height with a gap
     hg = int(h * 1.03)
 
@@ -96,6 +99,9 @@ def helicify(img, aspect=2.0**0.5, width: int = None):
         pady : pady + int(py), padx - xofs : padx - xofs + int(px), :
     ]
 
+    if head_right:
+        canvas2 = cv2.flip(canvas2, 1)
+
     if width > 0:
         canvas_h, canvas_w = canvas2.shape[:2]
         height = canvas_h * width // canvas_w
@@ -116,6 +122,12 @@ def get_parser():
         type=float,
         default=2.0**0.5,
         help=tr("Aspect ratio") + "-- 0.1,10",
+    )
+    parser.add_argument(
+        "--head-right",
+        "-R",
+        action="store_true",
+        help=tr("The train heads to the right."),
     )
     parser.add_argument(
         "--width",
@@ -140,7 +152,9 @@ def main():
     """
 
     img = cv2.imread(args.image_path)
-    canvas2 = helicify(img, aspect=args.aspect, width=args.width)
+    canvas2 = convert(
+        img, aspect=args.aspect, width=args.width, head_right=args.head_right
+    )
     if args.output:
         cv2.imwrite(args.output, canvas2)
     else:
