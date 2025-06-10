@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap, QShortcut, QKeySequence
 from trainscanner.video import VideoLoader
-from trainscanner.shake_reduction2 import antishake
+from trainscanner.shake_reduction import antishake
 import sys
 import os
 

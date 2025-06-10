@@ -84,12 +84,12 @@ def antishake(video_iter, foci, max_shift=5, logfile=None):
 
             focus.shift = best
             # print(best)
-        if logfile is not None:
-            logfile.write(f"{focus.shift[0]} {focus.shift[1]}\n")
         if len(match_areas) == 1:
             # cv2.imshow(
             #     "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)
             # )
+            if logfile is not None:
+                logfile.write(f"{focus.shift[0]} {focus.shift[1]}\n")
             m = match_areas[0]
             yield np.roll(
                 frame2,
@@ -130,6 +130,10 @@ def antishake(video_iter, foci, max_shift=5, logfile=None):
         rotation_matrix = cv2.getRotationMatrix2D(
             center0, np.degrees(angle_diff), scale
         )
+        if logfile is not None:
+            logfile.write(
+                f"{match_areas[0].shift[1], match_areas[0].shift[0]} {angle_diff}\n"
+            )
 
         yield cv2.warpAffine(
             frame2_shifted,

@@ -13,18 +13,19 @@ TiledImage = "^0.1.1"
 PyQt6 = "^6.7.1"
 opencv-python-headless = "^4.10.0.84"
 tqdm = "^4.67.1"
-pillow = "^11.2.1"
 
 [tool.poetry.scripts]
-trainscanner        = 'trainscanner.trainscanner_gui:main'
-trainscanner_pass1  = 'trainscanner.pass1_gui:main'
-trainscanner_stitch = 'trainscanner.stitch_gui:main'
-antishake           = 'trainscanner.shake_reduction2_gui:main'
-filmify             = 'trainscanner.converter.film:main'
-rectify             = 'trainscanner.converter.rect:main'
+# GUI
+trainscanner        = 'trainscanner.gui.trainscanner:main'
+trainscanner_pass1  = 'trainscanner.gui.pass1:main'
+trainscanner_stitch = 'trainscanner.gui.stitch:main'
+antishake           = 'trainscanner.gui.shake_reduction:main'
+ts_converter        = 'trainscanner.gui.converter:main'
+# CUI
 helicify            = 'trainscanner.converter.helix:main'
-ts_converter        = 'trainscanner.converter.gui:main'
+rectify             = 'trainscanner.converter.rect:main'
 movify              = 'trainscanner.converter.movie:main'
+filmify             = 'trainscanner.image.film:main'
 
 [tool.poetry.group.dev.dependencies]
 jinja2 = "^3.1.6"

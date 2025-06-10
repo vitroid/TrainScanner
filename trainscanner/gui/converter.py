@@ -137,7 +137,6 @@ class SettingsGUI(QWidget):
                 "movie",
             ]:
                 desc += " (ffmpeg required)"
-                tab.setEnabled(False)
             tab_layout.addWidget(QLabel(desc))
 
             # オプションの表示
@@ -324,6 +323,14 @@ class SettingsGUI(QWidget):
         file_name = self.filename
 
         converter = self.tab_widget.tabText(self.tab_widget.currentIndex())
+
+        # ffmpegがインストールされていない場合にmovieタブでの変換を防ぐ
+        if converter == "movie" and not self.has_ffmpeg:
+            logger.error(
+                "ffmpeg is not installed. Please install ffmpeg to use this feature."
+            )
+            return
+
         # gettersを使って、値を取得
         args = dict()
         for option_keyword, option in self.getters[converter].items():
@@ -413,6 +420,13 @@ class SettingsGUI(QWidget):
             return
 
         converter = self.tab_widget.tabText(index)
+
+        # ffmpegがインストールされていない場合にmovieタブでの変換を防ぐ
+        if converter == "movie" and not self.has_ffmpeg:
+            self.start_button.setEnabled(False)
+        else:
+            self.start_button.setEnabled(True)
+
         self.update_preview(converter)
 
     def update_preview(self, converter):
