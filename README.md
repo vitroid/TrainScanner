@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.26.2
+Version 0.27.1
 
 # TrainScanner の使い方
 
@@ -17,6 +17,12 @@ trainscanner
 
 ```
 pip install git+https://github.com/vitroid/TrainScanner.git
+```
+
+Intel Macなど、PyQt6が動かない場合はこちらをどうぞ。
+
+```
+pip install git+https://github.com/vitroid/TrainScanner.git@PyQt5compat2
 ```
 
 ## ドキュメント
@@ -41,7 +47,13 @@ TrainScanner で作成した画像は巨大でしかも長大なので、その�
 ts_converter
 ```
 
-これは、次節のコマンドに GUI を付与したものです。
+### 拡張プラグイン
+
+pynojectorをインストールすると、ts_converterに機能が追加されます。
+
+```
+pip install https://github.com/vitroid/pynojector.git
+```
 
 ## コマンドラインからの利用
 
@@ -54,7 +66,8 @@ helicify longimage.png
 ```
 
 ```
-usage: helix.py [-h] [--output OUTPUT] [--aspect ASPECT] [--width WIDTH]
+usage: helix.py [-h] [--output OUTPUT] [--aspect ASPECT] [--head-right]
+                [--width WIDTH]
                 image_path
 
 らせん画像を作る
@@ -68,6 +81,7 @@ options:
                         出力ファイルのパス
   --aspect ASPECT, -a ASPECT
                         アスペクト比-- 0.1,10
+  --head-right, -R      列車は右向きに進む
   --width WIDTH, -W WIDTH
                         画像の幅 (ピクセル, 変更しないなら0)-- 0,10000
 
@@ -103,33 +117,6 @@ options:
   --thumbnail, -t       Add a thumbnail image (Hans Ruijter's style)
   --width WIDTH, -W WIDTH
                         画像の幅 (ピクセル, 変更しないなら0)-- 0,10000
-
-```
-
-### `filmify`: 長い写真をフィルム風にするツール
-
-長い写真の上下にフィルム風の穴を追加するだけのツールです。
-
-```
-filmify longimage.png
-```
-
-```
-usage: film.py [-h] [--output OUTPUT]
-               [--creative_commons_sign CREATIVE_COMMONS_SIGN]
-               image_path
-
-Add film perforations to the image
-
-positional arguments:
-  image_path            入力画像ファイルのパス
-
-options:
-  -h, --help            show this help message and exit
-  --output OUTPUT, -o OUTPUT
-                        出力ファイルのパス
-  --creative_commons_sign CREATIVE_COMMONS_SIGN, -c CREATIVE_COMMONS_SIGN
-                        Creative Commons sign
 
 ```
 
