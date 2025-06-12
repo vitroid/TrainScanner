@@ -13,29 +13,38 @@ import time
 from logging import DEBUG, WARN, basicConfig, getLogger, root
 
 # external modules
-from PyQt6.QtCore import (
+import cv2
+import numpy as np
+from PyQt5.QtCore import (
     QLocale,
+    QObject,
+    QPoint,
+    QRect,
+    QSize,
     Qt,
+    QThread,
     QTranslator,
+    pyqtSignal,
 )
-
-# Core of the GUI and image process
-from PyQt6.QtWidgets import (
+from PyQt5.QtGui import QImage, QPainter, QPixmap, QKeySequence
+from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
+    QDialog,
     QFileDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QRubberBand,
+    QShortcut,
     QSlider,
     QSpinBox,
     QVBoxLayout,
     QWidget,
     QSizePolicy,
 )
-from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
 
 #
 # sub dialog windows
@@ -637,30 +646,20 @@ def resource_path(relative):
 def main():
     # pyqt_set_trace()
     basicConfig(level=WARN, format="%(asctime)s %(levelname)s %(message)s")
+    
+    # Initialize QApplication first
     app = QApplication(sys.argv)
-    # translator = QTranslator(app)
-    path = os.path.dirname(trainscanner.__file__)
-
-    # まずLANG環境変数を確認
-    lang = os.environ.get("LANG", "").split("_")[0]
-
-    # LANGが設定されていない場合はQLocaleを使用
-    if not lang:
-        locale = QLocale()
-        lang = locale.name().split("_")[0]
-
+    
+    # Initialize translations
     from trainscanner.i18n import init_translations
-
     init_translations()
-
-    # if lang == "ja":
-    #     translator.load(path + "/i18n/trainscanner_ja")
-    # elif lang == "fr":
-    #     translator.load(path + "/i18n/trainscanner_fr")
-    # app.installTranslator(translator)
+    
+    # Create and show the main window
     se = SettingsGUI()
     se.show()
     se.raise_()
+    
+    # Start the event loop
     sys.exit(app.exec())
 
 

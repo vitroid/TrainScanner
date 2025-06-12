@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import sys
-import numpy as np
 import cv2
+import numpy as np
 
-from PyQt6.QtCore import QPoint
-from PyQt6.QtGui import QImage, QPainter
-from PyQt6.QtWidgets import QApplication, QFrame, QLabel
+from PyQt5.QtCore import QPoint
+from PyQt5.QtGui import QImage, QPainter
+from PyQt5.QtWidgets import QApplication, QFrame, QLabel
 
 from trainscanner.widget import cv2toQImage
 

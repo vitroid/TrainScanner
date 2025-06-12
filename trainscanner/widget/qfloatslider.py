@@ -1,21 +1,23 @@
+#!/usr/bin/env python3
+
 # 実数を扱えるQSliderを作成する
 
-from PyQt6.QtCore import (
-    pyqtSignal,
+from PyQt5.QtCore import (
     Qt,
+    pyqtSignal,
+    QRect,
     QSize,
     QRectF,
 )
 from .qvalueslider import QValueSlider, ValueSliderHandle
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QSlider,
     QWidget,
-    QHBoxLayout,
+    QVBoxLayout,
     QLabel,
-    QStyle,
-    QStyleOptionSlider,
+    QApplication,
 )
-from PyQt6.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
+from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
 
 
 class FloatSliderHandle(ValueSliderHandle):
@@ -129,7 +131,7 @@ class QFloatSlider(QValueSlider):
 
 # 動作確認用テスト関数
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
+    from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
     import sys
 
     def test():

@@ -10,10 +10,10 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 TiledImage = "^0.1.1"
-PyQt6 = "^6.7.1"
 opencv-python-headless = "^4.10.0.84"
 tqdm = "^4.67.1"
 pillow = "^11.2.1"
+pyqt5 = "^5.15.11"
 
 [tool.poetry.scripts]
 trainscanner        = 'trainscanner.trainscanner_gui:main'

@@ -5,8 +5,8 @@ from logging import DEBUG, WARN, basicConfig, getLogger, root
 import cv2
 import numpy as np
 
-from PyQt6.QtCore import pyqtSignal, Qt, QObject, QPoint, QRect, QThread, QSize
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import pyqtSignal, Qt, QObject, QPoint, QRect, QThread, QSize
+from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -17,15 +17,16 @@ from PyQt6.QtWidgets import (
     QSlider,
     QRubberBand,
     QMessageBox,
+    QShortcut,
 )
-from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QKeySequence
 
 from trainscanner import trainscanner, video
 from trainscanner.widget.imageselector2 import ImageSelector2
 import trainscanner.widget.qrangeslider as rs
 from trainscanner.i18n import tr, init_translations
 
-
+          
 perspectiveCSS = """
 QRangeSlider > QSplitter::handle {
     background: #55f;

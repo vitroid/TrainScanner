@@ -1,4 +1,6 @@
-from PyQt6.QtWidgets import (
+#!/usr/bin/env python3
+
+from PyQt5.QtWidgets import (
     QSlider,
     QWidget,
     QHBoxLayout,
@@ -6,8 +8,8 @@ from PyQt6.QtWidgets import (
     QStyle,
     QStyleOptionSlider,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QRect, QSize, QRectF
-from PyQt6.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
+from PyQt5.QtCore import Qt, pyqtSignal, QRect, QSize, QRectF
+from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
 
 
 class ValueSliderHandle(QSlider):
@@ -164,7 +166,7 @@ class QValueSlider(QWidget):
 
 # 動作確認用テスト関数
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
+    from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
     import sys
 
     def test():

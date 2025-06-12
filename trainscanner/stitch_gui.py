@@ -6,9 +6,9 @@ from logging import DEBUG, WARN, basicConfig, getLogger, INFO
 
 import cv2
 import numpy as np
-from PyQt6.QtCore import QObject, QPoint, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QImage, QPainter, QPixmap, QPen, QKeySequence, QShortcut
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import QObject, QPoint, Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QImage, QPainter, QPixmap, QPen, QKeySequence
+from PyQt5.QtWidgets import (
     QApplication,
     QDialog,
     QLabel,
@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QSizePolicy,
     QSlider,
+    QShortcut,
 )
 
 # from QTiledImage import QTiledImage
@@ -139,7 +140,7 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
     def mousePressEvent(self, event):
         if not self.draw_complete:
             return
-        x = int(event.position().x())
+        x = event.x()
         # 左端の近くをクリックした場合
         if abs(x - self.left_edge) < self.drag_threshold:
             self.dragging = True
@@ -152,7 +153,7 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
     def mouseMoveEvent(self, event):
         if not self.draw_complete:
             return
-        x = int(event.position().x())
+        x = event.x()
         if self.dragging:
             if self.drag_edge == "left":
                 self.left_edge = max(0, min(x, self.right_edge - self.drag_threshold))

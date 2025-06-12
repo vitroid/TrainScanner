@@ -1,7 +1,7 @@
 # 実数を扱えるQSliderを作成する
 
-from PyQt6.QtWidgets import QSlider, QWidget, QVBoxLayout, QLabel
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QSlider, QWidget, QVBoxLayout, QLabel
+from PyQt5.QtCore import Qt, pyqtSignal
 from trainscanner.widget.qfloatslider import QFloatSlider, FloatSliderHandle
 from math import log10
 
@@ -30,7 +30,7 @@ class LogSliderHandle(FloatSliderHandle):
 
 # 動作確認用テスト関数
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
+    from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
     import sys
 
     def test():

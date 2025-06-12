@@ -1,5 +1,5 @@
 import cv2
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
     QLabel,
@@ -7,9 +7,10 @@ from PyQt6.QtWidgets import (
     QWidget,
     QPushButton,
     QDialog,
+    QShortcut,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QImage, QPixmap, QShortcut, QKeySequence
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QImage, QPixmap, QKeySequence
 from trainscanner.video import VideoLoader
 from trainscanner.shake_reduction2 import antishake
 import sys
