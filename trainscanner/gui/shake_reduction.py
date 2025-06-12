@@ -230,6 +230,11 @@ class ImageWindow(QMainWindow):
             help_overlay.exec()
             self.help_shown = True
 
+    def show_snapshot(self, frame):
+        self.current_image = frame.copy()
+        self.display_image()
+        QApplication.processEvents()
+
     def start_processing(self):
         if self.video_path and self.rectangles:
             # ビデオをまきもどす
@@ -240,17 +245,22 @@ class ImageWindow(QMainWindow):
 
             with open(f"{self.video_path}.dir/log.txt", "w") as logfile:
                 for i, frame in enumerate(
-                    antishake(video_frames, rects, logfile=logfile)
+                    antishake(
+                        video_frames,
+                        rects,
+                        logfile=logfile,
+                        show_snapshot=self.show_snapshot,
+                    )
                 ):
                     # 画像を保存
                     outfilename = f"{self.video_path}.dir/{i:06d}.png"
                     cv2.imwrite(outfilename, frame)
 
-                    # 画像を表示（10フレームごと）
-                    if i % 10 == 0:
-                        self.current_image = frame.copy()
-                        self.display_image()
-                        QApplication.processEvents()  # GUIの更新を強制
+                    # # 画像を表示（10フレームごと）
+                    # if i % 10 == 0:
+                    #     self.current_image = frame.copy()
+                    #     self.display_image()
+                    #     QApplication.processEvents()  # GUIの更新を強制
 
             # print("処理完了")
             # 処理完了後、ドロップエリアに戻る
