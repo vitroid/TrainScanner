@@ -9,10 +9,14 @@ import logging
 import os
 
 
-def rectify(img, head_right=True, aspect=2**0.5, overlap=10, width=0, thumbnail=False):
+def convert(
+    img, head_right=True, aspect=2**0.5, overlap=10, width=0, thumbnail=False, **kwargs
+):
     """
     Hans Ruijter's style
     """
+    logger = logging.getLogger()
+    logger.debug(f"Ignored options: {kwargs}")
     h, w = img.shape[:2]
 
     a = [999]
@@ -121,7 +125,7 @@ def main():
     args = parser.parse_args()
 
     img = cv2.imread(args.image_path)
-    canvas = rectify(
+    canvas = convert(
         img, args.head_right, args.aspect, args.overlap, args.width, args.thumbnail
     )
     if args.output:

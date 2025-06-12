@@ -49,11 +49,11 @@ from PyQt5.QtWidgets import (
 #
 # sub dialog windows
 # private modules
-from trainscanner import pass1_gui
-from trainscanner import stitch_gui, trainscanner
+from trainscanner.gui import pass1, stitch
+from trainscanner import trainscanner
 from trainscanner.pass1 import prepare_parser as pp1
 from trainscanner.stitch import prepare_parser as pp2
-from trainscanner.preprocess_gui import EditorGUI
+from trainscanner.gui.preprocess import EditorGUI
 from trainscanner.i18n import tr
 
 
@@ -613,7 +613,7 @@ class SettingsGUI(QWidget):
             self.filename,
         ]
 
-        matcher = pass1_gui.MatcherUI(argv, False)  # do not terminate
+        matcher = pass1.MatcherUI(argv, False)  # do not terminate
         matcher.exec()
         if matcher.terminated or not matcher.success:
             matcher = None
@@ -626,7 +626,7 @@ class SettingsGUI(QWidget):
             logfilenamebase + ".tsconf",
         ]
 
-        stitcher = stitch_gui.StitcherUI(argv, False)
+        stitcher = stitch.StitcherUI(argv, False)
         file_name = stitcher.stitcher.outfilename
         stitcher.setMaximumHeight(500)
         stitcher.showMaximized()

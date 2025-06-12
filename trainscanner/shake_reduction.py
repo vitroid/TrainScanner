@@ -21,7 +21,7 @@ def paddings(x, y, w, h, shape):
     return top, bottom, left, right
 
 
-def antishake(video_iter, foci, max_shift=5, logfile=None):
+def antishake(video_iter, foci, max_shift=5, logfile=None, show_snapshot=None):
     """最初のフレームの、指定された領域内の画像が動かないように、各フレームを平行移動する。
 
     全自動で位置あわせしたいのだが、現実的には、列車のすぐそばで位置あわせしないと、列車のぶれを止めきれない。
@@ -84,18 +84,31 @@ def antishake(video_iter, foci, max_shift=5, logfile=None):
 
             focus.shift = best
             # print(best)
-        if logfile is not None:
-            logfile.write(f"{focus.shift[0]} {focus.shift[1]}\n")
         if len(match_areas) == 1:
             # cv2.imshow(
             #     "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)
             # )
+            if logfile is not None:
+                logfile.write(f"{focus.shift[0]} {focus.shift[1]}\n")
             m = match_areas[0]
-            yield np.roll(
+            frame2_shifted = np.roll(
                 frame2,
                 (-m.shift[1], -m.shift[0]),
                 axis=(0, 1),
             )
+            if show_snapshot is not None:
+                annotated = frame2_shifted.copy()
+                for focus in match_areas:
+                    x, y, w, h = focus.rect
+                    cv2.rectangle(
+                        annotated,
+                        (x, y),
+                        (x + w, y + h),
+                        (0, 0, 255),
+                        2,
+                    )
+                show_snapshot(annotated)
+            yield frame2_shifted
             continue
         # 2箇所の場合。
 
@@ -130,12 +143,29 @@ def antishake(video_iter, foci, max_shift=5, logfile=None):
         rotation_matrix = cv2.getRotationMatrix2D(
             center0, np.degrees(angle_diff), scale
         )
+        if logfile is not None:
+            logfile.write(
+                f"{match_areas[0].shift[1], match_areas[0].shift[0]} {angle_diff}\n"
+            )
 
-        yield cv2.warpAffine(
+        frame2_rotated = cv2.warpAffine(
             frame2_shifted,
             rotation_matrix,
             frame2.shape[1::-1],
         )
+        if show_snapshot is not None:
+            annotated = frame2_rotated.copy()
+            for focus in match_areas:
+                x, y, w, h = focus.rect
+                cv2.rectangle(
+                    annotated,
+                    (x, y),
+                    (x + w, y + h),
+                    (0, 0, 255),
+                    2,
+                )
+            show_snapshot(annotated)
+        yield frame2_rotated
 
 
 def main(filename="/Users/matto/Dropbox/ArtsAndIllustrations/Stitch tmp2/Untitled.mp4"):

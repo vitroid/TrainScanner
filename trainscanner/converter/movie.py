@@ -22,9 +22,12 @@ def movie_iter(
     alternating: bool = False,
     accel: bool = False,
     thumbnail: bool = False,
+    **kwargs,
 ):
     """横スクロール動画を生成します。"""
     logger = logging.getLogger()
+
+    logger.debug(f"Ignored options: {kwargs}")
 
     ih, iw = image.shape[:2]
 
@@ -34,7 +37,7 @@ def movie_iter(
     if thumbnail:
         tn_height = ih * width // iw
         thumbnail_image = cv2.resize(
-            image, (width, tn_height), interpolation=cv2.INTER_LANCZOS4
+            image, (width, tn_height), interpolation=cv2.INTER_LINEAR
         )
     else:
         tn_height = 0
@@ -133,9 +136,9 @@ def make_movie(
         ext = "jpg"
 
     if imageseq:
-        output = basename.replace(".png", ".dir")
+        output = f"{basename}.dir"
     else:
-        output = basename.replace(".png", ".mp4")
+        output = f"{basename}.mp4"
 
     if imageseq:
         # make dir named output

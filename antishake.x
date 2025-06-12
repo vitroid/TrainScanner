@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
 
-from trainscanner.shake_reduction2_gui import main
+from trainscanner.gui.shake_reduction import main
 
 main()
