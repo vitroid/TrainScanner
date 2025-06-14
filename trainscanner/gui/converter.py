@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QSlider,
     QSplitter,
+    QFileDialog,
 )
 from PyQt6.QtGui import QKeySequence, QShortcut, QPixmap, QImage
 from PyQt6.QtCore import QTranslator, QLocale, Qt, QTimer
@@ -112,17 +113,31 @@ def get_converters():
 # https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class SettingsGUI(QWidget):
     def __init__(self, parent=None):
-        super(SettingsGUI, self).__init__(parent)
+        super().__init__(parent)
         self.setAcceptDrops(True)
         self.current_image = None  # 現在の画像を保持
         self.logger = logging.getLogger(__name__)  # クラス固有のロガーを作成
         self.movie_preview_timer = None  # 動画プレビュー用のタイマー
         self.movie_frames = None  # 動画フレームのイテレータ
 
-        # メインの水平レイアウトを作成
-        main_layout = QHBoxLayout()
+        # メインレイアウト
+        main_layout = QVBoxLayout()
 
-        # 左側のウィジェット（既存の設定部分）
+        # ファイル選択ボタンとラベルのレイアウト
+        file_layout = QHBoxLayout()
+        self.btn = QPushButton(tr("Open a movie"))
+        self.btn.clicked.connect(self.getfile)
+        file_layout.addWidget(self.btn)
+
+        self.le = QLabel(tr("(File name appears here)"))
+        file_layout.addWidget(self.le)
+        main_layout.addLayout(file_layout)
+
+        # タブウィジェットの作成
+        self.tab_widget = QTabWidget()
+        main_layout.addWidget(self.tab_widget)
+
+        # 左側の設定用ウィジェット
         left_widget = QWidget()
         finish_layout = QVBoxLayout()
 
@@ -394,46 +409,34 @@ class SettingsGUI(QWidget):
         else:
             raise ValueError(f"Converter {tab} has no convert method")
 
+    def getfile(self):
+        filename, types = QFileDialog.getOpenFileName(
+            self,
+            tr("Open a movie file"),
+            "",
+            "Movie files (*.mov *.mp4 *.m4v *.mts *.png *.jpg *.jpeg)",
+        )
+        if filename:
+            self.filename = filename
+            self.le.setText(filename)
+            self.start_button.setEnabled(True)
+            self.current_image = image_loader(filename)
+            self.update_preview(self.tab_widget.tabText(self.tab_widget.currentIndex()))
+
     def dragEnterEvent(self, event):
-        logger = logging.getLogger()
-        event.accept()
-        mimeData = event.mimeData()
-        logger.debug("dragEnterEvent")
-        for mimetype in mimeData.formats():
-            logger.debug("MIMEType: {0}".format(mimetype))
-            logger.debug("Data: {0}".format(mimeData.data(mimetype)))
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
 
     def dropEvent(self, event):
-        logger = logging.getLogger()
-        event.accept()
-        mimeData = event.mimeData()
-        logger.debug("dropEvent")
-        for mimetype in mimeData.formats():
-            logger.debug("MIMEType: {0}".format(mimetype))
-            logger.debug("Data: {0}".format(mimeData.data(mimetype)))
-        mimetypes = [
-            mimetype for mimetype in mimeData.formats() if mimetype == "text/uri-list"
-        ]
-        if mimetypes:
-            data = mimeData.data(mimetypes[0])
-            from urllib.parse import urlparse, unquote
-            from urllib.request import url2pathname
-
-            for line in bytes(data).decode("utf8").splitlines():
-                parsed = urlparse(unquote(line))
-                logger.debug("Data: {0}".format(parsed))
-                if parsed.scheme == "file":
-                    self.filename = url2pathname(parsed.path)
-                    # ファイルパスを表示
-                    self.file_path_label.setText(self.filename)
-                    # スタートボタンを有効化
-                    self.start_button.setEnabled(True)
-                    # 画像を読み込んで保持
-                    self.current_image = image_loader(self.filename, width=5000)
-                    # 現在のタブのプレビューを更新
-                    self.update_preview(
-                        self.tab_widget.tabText(self.tab_widget.currentIndex())
-                    )
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        if files:
+            self.filename = files[0]
+            self.le.setText(self.filename)
+            self.start_button.setEnabled(True)
+            self.current_image = image_loader(self.filename)
+            self.update_preview(self.tab_widget.tabText(self.tab_widget.currentIndex()))
 
     def on_tab_changed(self, index):
         """タブが切り替わった時に呼ばれる関数"""
