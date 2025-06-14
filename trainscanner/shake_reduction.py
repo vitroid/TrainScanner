@@ -21,7 +21,7 @@ def paddings(x, y, w, h, shape):
     return top, bottom, left, right
 
 
-def antishake(video_iter, foci, max_shift=5, logfile=None, show_snapshot=None):
+def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
     """最初のフレームの、指定された領域内の画像が動かないように、各フレームを平行移動する。
 
     全自動で位置あわせしたいのだが、現実的には、列車のすぐそばで位置あわせしないと、列車のぶれを止めきれない。

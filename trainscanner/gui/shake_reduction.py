@@ -7,11 +7,14 @@ from PyQt6.QtWidgets import (
     QWidget,
     QPushButton,
     QDialog,
+    QFileDialog,
+    QHBoxLayout,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap, QShortcut, QKeySequence
 from trainscanner.video import VideoLoader
 from trainscanner.shake_reduction import antishake
+from trainscanner.i18n import tr
 import sys
 import os
 
@@ -23,44 +26,6 @@ def video_iter(filename: str):
         if frame_index == 0:
             break
         yield frame
-
-
-class DropArea(QLabel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setText("ここに動画ファイルをDrag & Dropして下さい")
-        self.setStyleSheet(
-            """
-            QLabel {
-                border: 2px dashed #aaa;
-                border-radius: 5px;
-                padding: 20px;
-                background-color: #f0f0f0;
-                color: #000000;
-                font-size: 14px;
-            }
-            @media (prefers-color-scheme: dark) {
-                QLabel {
-                    border-color: #666;
-                    background-color: #2d2d2d;
-                    color: #ffffff;
-                }
-            }
-        """
-        )
-        self.setAcceptDrops(True)
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event):
-        files = [u.toLocalFile() for u in event.mimeData().urls()]
-        if files:
-            self.parent().process_video(files[0])
 
 
 class HelpDialog(QDialog):
@@ -141,28 +106,42 @@ class ImageWindow(QMainWindow):
         self.help_shown = False  # ヘルプ表示済みフラグ
 
         # ウィンドウの設定
-        self.setWindowTitle("画像選択")
+        self.setWindowTitle(tr("Shake Reduction"))
         self.setGeometry(100, 100, 400, 300)
-        self.setAcceptDrops(True)  # ここでウィンドウ自体がDropを受け付ける
+        self.setAcceptDrops(True)  # ウィンドウ全体でドロップを受け付ける
 
-        # ドロップエリアの設定
-        self.drop_area = DropArea(self)
-        self.setCentralWidget(self.drop_area)
+        # メインウィジェットとレイアウトの設定
+        main_widget = QWidget()
+        self.setCentralWidget(main_widget)
+        layout = QVBoxLayout(main_widget)
+
+        # ファイル選択ボタンとラベルのレイアウト
+        file_layout = QVBoxLayout()
+        self.btn = QPushButton(tr("Open a movie"))
+        self.btn.clicked.connect(self.getfile)
+        file_layout.addWidget(self.btn)
+
+        self.le = QLabel(tr("(File name appears here)"))
+        file_layout.addWidget(self.le)
+        layout.addLayout(file_layout)
+
+        # DropAreaは設置しない
+        # self.drop_area = DropArea(self)
+        # layout.addWidget(self.drop_area)
 
         # ショートカットの設定
         close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
         close_shortcut.activated.connect(self.close)
 
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event):
-        files = [u.toLocalFile() for u in event.mimeData().urls()]
-        if files:
-            self.process_video(files[0])
+    def getfile(self):
+        filename, types = QFileDialog.getOpenFileName(
+            self,
+            tr("Open a movie file"),
+            "",
+            "Movie files (*.mov *.mp4 *.m4v *.mts)",
+        )
+        if filename:
+            self.process_video(filename)
 
     def process_video(self, video_path):
         # 状態リセット
@@ -173,6 +152,12 @@ class ImageWindow(QMainWindow):
         self.original_image = None
         self.video_path = None
 
+        # 既存のウィジェットをクリーンアップ
+        if hasattr(self, "image_label"):
+            self.image_label.deleteLater()
+        if hasattr(self, "start_button"):
+            self.start_button.deleteLater()
+
         self.video_path = video_path
         video_frames = video_iter(video_path)
         frame = next(video_frames)
@@ -182,13 +167,23 @@ class ImageWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
 
+        # ファイル選択ボタンとラベルのレイアウト
+        file_layout = QHBoxLayout()
+        self.btn = QPushButton(tr("Open a movie"))
+        self.btn.clicked.connect(self.getfile)
+        file_layout.addWidget(self.btn)
+
+        self.le = QLabel(tr("(File name appears here)"))
+        file_layout.addWidget(self.le)
+        layout.addLayout(file_layout)
+
         # 画像表示用のラベル
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.image_label)
 
         # スタートボタンの追加
-        self.start_button = QPushButton("処理開始")
+        self.start_button = QPushButton(tr("Start processing"))
         self.start_button.setStyleSheet(
             """
             QPushButton {
@@ -224,11 +219,12 @@ class ImageWindow(QMainWindow):
         self.original_image = frame.copy()
         self.current_image = frame.copy()
         self.display_image()
-        # ヘルプは最初の1回だけ表示
+
+        # ヘルプは最初の1回だけ表示（ファイル読み込み後に表示）
         if not self.help_shown:
+            self.help_shown = True
             help_overlay = HelpDialog(self)
             help_overlay.exec()
-            self.help_shown = True
 
     def show_snapshot(self, frame):
         self.current_image = frame.copy()
@@ -256,20 +252,33 @@ class ImageWindow(QMainWindow):
                     outfilename = f"{self.video_path}.dir/{i:06d}.png"
                     cv2.imwrite(outfilename, frame)
 
-                    # # 画像を表示（10フレームごと）
-                    # if i % 10 == 0:
-                    #     self.current_image = frame.copy()
-                    #     self.display_image()
-                    #     QApplication.processEvents()  # GUIの更新を強制
-
-            # print("処理完了")
             # 処理完了後、ドロップエリアに戻る
             self.current_image = None
             self.original_image = None
             self.rectangles = []
             self.video_path = None
-            self.drop_area = DropArea(self)
-            self.setCentralWidget(self.drop_area)
+
+            # 既存のウィジェットをクリーンアップ
+            if hasattr(self, "image_label"):
+                self.image_label.deleteLater()
+            if hasattr(self, "start_button"):
+                self.start_button.deleteLater()
+
+            # 新しいドロップエリアを作成
+            main_widget = QWidget()
+            self.setCentralWidget(main_widget)
+            layout = QVBoxLayout(main_widget)
+
+            # ファイル選択ボタンとラベルのレイアウト
+            file_layout = QHBoxLayout()
+            self.btn = QPushButton(tr("Open a movie"))
+            self.btn.clicked.connect(self.getfile)
+            file_layout.addWidget(self.btn)
+
+            self.le = QLabel(tr("(File name appears here)"))
+            file_layout.addWidget(self.le)
+            layout.addLayout(file_layout)
+
             # ウィンドウサイズを初期サイズに戻す
             self.resize(400, 300)
 
@@ -442,6 +451,17 @@ class ImageWindow(QMainWindow):
 
     def closeEvent(self, event):
         event.accept()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        if files:
+            self.process_video(files[0])
 
 
 def qt_to_cv(rects):
