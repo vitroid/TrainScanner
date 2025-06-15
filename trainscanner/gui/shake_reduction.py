@@ -525,6 +525,19 @@ def qt_to_cv(rects):
 
 
 def main():
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
+    logger = logging.getLogger()
+
+    # 独自の翻訳システムを初期化
+    from trainscanner.i18n import init_translations
+
+    logger.debug("Initializing custom translation system")
+    init_translations()
+
     app = QApplication(sys.argv)
     window = ImageWindow()
     window.show()

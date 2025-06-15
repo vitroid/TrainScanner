@@ -204,18 +204,6 @@ class Stitcher:
             # for GUI
         self.dimen = [int(x * self.params.scale) for x in self.params.canvas]
 
-    #        if self.params.canvas is None:
-    #            Canvas.__init__(self)
-    #        else:
-    #            if self.params.scale == 1 and self.params.length > 0:
-    #                #product length is specified.
-    #                #scale is overridden
-    #                self.params.scale = self.params.length / self.params.canvas[0]
-    #                if self.params.scale > 1:
-    #                    self.params.scale = 1  #do not allow stretching
-    #            dimen = [int(x*self.params.scale) for x in self.params.canvas]
-    #            Canvas.__init__(self,image=np.zeros((dimen[1],dimen[0],3),np.uint8), position=dimen[2:4]) #python2 style
-
     # Canvas should be set after the arguments are parsed.
     def set_canvas(self, canvas):
         self.canvas = canvas
