@@ -117,18 +117,20 @@ def movie_iter(
 def make_movie(
     image: np.ndarray,
     basename: str,
+    png: bool = False,
+    imageseq: bool = False,
+    encoder: str = "libx264",
+    crf: int = None,
+    # 以下はmovie_iterの引数
+    # 将来は、movie_iter自体を引数にし、これらを排除したい。
     head_right: bool = False,
     duration: float = 8,
     height: int = 1080,
     width: int = 1920,
     fps: int = 30,
     alternating: bool = False,
-    png: bool = False,
-    crf: int = None,
     accel: bool = False,
-    encoder: str = "libx264",
     thumbnail: bool = False,
-    imageseq: bool = False,
 ):
     if png:
         ext = "png"

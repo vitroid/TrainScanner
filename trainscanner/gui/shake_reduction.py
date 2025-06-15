@@ -9,6 +9,8 @@ from PyQt6.QtWidgets import (
     QDialog,
     QFileDialog,
     QHBoxLayout,
+    QRadioButton,
+    QButtonGroup,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap, QShortcut, QKeySequence
@@ -17,6 +19,7 @@ from trainscanner.shake_reduction import antishake
 from trainscanner.i18n import tr
 import sys
 import os
+import subprocess
 
 
 def video_iter(filename: str):
@@ -26,6 +29,14 @@ def video_iter(filename: str):
         if frame_index == 0:
             break
         yield frame
+
+
+def check_ffmpeg():
+    try:
+        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+        return True
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
 
 
 class HelpDialog(QDialog):
@@ -57,10 +68,10 @@ class HelpDialog(QDialog):
         <ol style='font-size:15px;'>
             <li>マウスの左ボタンをドラッグして、背景(列車にかぶらない場所)に長方形を描きます</li>
             <li>車体と距離が近い場所(線路など)で、平滑でない場所が望ましいです</li>
-            <li>長方形1つを指定した場合は、その部分が固定されるように画像を平行移動します</li>
-            <li>長方形2つを指定した場合は、長方形0が固定され、長方形1で回転も補正します</li>
             <li>Deleteキーで長方形を消去できます</li>
             <li>「処理開始」ボタンをクリックして補正を開始します。</li>
+            <li>長方形1つが指定された場合は、その部分が固定されるように画像を平行移動します</li>
+            <li>長方形2つが指定された場合は、長方形0が固定され、長方形1で回転も補正します</li>
         </ol>
         """
         help_label = QLabel(help_text)
@@ -104,6 +115,7 @@ class ImageWindow(QMainWindow):
         self.original_image = None
         self.video_path = None
         self.help_shown = False  # ヘルプ表示済みフラグ
+        self.has_ffmpeg = check_ffmpeg()  # ffmpegの利用可能性を確認
 
         # ウィンドウの設定
         self.setWindowTitle(tr("Shake Reduction"))
@@ -124,10 +136,6 @@ class ImageWindow(QMainWindow):
         self.le = QLabel(tr("(File name appears here)"))
         file_layout.addWidget(self.le)
         layout.addLayout(file_layout)
-
-        # DropAreaは設置しない
-        # self.drop_area = DropArea(self)
-        # layout.addWidget(self.drop_area)
 
         # ショートカットの設定
         close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
@@ -152,23 +160,12 @@ class ImageWindow(QMainWindow):
         self.original_image = None
         self.video_path = None
 
-        # 既存のウィジェットをクリーンアップ
-        if hasattr(self, "image_label"):
-            self.image_label.deleteLater()
-        if hasattr(self, "start_button"):
-            self.start_button.deleteLater()
-
-        self.video_path = video_path
-        video_frames = video_iter(video_path)
-        frame = next(video_frames)
-
-        # 中央ウィジェットとレイアウトの設定
+        # 新しい中央ウィジェットを作成
         central_widget = QWidget()
-        self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
 
         # ファイル選択ボタンとラベルのレイアウト
-        file_layout = QHBoxLayout()
+        file_layout = QVBoxLayout()
         self.btn = QPushButton(tr("Open a movie"))
         self.btn.clicked.connect(self.getfile)
         file_layout.addWidget(self.btn)
@@ -181,6 +178,27 @@ class ImageWindow(QMainWindow):
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.image_label)
+
+        # 出力形式選択のラジオボタン
+        output_layout = QVBoxLayout()
+        output_label = QLabel(tr("Output format:"))
+        output_layout.addWidget(output_label)
+
+        self.output_group = QButtonGroup(self)
+
+        self.radio_images = QRadioButton(tr("Image sequence (PNG)"))
+        self.radio_images.setChecked(True)
+        self.output_group.addButton(self.radio_images)
+        output_layout.addWidget(self.radio_images)
+
+        self.radio_video = QRadioButton(tr("Lossless video (FFmpeg)"))
+        self.radio_video.setEnabled(self.has_ffmpeg)
+        if not self.has_ffmpeg:
+            self.radio_video.setToolTip(tr("FFmpeg is not installed"))
+        self.output_group.addButton(self.radio_video)
+        output_layout.addWidget(self.radio_video)
+
+        layout.addLayout(output_layout)
 
         # スタートボタンの追加
         self.start_button = QPushButton(tr("Start processing"))
@@ -216,6 +234,19 @@ class ImageWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_processing)
         layout.addWidget(self.start_button)
 
+        # 既存のウィジェットをクリーンアップ
+        old_central_widget = self.centralWidget()
+        if old_central_widget:
+            old_central_widget.deleteLater()
+
+        # 新しい中央ウィジェットを設定
+        self.setCentralWidget(central_widget)
+
+        # ビデオの処理
+        self.video_path = video_path
+        video_frames = video_iter(video_path)
+        frame = next(video_frames)
+
         self.original_image = frame.copy()
         self.current_image = frame.copy()
         self.display_image()
@@ -237,9 +268,11 @@ class ImageWindow(QMainWindow):
             video_frames = video_iter(self.video_path)
             rects = self.get_rectangles()
             rects = qt_to_cv(rects)
-            os.makedirs(f"{self.video_path}.dir", exist_ok=True)
+            output_dir = f"{self.video_path}.dir"
+            os.makedirs(output_dir, exist_ok=True)
 
-            with open(f"{self.video_path}.dir/log.txt", "w") as logfile:
+            with open(f"{output_dir}/log.txt", "w") as logfile:
+                frames = []
                 for i, frame in enumerate(
                     antishake(
                         video_frames,
@@ -248,9 +281,23 @@ class ImageWindow(QMainWindow):
                         show_snapshot=self.show_snapshot,
                     )
                 ):
-                    # 画像を保存
-                    outfilename = f"{self.video_path}.dir/{i:06d}.png"
-                    cv2.imwrite(outfilename, frame)
+                    if self.radio_images.isChecked():
+                        # 画像シーケンスとして保存
+                        outfilename = f"{output_dir}/{i:06d}.png"
+                        cv2.imwrite(outfilename, frame)
+                    else:
+                        # フレームをリストに追加
+                        frames.append(frame)
+
+            if self.radio_video.isChecked() and frames:
+                # FFmpegで動画として保存
+                video_path = f"{self.video_path}.stabilized.mkv"
+                height, width = frames[0].shape[:2]
+                fourcc = cv2.VideoWriter_fourcc(*"FFV1")
+                out = cv2.VideoWriter(video_path, fourcc, 30.0, (width, height))
+                for frame in frames:
+                    out.write(frame)
+                out.release()
 
             # 処理完了後、ドロップエリアに戻る
             self.current_image = None
@@ -263,6 +310,8 @@ class ImageWindow(QMainWindow):
                 self.image_label.deleteLater()
             if hasattr(self, "start_button"):
                 self.start_button.deleteLater()
+            if hasattr(self, "output_group"):
+                self.output_group.deleteLater()
 
             # 新しいドロップエリアを作成
             main_widget = QWidget()
@@ -270,7 +319,7 @@ class ImageWindow(QMainWindow):
             layout = QVBoxLayout(main_widget)
 
             # ファイル選択ボタンとラベルのレイアウト
-            file_layout = QHBoxLayout()
+            file_layout = QVBoxLayout()
             self.btn = QPushButton(tr("Open a movie"))
             self.btn.clicked.connect(self.getfile)
             file_layout.addWidget(self.btn)
