@@ -21,6 +21,10 @@ def paddings(x, y, w, h, shape):
     return top, bottom, left, right
 
 
+def standardize(x):
+    return (x - np.mean(x)) / np.std(x)
+
+
 def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
     """最初のフレームの、指定された領域内の画像が動かないように、各フレームを平行移動する。
 
@@ -38,7 +42,7 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
     match_areas = []
     for f in foci:
         x, y, w, h = f
-        crop = gray0[y : y + h, x : x + w].astype(np.int32)
+        crop = standardize(gray0[y : y + h, x : x + w].astype(float))
         focus = Focus(rect=(x, y, w, h), shift=(0, 0), match_area=crop)
         match_areas.append(focus)
 
@@ -72,9 +76,11 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
                     x += dx
                     y += dy
                     top, bottom, left, right = paddings(x, y, w, h, gray2.shape)
-                    match_area = gray2[
-                        y + top : y + h - bottom, x + left : x + w - right
-                    ]
+                    match_area = standardize(
+                        gray2[
+                            y + top : y + h - bottom, x + left : x + w - right
+                        ].astype(float)
+                    )
                     original_area = focus.match_area[top : h - bottom, left : w - right]
                     diff = np.mean((original_area - match_area) ** 2)
                     # print(dx, dy, diff, focus.match_area.shape, match_area.shape)
