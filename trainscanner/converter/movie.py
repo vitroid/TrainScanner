@@ -6,7 +6,6 @@ import os
 import tempfile
 import shutil
 import logging
-from tqdm import tqdm
 import sys
 from trainscanner.i18n import tr, init_translations
 import time
@@ -87,11 +86,11 @@ def movie_iter(
 
     # 各フレームを生成
     # for frame in tqdm(range(total_frames)):
-    for frame in tqdm(range(len(frame_pointers))):
+    for current_scroll in frame_pointers:
         # for frame in range(len(frame_pointers)):
         single_frame = np.zeros((height, width, 3), dtype=np.uint8)
         # 現在のスクロール位置を計算
-        current_scroll = frame_pointers[frame]
+        # current_scroll = frame_pointers[frame]
 
         # 必要な部分を切り出し
         cropped = scaled[:, current_scroll : current_scroll + width]
@@ -122,6 +121,7 @@ def make_movie(
     imageseq: bool = False,
     encoder: str = "libx264",
     crf: int = None,
+    progress_callback=None,  # 進捗通知用のコールバック関数
     # 以下はmovie_iterの引数
     # 将来は、movie_iter自体を引数にし、これらを排除したい。
     head_right: bool = False,
@@ -146,6 +146,9 @@ def make_movie(
     if imageseq:
         # make dir named output
         os.makedirs(output, exist_ok=True)
+        total_frames = int(duration * fps)
+        if alternating:
+            total_frames *= 2
         for i, frame in enumerate(
             movie_iter(
                 image,
@@ -161,8 +164,17 @@ def make_movie(
         ):
             frame_path = os.path.join(output, f"frame_{i:06d}.{ext}")
             cv2.imwrite(frame_path, frame)
+
+            # 画像シーケンス生成の進捗を通知
+            if progress_callback:
+                progress = int((i + 1) / total_frames * 100)
+                progress_callback(progress)
     else:
         with tempfile.TemporaryDirectory() as temp_dir:
+            total_frames = int(duration * fps)
+            if alternating:
+                total_frames *= 2
+
             for i, frame in enumerate(
                 movie_iter(
                     image,
@@ -179,13 +191,28 @@ def make_movie(
                 frame_path = os.path.join(temp_dir, f"{i:06d}.{ext}")
                 cv2.imwrite(frame_path, frame)
 
+                # フレーム生成の進捗を通知（50%まで）
+                if progress_callback:
+                    progress = int((i + 1) / total_frames * 50)
+                    progress_callback(progress)
+
             input_filename = os.path.join(temp_dir, f"%06d.{ext}")
+
+            # ffmpegの進捗コールバックを作成（50%-100%の範囲）
+            def ffmpeg_progress_callback(ffmpeg_progress):
+                if progress_callback:
+                    # ffmpegの進捗を50%-100%の範囲にマッピング
+                    overall_progress = 50 + int(ffmpeg_progress * 0.5)
+                    progress_callback(overall_progress)
+
             ffmpeg.run(
                 input_filename=input_filename,
                 output_filename=output,
                 fps=fps,
                 encoder=encoder,
                 crf=crf,
+                total_frames=total_frames,
+                progress_callback=ffmpeg_progress_callback,
             )
 
 

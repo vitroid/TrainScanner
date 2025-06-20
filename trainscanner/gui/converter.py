@@ -439,7 +439,26 @@ class SettingsGUI(QWidget):
             rimg = module.convert(img, head_right=head_right, **args)
             cv2.imwrite(f"{file_name}.{tab}.png", rimg)
         elif hasattr(module, "make_movie"):
-            module.make_movie(img, basename=file_name, head_right=head_right, **args)
+            # プログレスバーを表示
+            self.show_progress(True)
+
+            # 進捗コールバック関数を作成
+            def progress_callback(progress):
+                self.update_progress(progress)
+                # GUIの更新を強制
+                QApplication.processEvents()
+
+            # make_movieに進捗コールバックを渡す
+            module.make_movie(
+                img,
+                basename=file_name,
+                head_right=head_right,
+                progress_callback=progress_callback,
+                **args,
+            )
+
+            # プログレスバーを非表示
+            self.show_progress(False)
         else:
             raise ValueError(f"Converter {tab} has no convert method")
 
