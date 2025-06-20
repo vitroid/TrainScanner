@@ -10,6 +10,7 @@ from tqdm import tqdm
 import sys
 from trainscanner.i18n import tr, init_translations
 import time
+from trainscanner.video import ffmpeg
 
 
 def movie_iter(
@@ -175,22 +176,17 @@ def make_movie(
                     thumbnail,
                 )
             ):
-                frame_path = os.path.join(temp_dir, f"frame_{i:06d}.{ext}")
+                frame_path = os.path.join(temp_dir, f"{i:06d}.{ext}")
                 cv2.imwrite(frame_path, frame)
 
-            cmd = [
-                "ffmpeg",
-                "-y",
-                f"-framerate {fps}",
-                f'-i "{temp_dir}/frame_%06d.{ext}"',
-                f"-c:v {encoder}",
-                "-pix_fmt yuv420p",
-                f"-crf {crf}" if crf else "",
-                f'"{output}"',
-            ]
-            cmd = " ".join(cmd)
-            print(cmd)
-            subprocess.run(cmd, shell=True)
+            input_filename = os.path.join(temp_dir, f"%06d.{ext}")
+            ffmpeg.run(
+                input_filename=input_filename,
+                output_filename=output,
+                fps=fps,
+                encoder=encoder,
+                crf=crf,
+            )
 
 
 def get_parser():
