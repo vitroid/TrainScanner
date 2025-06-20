@@ -20,6 +20,7 @@ from trainscanner.i18n import tr
 import sys
 import os
 import subprocess
+import time
 
 
 def video_iter(filename: str):
@@ -116,6 +117,7 @@ class ImageWindow(QMainWindow):
         self.video_path = None
         self.help_shown = False  # ヘルプ表示済みフラグ
         self.has_ffmpeg = check_ffmpeg()  # ffmpegの利用可能性を確認
+        self.processing = False  # 処理中フラグを追加
 
         # ウィンドウの設定
         self.setWindowTitle(tr("Shake Reduction"))
@@ -264,42 +266,55 @@ class ImageWindow(QMainWindow):
 
     def start_processing(self):
         if self.video_path and self.rectangles:
+            self.processing = True  # 処理開始フラグを設定
+
             # ビデオをまきもどす
             video_frames = video_iter(self.video_path)
             rects = self.get_rectangles()
             rects = qt_to_cv(rects)
-            output_dir = f"{self.video_path}.dir"
-            os.makedirs(output_dir, exist_ok=True)
 
-            with open(f"{output_dir}/log.txt", "w") as logfile:
-                frames = []
+            video_writer = None
+            if self.radio_video.isChecked():
+                video_path = f"{self.video_path}.stabilized.mkv"
+                height, width = self.original_image.shape[:2]
+                fourcc = cv2.VideoWriter_fourcc(*"FFV1")
+                video_writer = cv2.VideoWriter(
+                    video_path, fourcc, 30.0, (width, height)
+                )
+            else:
+                output_dir = f"{self.video_path}.dir"
+                os.makedirs(output_dir, exist_ok=True)
+
+            with open(f"{self.video_path}.log.txt", "w") as logfile:
+                # VideoWriterの初期化（動画出力が選択されている場合）
+
                 for i, frame in enumerate(
                     antishake(
                         video_frames,
                         rects,
                         logfile=logfile,
                         show_snapshot=self.show_snapshot,
+                        max_shift=5,
                     )
                 ):
+                    # 処理中にウィンドウが閉じられた場合、処理を中断
+                    if not self.processing:
+                        break
+
                     if self.radio_images.isChecked():
                         # 画像シーケンスとして保存
                         outfilename = f"{output_dir}/{i:06d}.png"
                         cv2.imwrite(outfilename, frame)
-                    else:
-                        # フレームをリストに追加
-                        frames.append(frame)
+                    elif video_writer is not None:
+                        # 動画として即座に書き出し
+                        video_writer.write(frame)
 
-            if self.radio_video.isChecked() and frames:
-                # FFmpegで動画として保存
-                video_path = f"{self.video_path}.stabilized.mkv"
-                height, width = frames[0].shape[:2]
-                fourcc = cv2.VideoWriter_fourcc(*"FFV1")
-                out = cv2.VideoWriter(video_path, fourcc, 30.0, (width, height))
-                for frame in frames:
-                    out.write(frame)
-                out.release()
+                # VideoWriterをクローズ
+                if video_writer is not None:
+                    video_writer.release()
 
             # 処理完了後、ドロップエリアに戻る
+            self.processing = False  # 処理完了フラグをリセット
             self.current_image = None
             self.original_image = None
             self.rectangles = []
@@ -499,6 +514,11 @@ class ImageWindow(QMainWindow):
             self.display_image()
 
     def closeEvent(self, event):
+        if self.processing:
+            # 処理中の場合は強制終了
+            self.processing = False
+            # 少し待ってからウィンドウを閉じる（処理ループが終了するのを待つ）
+            time.sleep(0.1)
         event.accept()
 
     def dragEnterEvent(self, event):
