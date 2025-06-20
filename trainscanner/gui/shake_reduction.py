@@ -14,22 +14,13 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap, QShortcut, QKeySequence
-from trainscanner.video import VideoLoader
+from trainscanner.video import video_loader_factory, video_iter
 from trainscanner.shake_reduction import antishake
 from trainscanner.i18n import tr
 import sys
 import os
 import subprocess
 import time
-
-
-def video_iter(filename: str):
-    video_loader = VideoLoader(filename)
-    while True:
-        frame_index, frame = video_loader.next()
-        if frame_index == 0:
-            break
-        yield frame
 
 
 def check_ffmpeg():

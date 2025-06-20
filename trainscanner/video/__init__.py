@@ -11,7 +11,7 @@ from trainscanner.video import video_cv2, image_dir
 import os
 
 
-def VideoLoader(filename: str):
+def video_loader_factory(filename: str):
     filename = filename.rstrip("/")
     if os.path.isdir(filename):
         return image_dir.VideoLoader(filename)
@@ -26,11 +26,16 @@ def VideoLoader(filename: str):
         raise ValueError(f"Unsupported platform: {ostype}")
 
 
-if __name__ == "__main__":
-    vl = VideoLoader("../examples/sample3.mov")  # 58 frames
-
+def video_iter(filename: str):
+    video_loader = video_loader_factory(filename)
     while True:
-        nframe, frame = vl.next()
-        if nframe == 0:
+        frame_index, frame = video_loader.next()
+        if frame_index == 0:
             break
-        print(frame.shape, nframe)
+        yield frame
+
+
+# assume it is executed as python -m trainscanner.video.__init__
+if __name__ == "__main__":
+    for frame in video_iter("examples/sample3.mov"):
+        print(frame.shape)

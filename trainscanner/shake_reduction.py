@@ -175,11 +175,15 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
 
 
 def main(filename="/Users/matto/Dropbox/ArtsAndIllustrations/Stitch tmp2/Untitled.mp4"):
+    from trainscanner.video import video_iter
 
+    viter = video_iter(filename)
     for frame in antishake(
-        video_iter(filename),
-        [(1520, 430, 150, 80), (100, 465, 100, 50)],
+        viter,
+        # [(1520, 430, 150, 80), (100, 465, 100, 50)], # for Untitled.mp4
+        [(400, 768, 80, 139), (1089, 746, 178, 134)],
     ):
+
         cv2.imshow("deshaked", frame)
         cv2.waitKey(1)
 
