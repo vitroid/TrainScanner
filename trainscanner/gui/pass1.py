@@ -23,24 +23,7 @@ from PyQt6.QtWidgets import (
 )
 
 from trainscanner import pass1
-
-
-def cv2toQImage(cv2image):
-    """
-    It breaks the original image
-    """
-    height, width = cv2image.shape[0:2]
-    # tmp = np.zeros_like(cv2image[:, :, 0])
-    # tmp = cv2image[:, :, 0].copy()
-    # cv2image[:, :, 0] = cv2image[:, :, 2]
-    # cv2image[:, :, 2] = tmp
-    return QImage(
-        cv2.cvtColor(cv2image, cv2.COLOR_BGR2RGB).data,
-        width,
-        height,
-        width * 3,
-        QImage.Format.Format_RGB888,
-    )
+from trainscanner.widget import cv2toQImage
 
 
 class Worker(QObject):
