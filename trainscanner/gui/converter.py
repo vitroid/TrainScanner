@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QSlider,
     QSplitter,
     QFileDialog,
+    QProgressBar,
 )
 from PyQt6.QtGui import QKeySequence, QShortcut, QPixmap, QImage
 from PyQt6.QtCore import QTranslator, QLocale, Qt, QTimer
@@ -110,6 +111,135 @@ def get_converters():
     return converters
 
 
+def converter_control_widget(
+    converter: str,
+    options: list,
+    description: str,
+    has_ffmpeg: bool,
+    on_value_changed: callable,
+):
+    logger = logging.getLogger()
+
+    tab = QWidget()
+    tab_layout = QVBoxLayout()
+    if not has_ffmpeg and converter in [
+        "movie",
+    ]:
+        description += " (ffmpeg required)"
+    tab_layout.addWidget(QLabel(description))
+
+    getter = dict()
+
+    # オプションの表示
+    for option in options:
+        # オプションのキーワードを取得
+        for option_keyword in option["option_strings"]:
+            if option_keyword[:2] == "--":
+                option_keyword = option_keyword[2:]
+                break
+        else:
+            continue
+
+        # ffmpegがインストールされていない場合のmovieオプション制御
+        if not has_ffmpeg:
+            if option_keyword in ["crf", "encoder"]:
+                # CRFとエンコーダーを無効化
+                continue
+            elif option_keyword == "imageseq":
+                # imageseqオプションを強制的にチェック状態で無効化
+                checkbox = QCheckBox(tr(option["help"]))
+                checkbox.setChecked(True)  # 強制的にチェック
+                checkbox.setEnabled(False)  # 無効化
+                logger.debug(
+                    f"Setting imageseq checkbox to checked and disabled for {option_keyword}"
+                )
+                tab_layout.addWidget(checkbox)
+                getter[option_keyword] = checkbox
+                continue
+
+        if option["type"] in (int, float):
+            help = option["help"]
+            min = option["min"]
+            max = option["max"]
+            hbox = QHBoxLayout()
+            label = QLabel(tr(help))
+            hbox.addWidget(label)
+            if option["type"] == int:
+                slider = QValueSlider()
+                slider.setMinimum(int(min))
+                slider.setMaximum(int(max))
+                if option["default"] is not None:
+                    slider.setValue(int(option["default"]))
+                else:
+                    slider.setValue(int(min))
+                logger.debug(f"Connecting valueChanged signal for {option_keyword}")
+                # スライダーの値変更を監視
+                slider.valueChanged.connect(
+                    lambda v, k=option_keyword: on_value_changed(k, v)
+                )
+                min_label = QLabel(f"{int(min)}")
+                max_label = QLabel(f"{int(max)}")
+            else:  # float
+                if 0 < min < max and max / min > 99:
+                    slider = QFloatSlider(
+                        float_min_value=min,
+                        float_max_value=max,
+                        sliderhandleclass=LogSliderHandle,
+                    )
+                else:
+                    slider = QFloatSlider(
+                        float_min_value=min,
+                        float_max_value=max,
+                    )
+                slider.setMinimum(min)
+                slider.setMaximum(max)
+                if option["default"] is not None:
+                    slider.setValue(float(option["default"]))
+                else:
+                    slider.setValue(min)
+                logger.debug(f"Connecting valueChanged signal for {option_keyword}")
+                # スライダーの値変更を監視
+                slider.valueChanged.connect(
+                    lambda v, k=option_keyword: on_value_changed(k, v)
+                )
+                min_label = QLabel(f"{min}")
+                max_label = QLabel(f"{max}")
+            hbox.addWidget(min_label)
+            hbox.addWidget(slider)
+            hbox.addWidget(max_label)
+            tab_layout.addLayout(hbox)
+            getter[option_keyword] = slider
+        elif (
+            option["type"] is None
+            and option["nargs"] == 0
+            and "-h" not in option["option_strings"]
+            and "-R" not in option["option_strings"]
+        ):
+            checkbox = QCheckBox(tr(option["help"]))
+            logger.debug(f"Connecting stateChanged signal for {option_keyword}")
+            checkbox.stateChanged.connect(
+                lambda state, k=option_keyword: on_value_changed(k, state)
+            )
+            tab_layout.addWidget(checkbox)
+            getter[option_keyword] = checkbox
+        elif option["type"] == str:
+            hbox = QHBoxLayout()
+            label = QLabel(tr(option["help"]))
+            hbox.addWidget(label)
+            lineedit = QLineEdit(tr(option["default"]))
+            logger.debug(f"Connecting textChanged signal for {option_keyword}")
+            lineedit.textChanged.connect(
+                lambda text, k=option_keyword: on_value_changed(k, text)
+            )
+            hbox.addWidget(lineedit)
+            tab_layout.addLayout(hbox)
+            getter[option_keyword] = lineedit
+        # else:
+        #     tab_layout.addWidget(QLabel(tr(option["help"])))
+    tab.setLayout(tab_layout)
+    return tab, getter
+
+
 # https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class SettingsGUI(QWidget):
     def __init__(self, parent=None):
@@ -141,10 +271,10 @@ class SettingsGUI(QWidget):
         left_widget = QWidget()
         finish_layout = QVBoxLayout()
 
-        # ファイルパス表示用のラベルを追加
-        self.file_path_label = QLabel(tr("No file selected"))
-        self.file_path_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        finish_layout.addWidget(self.file_path_label)
+        # # ファイルパス表示用のラベルを追加
+        # self.file_path_label = QLabel(tr("No file selected"))
+        # self.file_path_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # finish_layout.addWidget(self.file_path_label)
 
         # 説明文を追加
         instruction = QLabel(tr("Drag & drop an image strip"))
@@ -161,141 +291,26 @@ class SettingsGUI(QWidget):
             self.on_tab_changed
         )  # タブ切り替え時のシグナルを接続
 
+        self.has_ffmpeg = shutil.which("ffmpeg") is not None
+
         self.converters = get_converters()
 
         self.getters = dict()
         # ffmpegの確認
-        self.has_ffmpeg = shutil.which("ffmpeg") is not None
         self.tab_widgets = []
         for converter, contents in self.converters.items():
-            module = contents["module"]
+            # module = contents["module"]
             options, description = contents["options_list"]
 
-            tab = QWidget()
-            tab_layout = QVBoxLayout()
-            desc = tr(description)
-            if not self.has_ffmpeg and converter in [
-                "movie",
-            ]:
-                desc += " (ffmpeg required)"
-            tab_layout.addWidget(QLabel(desc))
+            tab, getter = converter_control_widget(
+                converter,
+                options,
+                tr(description),
+                self.has_ffmpeg,
+                self.on_value_changed,
+            )
+            self.getters[converter] = getter
 
-            # オプションの表示
-            self.getters[converter] = dict()
-            for option in options:
-                # オプションのキーワードを取得
-                for option_keyword in option["option_strings"]:
-                    if option_keyword[:2] == "--":
-                        option_keyword = option_keyword[2:]
-                        break
-                else:
-                    continue
-
-                # ffmpegがインストールされていない場合のmovieオプション制御
-                if not self.has_ffmpeg:
-                    if option_keyword in ["crf", "encoder"]:
-                        # CRFとエンコーダーを無効化
-                        continue
-                    elif option_keyword == "imageseq":
-                        # imageseqオプションを強制的にチェック状態で無効化
-                        checkbox = QCheckBox(tr(option["help"]))
-                        checkbox.setChecked(True)  # 強制的にチェック
-                        checkbox.setEnabled(False)  # 無効化
-                        self.logger.debug(
-                            f"Setting imageseq checkbox to checked and disabled for {option_keyword}"
-                        )
-                        tab_layout.addWidget(checkbox)
-                        self.getters[converter][option_keyword] = checkbox
-                        continue
-
-                if option["type"] in (int, float):
-                    help = option["help"]
-                    min = option["min"]
-                    max = option["max"]
-                    hbox = QHBoxLayout()
-                    label = QLabel(tr(help))
-                    hbox.addWidget(label)
-                    if option["type"] == int:
-                        slider = QValueSlider()
-                        slider.setMinimum(int(min))
-                        slider.setMaximum(int(max))
-                        if option["default"] is not None:
-                            slider.setValue(int(option["default"]))
-                        else:
-                            slider.setValue(int(min))
-                        self.logger.debug(
-                            f"Connecting valueChanged signal for {option_keyword}"
-                        )
-                        # スライダーの値変更を監視
-                        slider.valueChanged.connect(
-                            lambda v, k=option_keyword: self.on_value_changed(k, v)
-                        )
-                        min_label = QLabel(f"{int(min)}")
-                        max_label = QLabel(f"{int(max)}")
-                    else:  # float
-                        if 0 < min < max and max / min > 99:
-                            slider = QFloatSlider(
-                                float_min_value=min,
-                                float_max_value=max,
-                                sliderhandleclass=LogSliderHandle,
-                            )
-                        else:
-                            slider = QFloatSlider(
-                                float_min_value=min,
-                                float_max_value=max,
-                            )
-                        slider.setMinimum(min)
-                        slider.setMaximum(max)
-                        if option["default"] is not None:
-                            slider.setValue(float(option["default"]))
-                        else:
-                            slider.setValue(min)
-                        self.logger.debug(
-                            f"Connecting valueChanged signal for {option_keyword}"
-                        )
-                        # スライダーの値変更を監視
-                        slider.valueChanged.connect(
-                            lambda v, k=option_keyword: self.on_value_changed(k, v)
-                        )
-                        min_label = QLabel(f"{min}")
-                        max_label = QLabel(f"{max}")
-                    hbox.addWidget(min_label)
-                    hbox.addWidget(slider)
-                    hbox.addWidget(max_label)
-                    tab_layout.addLayout(hbox)
-                    self.getters[converter][option_keyword] = slider
-                elif (
-                    option["type"] is None
-                    and option["nargs"] == 0
-                    and "-h" not in option["option_strings"]
-                    and "-R" not in option["option_strings"]
-                ):
-                    checkbox = QCheckBox(tr(option["help"]))
-                    self.logger.debug(
-                        f"Connecting stateChanged signal for {option_keyword}"
-                    )
-                    checkbox.stateChanged.connect(
-                        lambda state, k=option_keyword: self.on_value_changed(k, state)
-                    )
-                    tab_layout.addWidget(checkbox)
-                    self.getters[converter][option_keyword] = checkbox
-                elif option["type"] == str:
-                    hbox = QHBoxLayout()
-                    label = QLabel(tr(option["help"]))
-                    hbox.addWidget(label)
-                    lineedit = QLineEdit(tr(option["default"]))
-                    self.logger.debug(
-                        f"Connecting textChanged signal for {option_keyword}"
-                    )
-                    lineedit.textChanged.connect(
-                        lambda text, k=option_keyword: self.on_value_changed(k, text)
-                    )
-                    hbox.addWidget(lineedit)
-                    tab_layout.addLayout(hbox)
-                    self.getters[converter][option_keyword] = lineedit
-                # else:
-                #     tab_layout.addWidget(QLabel(tr(option["help"])))
-            tab.setLayout(tab_layout)
             self.tab_widget.addTab(tab, tr(converter))
             self.tab_widgets.append(tab)
 
@@ -338,6 +353,14 @@ class SettingsGUI(QWidget):
         self.start_button.setEnabled(False)  # 初期状態は無効
         self.start_button.clicked.connect(self.start_process)
         finish_layout.addWidget(self.start_button)
+
+        # プログレスバーを追加
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)  # 初期状態は非表示
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(0)
+        finish_layout.addWidget(self.progress_bar)
 
         left_widget.setLayout(finish_layout)
 
@@ -568,6 +591,21 @@ class SettingsGUI(QWidget):
             self.movie_preview_timer = None
             # プレビューを再開
             self.update_preview(self.tab_widget.tabText(self.tab_widget.currentIndex()))
+
+    def show_progress(self, visible=True):
+        """プログレスバーの表示/非表示を制御"""
+        self.progress_bar.setVisible(visible)
+        if not visible:
+            self.progress_bar.setValue(0)
+
+    def update_progress(self, value):
+        """プログレスバーの値を更新"""
+        self.progress_bar.setValue(value)
+
+    def set_progress_range(self, minimum, maximum):
+        """プログレスバーの範囲を設定"""
+        self.progress_bar.setMinimum(minimum)
+        self.progress_bar.setMaximum(maximum)
 
 
 # for pyinstaller
