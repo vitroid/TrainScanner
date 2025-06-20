@@ -190,6 +190,24 @@ class SettingsGUI(QWidget):
                         break
                 else:
                     continue
+
+                # ffmpegがインストールされていない場合のmovieオプション制御
+                if not self.has_ffmpeg:
+                    if option_keyword in ["crf", "encoder"]:
+                        # CRFとエンコーダーを無効化
+                        continue
+                    elif option_keyword == "imageseq":
+                        # imageseqオプションを強制的にチェック状態で無効化
+                        checkbox = QCheckBox(tr(option["help"]))
+                        checkbox.setChecked(True)  # 強制的にチェック
+                        checkbox.setEnabled(False)  # 無効化
+                        self.logger.debug(
+                            f"Setting imageseq checkbox to checked and disabled for {option_keyword}"
+                        )
+                        tab_layout.addWidget(checkbox)
+                        self.getters[converter][option_keyword] = checkbox
+                        continue
+
                 if option["type"] in (int, float):
                     help = option["help"]
                     min = option["min"]
@@ -364,13 +382,6 @@ class SettingsGUI(QWidget):
         file_name = self.filename
 
         converter = self.tab_widget.tabText(self.tab_widget.currentIndex())
-
-        # ffmpegがインストールされていない場合にmovieタブでの変換を防ぐ
-        if converter == "movie" and not self.has_ffmpeg:
-            logger.error(
-                "ffmpeg is not installed. Please install ffmpeg to use this feature."
-            )
-            return
 
         # gettersを使って、値を取得
         args = dict()
