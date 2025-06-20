@@ -183,7 +183,7 @@ class Stitcher:
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
 
-        self.vl = video.VideoLoader(moviefile)
+        self.vl = video.video_loader_factory(moviefile)
         self.firstFrame = True
         self.currentFrame = 0  # 1 is the first frame
 
