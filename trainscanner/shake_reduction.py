@@ -22,7 +22,7 @@ def paddings(x, y, w, h, shape):
 
 
 def standardize(x):
-    return (x - np.mean(x)) / np.std(x)
+    return ((x - np.mean(x)) / np.std(x)).astype(np.float32)
 
 
 def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
@@ -39,17 +39,19 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
 
     assert 0 < len(foci) <= 2
 
-    match_areas = []
+    foci_ = []
     for f in foci:
         x, y, w, h = f
         crop = standardize(gray0[y : y + h, x : x + w].astype(float))
         focus = Focus(rect=(x, y, w, h), shift=(0, 0), match_area=crop)
-        match_areas.append(focus)
+        foci_.append(focus)
+
+    foci = foci_
 
     # frame0上にmatch_areaを長方形で描画する。
     if logfile is not None:
         logfile.write(f"{len(foci)}\n")
-    for focus in match_areas:
+    for focus in foci:
         x, y, w, h = focus.rect
         cv2.rectangle(
             frame0,
@@ -65,38 +67,34 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
     for frame2 in video_iter:
         gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY).astype(np.int32)
 
-        for focus in match_areas:
-            max_diff = 1e99
-            best = None
-            for dx in range(focus.shift[0] - max_shift, focus.shift[0] + max_shift + 1):
-                for dy in range(
-                    focus.shift[1] - max_shift, focus.shift[1] + max_shift + 1
-                ):
-                    x, y, w, h = focus.rect
-                    x += dx
-                    y += dy
-                    top, bottom, left, right = paddings(x, y, w, h, gray2.shape)
-                    match_area = standardize(
-                        gray2[
-                            y + top : y + h - bottom, x + left : x + w - right
-                        ].astype(float)
-                    )
-                    original_area = focus.match_area[top : h - bottom, left : w - right]
-                    diff = np.mean((original_area - match_area) ** 2)
-                    # print(dx, dy, diff, focus.match_area.shape, match_area.shape)
-                    if diff < max_diff:
-                        max_diff = diff
-                        best = (dx, dy)
-
-            focus.shift = best
+        for focus in foci:
+            x, y, w, h = focus.rect
+            x += focus.shift[0]
+            y += focus.shift[1]
+            top, bottom, left, right = paddings(x, y, w, h, gray2.shape)
+            target_area = np.zeros(
+                [h + max_shift * 2 + 1, w + max_shift * 2 + 1], dtype=np.float32
+            )
+            target_area[
+                max_shift + top : h + max_shift - bottom,
+                max_shift + left : max_shift + w - right,
+            ] = standardize(
+                gray2[y + top : y + h - bottom, x + left : x + w - right].astype(float)
+            )
+            scores = cv2.matchTemplate(target_area, focus.match_area, cv2.TM_SQDIFF)
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(scores)
+            focus.shift = (
+                focus.shift[0] + min_loc[0] - max_shift,
+                focus.shift[1] + min_loc[1] - max_shift,
+            )
             # print(best)
-        if len(match_areas) == 1:
+        if len(foci) == 1:
             # cv2.imshow(
             #     "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)
             # )
             if logfile is not None:
                 logfile.write(f"{focus.shift[0]} {focus.shift[1]}\n")
-            m = match_areas[0]
+            m = foci[0]
             frame2_shifted = np.roll(
                 frame2,
                 (-m.shift[1], -m.shift[0]),
@@ -104,7 +102,7 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
             )
             if show_snapshot is not None:
                 annotated = frame2_shifted.copy()
-                for focus in match_areas:
+                for focus in foci:
                     x, y, w, h = focus.rect
                     cv2.rectangle(
                         annotated,
@@ -119,17 +117,13 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
         # 2箇所の場合。
 
         # もとのmatch_areaの中心
-        center0 = (
-            np.array(match_areas[0].rect[:2]) + np.array(match_areas[0].rect[2:]) / 2
-        )
-        center1 = (
-            np.array(match_areas[1].rect[:2]) + np.array(match_areas[1].rect[2:]) / 2
-        )
+        center0 = np.array(foci[0].rect[:2]) + np.array(foci[0].rect[2:]) / 2
+        center1 = np.array(foci[1].rect[:2]) + np.array(foci[1].rect[2:]) / 2
         angle = np.arctan2(center1[1] - center0[1], center1[0] - center0[0])
 
         # 平行移動後のmatch_areaの中心
-        displaced0 = center0 + np.array(match_areas[0].shift)
-        displaced1 = center1 + np.array(match_areas[1].shift)
+        displaced0 = center0 + np.array(foci[0].shift)
+        displaced1 = center1 + np.array(foci[1].shift)
         angle2 = np.arctan2(
             displaced1[1] - displaced0[1], displaced1[0] - displaced0[0]
         )
@@ -140,7 +134,7 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
         # これにより、displace[0]がcenter0と重なる。
         frame2_shifted = np.roll(
             frame2,
-            (-match_areas[0].shift[1], -match_areas[0].shift[0]),
+            (-foci[0].shift[1], -foci[0].shift[0]),
             axis=(0, 1),
         )
 
@@ -150,9 +144,7 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
             center0, np.degrees(angle_diff), scale
         )
         if logfile is not None:
-            logfile.write(
-                f"{match_areas[0].shift[1], match_areas[0].shift[0]} {angle_diff}\n"
-            )
+            logfile.write(f"{foci[0].shift[1], foci[0].shift[0]} {angle_diff}\n")
 
         frame2_rotated = cv2.warpAffine(
             frame2_shifted,
@@ -161,7 +153,7 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
         )
         if show_snapshot is not None:
             annotated = frame2_rotated.copy()
-            for focus in match_areas:
+            for focus in foci:
                 x, y, w, h = focus.rect
                 cv2.rectangle(
                     annotated,
@@ -181,7 +173,7 @@ def main(filename="/Users/matto/Dropbox/ArtsAndIllustrations/Stitch tmp2/Untitle
     for frame in antishake(
         viter,
         # [(1520, 430, 150, 80), (100, 465, 100, 50)], # for Untitled.mp4
-        [(400, 768, 80, 139), (1089, 746, 178, 134)],
+        foci=[(400, 768, 80, 139), (1089, 746, 178, 134)],
     ):
 
         cv2.imshow("deshaked", frame)
