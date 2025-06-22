@@ -498,7 +498,10 @@ class Pass1:
         absx, absy = 0, 0
         velx, vely = 0, 0
         match_fail = 0
-        guess_mode = params.stall
+        in_action = False
+        # coldstartの場合は、変化の大きさに関わらず、変位を記録する。
+        # そして、変位がantishakeを越えたあとは、通常と同じように判定する。
+        coldstart = params.stall
         precount = 0
         preview_size = 500
         preview = trainscanner.fit_to_square(cropped, preview_size)
@@ -546,9 +549,7 @@ class Pass1:
             # This mode is activated after the 10th frames.
 
             # Now I do care only magrin case.
-            if guess_mode:
-                # do not apply maxaccel for the first 10 frames
-                # because the velocity uncertainty.
+            if in_action or coldstart:
                 delta = motion(
                     lastframe,
                     cropped,
@@ -591,51 +592,68 @@ class Pass1:
             )
             # previewを表示
             yield diff_img
-            ##### if the motion is large
-            if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
-                if not guess_mode:
-                    # number of frames since the first motion is detected.
-                    precount += 1
-                    # 過去5フレームでの移動量の変化
-                    ddx = max(deltax) - min(deltax)
-                    ddy = max(deltay) - min(deltay)
-                    # if the displacements are almost constant in the last 5 frames,
-                    if params.antishake <= ddx or params.antishake <= ddy:
-                        logger.debug(
-                            f"Wait for the camera to stabilize ({nframe} {dx} {dy})"
-                        )
-                        continue
-                    else:
-                        # 速度は安定した．
-                        guess_mode = True
-                        logger.debug(f"The camera is stabilized. {nframe} {dx} {dy}")
-                        # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
-                        # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
-                # 変位をそのまま採用する．
-                logger.debug(f"Accept the motion ({nframe} {dx} {dy})")
-                velx = dx
-                vely = dy
-                match_fail = 0
+            ##### if the motion is larger than the params.antishake
+
+            if coldstart:
+                if not in_action:
+                    logger.debug(f"Accept the motion ({nframe} {dx} {dy})")
+                    velx = dx
+                    vely = dy
+                    match_fail = 0
+
+                if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
+                    if not in_action:
+                        in_action = True
+                        coldstart = False
+
             else:
-                if guess_mode:
-                    # 動きがantishake水準より小さかった場合
-                    match_fail += 1
-                    # match_failカウンターがparams.trailingに届くまではそのまま回す．
-                    if match_fail > params.trailing:
-                        # end of work
-                        # Add trailing frames to the log file here.
-
-                        # ここで、マッチしはじめる前の部分と、マッチしおえたあとの部分を整える。
-
-                        break
-                    logger.info(
-                        f"Ignore a small motion ({nframe} {dx} {dy} +{match_fail}/{params.trailing})"
-                    )
-                    # believe the last velx and vely
+                if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
+                    if not in_action:
+                        # number of frames since the first motion is detected.
+                        precount += 1
+                        # 過去5フレームでの移動量の変化
+                        ddx = max(deltax) - min(deltax)
+                        ddy = max(deltay) - min(deltay)
+                        # if the displacements are almost constant in the last 5 frames,
+                        if params.antishake <= ddx or params.antishake <= ddy:
+                            logger.debug(
+                                f"Wait for the camera to stabilize ({nframe} {dx} {dy})"
+                            )
+                            continue
+                        else:
+                            # 速度は安定した．
+                            in_action = True
+                            # 十分変位が大きくなったらcoldstartフラグはおろす。
+                            logger.debug(
+                                f"The camera is stabilized. {nframe} {dx} {dy}"
+                            )
+                            # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
+                            # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
+                    # 変位をそのまま採用する．
+                    logger.debug(f"Accept the motion ({nframe} {dx} {dy})")
+                    velx = dx
+                    vely = dy
+                    match_fail = 0
                 else:
-                    # not guess mode, not large motion: just ignore.
-                    logger.info(f"Still frame ({nframe} {dx} {dy})")
-                    continue
+                    if in_action:
+                        # 動きがantishake水準より小さかった場合
+                        match_fail += 1
+                        # match_failカウンターがparams.trailingに届くまではそのまま回す．
+                        if match_fail > params.trailing:
+                            # end of work
+                            # Add trailing frames to the log file here.
+
+                            # ここで、マッチしはじめる前の部分と、マッチしおえたあとの部分を整える。
+
+                            break
+                        logger.info(
+                            f"Ignore a small motion ({nframe} {dx} {dy} +{match_fail}/{params.trailing})"
+                        )
+                        # believe the last velx and vely
+                    else:
+                        # not guess mode, not large motion: just ignore.
+                        logger.info(f"Still frame ({nframe} {dx} {dy})")
+                        continue
 
             logger.info(f"Capture {nframe} {velx} {vely} #{np.amax(diff)}")
             absx += velx
