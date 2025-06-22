@@ -219,7 +219,7 @@ class Stitcher:
         tspos = open(self.tsposfile)
         for line in tspos.readlines():
             if len(line) > 0 and line[0] != "@":
-                cols = [int(x) for x in line.split()]
+                cols = [float(x) for x in line.split()]
                 if len(cols) > 0:
                     absx += cols[1]
                     absy += cols[2]
