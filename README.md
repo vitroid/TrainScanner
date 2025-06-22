@@ -1,6 +1,6 @@
 ![Banner](https://farm6.staticflickr.com/5763/30971813460_37996db7bb_o_d.jpg)
 
-Version 0.27.1
+Version 0.28.1
 
 # TrainScanner の使い方
 
@@ -159,7 +159,7 @@ options:
   --encoder ENCODER, -e ENCODER
                         mp4エンコーダ
   --thumbnail, -t       Add a thumbnail (Yamako style)
-  --imageseq, -i        Make a sequence of images
+  --imageseq, -i        PNG画像のセットを生成する
 
 ```
 
