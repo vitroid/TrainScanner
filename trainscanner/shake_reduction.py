@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass
 import logging
 import scipy.optimize
+from trainscanner import standardize, subpixel_match
 
 
 @dataclass
@@ -22,10 +23,6 @@ def paddings(x, y, w, h, shape):
     left = max(0, -x)
     right = max(0, x + w - shape[1])
     return top, bottom, left, right
-
-
-def standardize(x):
-    return ((x - np.mean(x)) / np.std(x)).astype(np.float32)
 
 
 def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
@@ -96,50 +93,12 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
             ] = standardize(
                 gray2[y + top : y + h - bottom, x + left : x + w - right].astype(float)
             )
-            scores = cv2.matchTemplate(target_area, focus.match_area, cv2.TM_SQDIFF)
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(scores)
 
-            def parabola(xy, x0, y0, sigma_x, sigma_y, B):
-                x, y = xy
-                return (
-                    (x - x0) ** 2 / (2 * sigma_x**2) + (y - y0) ** 2 / (2 * sigma_y**2)
-                ) + B
-
-            x, y = np.meshgrid(np.arange(5), np.arange(5))
-            x = x.flatten()
-            y = y.flatten()
-            local_scores = standardize(
-                scores[min_loc[1] - 2 : min_loc[1] + 3, min_loc[0] - 2 : min_loc[0] + 3]
-            ).flatten()
-            print(local_scores)
-            p0 = [1, 1, 1, 1, -2.0]
-            p, _ = scipy.optimize.curve_fit(
-                parabola,
-                [x, y],
-                local_scores,
-                p0,
-            )
-            print(p)
-
-            # subpixelでの中心を計算する。
-            fractional_shift = (p[0] - 2, p[1] - 2)
-
-            # 変位をもっと精密に推定したい。そのために、scoresを立体グラフにする。
-            import matplotlib.pyplot as plt
-
-            # plt.figure()
-            # plt.imshow(standardize(scores))
-            # plt.scatter(min_loc[0] + p[0] - 2, min_loc[1] + p[1] - 2, color="red")
-            # plt.colorbar()
-            # plt.show()
+            min_loc, fractional_shift = subpixel_match(target_area, focus.match_area)
 
             accel = (min_loc[0] - max_shift, min_loc[1] - max_shift)
             focus.shift = (focus.shift[0] + accel[0], focus.shift[1] + accel[1])
             focus.subpixel_shift = fractional_shift
-            if fi == 0:
-                print(f"Acceleration: {accel} Displace: {focus.shift}")
-                print(scores)
-            # print(best)
         if len(foci) == 1:
             # cv2.imshow(
             #     "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)
