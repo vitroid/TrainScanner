@@ -92,6 +92,7 @@ class MatcherUI(QDialog):
         self.btnStop.clicked.connect(lambda: self.worker.stop())
         self.btnStop.clicked.connect(self.terminateIt)
         self.terminated = False
+        self.success = False
 
         # ショートカットの設定
         close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)

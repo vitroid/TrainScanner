@@ -737,7 +737,6 @@ class EditorGUI(QWidget):
             self.frame = 0
         elif self.frame >= len(self.asyncimageloader.snapshots):
             self.frame = len(self.asyncimageloader.snapshots) - 1
-        print(len(self.asyncimageloader.snapshots), self.frame)
         image = self.asyncimageloader.snapshots[self.frame]
         self.transform = trainscanner.transformation(
             self.angle_degree, self.perspective, [self.croptop, self.cropbottom]
