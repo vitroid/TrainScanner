@@ -4,12 +4,15 @@ import cv2
 import numpy as np
 import sys
 from dataclasses import dataclass
+import logging
+import scipy.optimize
 
 
 @dataclass
 class Focus:
     rect: tuple[int, int, int, int]  # x, y, w, h
     shift: tuple[int, int]
+    subpixel_shift: tuple[float, float]
     match_area: np.ndarray
 
 
@@ -33,7 +36,7 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
     2箇所指定した場合は、1個目が固定位置、2個目は回転補正用とする。
     3箇所以上指定された場合はもっと調節できるが、必要が生じてから考える。
     """
-
+    logger = logging.getLogger()
     frame0 = next(video_iter)
     gray0 = cv2.cvtColor(frame0, cv2.COLOR_BGR2GRAY)
 
@@ -43,7 +46,9 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
     for f in foci:
         x, y, w, h = f
         crop = standardize(gray0[y : y + h, x : x + w].astype(float))
-        focus = Focus(rect=(x, y, w, h), shift=(0, 0), match_area=crop)
+        focus = Focus(
+            rect=(x, y, w, h), shift=(0, 0), match_area=crop, subpixel_shift=(0.0, 0.0)
+        )
         foci_.append(focus)
 
     foci = foci_
@@ -67,38 +72,88 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
     for frame2 in video_iter:
         gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY).astype(np.int32)
 
-        for focus in foci:
+        for fi, focus in enumerate(foci):
+            # 基準画像のfocusの位置。
             x, y, w, h = focus.rect
-            x += focus.shift[0]
-            y += focus.shift[1]
+
+            # 直前のフレームで、focusの位置を移動した。
+            x += focus.shift[0] - max_shift
+            y += focus.shift[1] - max_shift
+            w += max_shift * 2
+            h += max_shift * 2
+
+            # 画面外に出てしまう範囲を計算する。
             top, bottom, left, right = paddings(x, y, w, h, gray2.shape)
-            target_area = np.zeros(
-                [h + max_shift * 2 + 1, w + max_shift * 2 + 1], dtype=np.float32
-            )
+
+            # 照合したい画像のうち、マッチングに使う領域を切り取るための枠。
+            # 初期値0は平均値を意味する。
+            target_area = np.zeros([h, w], dtype=np.float32)
+            # 照合したい画像のうち、マッチングに使う領域を切り取る。
+            # 画面外の領域は0になる。
             target_area[
-                max_shift + top : h + max_shift - bottom,
-                max_shift + left : max_shift + w - right,
+                top : h - bottom,
+                left : w - right,
             ] = standardize(
                 gray2[y + top : y + h - bottom, x + left : x + w - right].astype(float)
             )
             scores = cv2.matchTemplate(target_area, focus.match_area, cv2.TM_SQDIFF)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(scores)
-            focus.shift = (
-                focus.shift[0] + min_loc[0] - max_shift,
-                focus.shift[1] + min_loc[1] - max_shift,
+
+            def parabola(xy, x0, y0, sigma_x, sigma_y, B):
+                x, y = xy
+                return (
+                    (x - x0) ** 2 / (2 * sigma_x**2) + (y - y0) ** 2 / (2 * sigma_y**2)
+                ) + B
+
+            x, y = np.meshgrid(np.arange(5), np.arange(5))
+            x = x.flatten()
+            y = y.flatten()
+            local_scores = standardize(
+                scores[min_loc[1] - 2 : min_loc[1] + 3, min_loc[0] - 2 : min_loc[0] + 3]
+            ).flatten()
+            print(local_scores)
+            p0 = [1, 1, 1, 1, -2.0]
+            p, _ = scipy.optimize.curve_fit(
+                parabola,
+                [x, y],
+                local_scores,
+                p0,
             )
+            print(p)
+
+            # subpixelでの中心を計算する。
+            fractional_shift = (p[0] - 2, p[1] - 2)
+
+            # 変位をもっと精密に推定したい。そのために、scoresを立体グラフにする。
+            import matplotlib.pyplot as plt
+
+            # plt.figure()
+            # plt.imshow(standardize(scores))
+            # plt.scatter(min_loc[0] + p[0] - 2, min_loc[1] + p[1] - 2, color="red")
+            # plt.colorbar()
+            # plt.show()
+
+            accel = (min_loc[0] - max_shift, min_loc[1] - max_shift)
+            focus.shift = (focus.shift[0] + accel[0], focus.shift[1] + accel[1])
+            focus.subpixel_shift = fractional_shift
+            if fi == 0:
+                print(f"Acceleration: {accel} Displace: {focus.shift}")
+                print(scores)
             # print(best)
         if len(foci) == 1:
             # cv2.imshow(
             #     "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)
             # )
-            if logfile is not None:
-                logfile.write(f"{focus.shift[0]} {focus.shift[1]}\n")
             m = foci[0]
-            frame2_shifted = np.roll(
+            if logfile is not None:
+                logfile.write(f"{m.shift[0]} {m.shift[1]}\n")
+            translation_matrix = np.eye(3)
+            translation_matrix[0, 2] = -m.shift[0] - m.subpixel_shift[0]
+            translation_matrix[1, 2] = -m.shift[1] - m.subpixel_shift[1]
+            frame2_shifted = cv2.warpAffine(
                 frame2,
-                (-m.shift[1], -m.shift[0]),
-                axis=(0, 1),
+                translation_matrix[:2],
+                frame2.shape[1::-1],
             )
             if show_snapshot is not None:
                 annotated = frame2_shifted.copy()
@@ -122,34 +177,47 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
         angle = np.arctan2(center1[1] - center0[1], center1[0] - center0[0])
 
         # 平行移動後のmatch_areaの中心
-        displaced0 = center0 + np.array(foci[0].shift)
-        displaced1 = center1 + np.array(foci[1].shift)
+        displaced0 = (
+            center0 + np.array(foci[0].shift) + np.array(foci[0].subpixel_shift)
+        )
+        displaced1 = (
+            center1 + np.array(foci[1].shift) + np.array(foci[1].subpixel_shift)
+        )
         angle2 = np.arctan2(
             displaced1[1] - displaced0[1], displaced1[0] - displaced0[0]
         )
 
         # 角度変化
         angle_diff = angle2 - angle
-        # frame2をまず-match_area[0].shiftだけ平行移動する。
-        # これにより、displace[0]がcenter0と重なる。
-        frame2_shifted = np.roll(
-            frame2,
-            (-foci[0].shift[1], -foci[0].shift[0]),
-            axis=(0, 1),
-        )
+        # まず、displace0が画像の左上にくるように平行移動する。
+        # 画面の左上に関して回転するため。
+        height, width = frame0.shape[:2]
+        translation_matrix = np.eye(3)
+        translation_matrix[0, 2] = -displaced0[0]
+        translation_matrix[1, 2] = -displaced0[1]
 
-        # center0を中心として回転する
         scale = 1.0
-        rotation_matrix = cv2.getRotationMatrix2D(
+        rotation_matrix23 = cv2.getRotationMatrix2D(
             center0, np.degrees(angle_diff), scale
         )
+        rotation_matrix = np.eye(3)
+        rotation_matrix[:2, :2] = rotation_matrix23[:2, :2]
+
+        # 画面の左上が、center0にくるように平行移動する。
+        translation2_matrix = np.eye(3)
+        translation2_matrix[0, 2] = center0[0]
+        translation2_matrix[1, 2] = center0[1]
+
+        # 縦ベクトルをうしろからかける形式。
+        affine_matrix = translation2_matrix @ rotation_matrix @ translation_matrix
+        # center0を中心として回転する
         if logfile is not None:
             logfile.write(f"{foci[0].shift[1], foci[0].shift[0]} {angle_diff}\n")
 
         frame2_rotated = cv2.warpAffine(
-            frame2_shifted,
-            rotation_matrix,
-            frame2.shape[1::-1],
+            frame2,
+            affine_matrix[:2],
+            (width, height),
         )
         if show_snapshot is not None:
             annotated = frame2_rotated.copy()
@@ -166,16 +234,29 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
         yield frame2_rotated
 
 
-def main(filename="/Users/matto/Dropbox/ArtsAndIllustrations/Stitch tmp2/Untitled.mp4"):
+def main(
+    filename="/Users/matto/Dropbox/ArtsAndIllustrations/Stitch tmp2/antishake test/Untitled.mp4",
+):
     from trainscanner.video import video_iter
+    import os
 
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    # makedirs
+    os.makedirs(f"{os.path.basename(filename)}.dir", exist_ok=True)
+    logfile = open(f"{os.path.basename(filename)}.dir/log.txt", "w")
     viter = video_iter(filename)
-    for frame in antishake(
-        viter,
-        # [(1520, 430, 150, 80), (100, 465, 100, 50)], # for Untitled.mp4
-        foci=[(400, 768, 80, 139), (1089, 746, 178, 134)],
+    for i, frame in enumerate(
+        antishake(
+            viter,
+            foci=[(1520, 430, 150, 80), (100, 465, 100, 50)],  # for Untitled.mp4
+            # foci=[
+            #     (1520, 430, 150, 80),
+            # ],  # for Untitled.mp4
+            # foci=[(400, 768, 80, 139), (1089, 746, 178, 134)],
+        )
     ):
-
+        cv2.imwrite(f"{os.path.basename(filename)}.dir/{i:06d}.png", frame)
         cv2.imshow("deshaked", frame)
         cv2.waitKey(1)
 

@@ -285,7 +285,7 @@ class ImageWindow(QMainWindow):
                         rects,
                         logfile=logfile,
                         show_snapshot=self.show_snapshot,
-                        max_shift=5,
+                        max_shift=10,
                     )
                 ):
                     # 処理中にウィンドウが閉じられた場合、処理を中断
