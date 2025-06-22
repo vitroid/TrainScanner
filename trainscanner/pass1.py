@@ -11,7 +11,7 @@ import itertools
 from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
 from trainscanner import trainscanner
-from trainscanner import video
+from trainscanner import video, standardize, subpixel_match
 
 
 def draw_focus_area(f, focus, delta=None):
@@ -52,9 +52,7 @@ def draw_slit_position(f, slitpos, dx):
     cv2.line(f, (x2, 0), (x2, h), (0, 255, 0), 1)
 
 
-def motion(
-    image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0, 0), antishake=2
-):
+def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0, 0)):
     """
     ref画像のfocusで指定された領域内の画像と同じ画像をimage内で探して、その変位を返す。
     maxaccelとdeltaが指定されている場合は、探索範囲を絞り高速にマッチングできる。
@@ -66,45 +64,43 @@ def motion(
     hmin = hi * focus[2] // 1000
     hmax = hi * focus[3] // 1000
     template = ref[hmin:hmax, wmin:wmax, :]
+    gray_template = standardize(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY))
     h, w = template.shape[0:2]
 
     # Apply template Matching
     if maxaccel == 0:
-        res = cv2.matchTemplate(image, template, cv2.TM_SQDIFF_NORMED)
-        # loc is given by x,y
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-        return min_loc[0] - wmin, min_loc[1] - hmin
+        min_loc, fractional_shift = subpixel_match(image, template, subpixel=False)
+        min_loc = (min_loc[0] - wmin, min_loc[1] - hmin)
+        # print(min_loc)
+        return min_loc
     else:
         # use delta here
+        # print(f"maxaccel: {maxaccel} delta: {delta}")
         roix0 = wmin + delta[0] - maxaccel
         roiy0 = hmin + delta[1] - maxaccel
         roix1 = wmax + delta[0] + maxaccel
         roiy1 = hmax + delta[1] + maxaccel
+        # subpixel transformation
         affine = np.matrix(((1.0, 0.0, -roix0), (0.0, 1.0, -roiy0)))
         logger.debug("maxaccel:{0} delta:{1}".format(maxaccel, delta))
-        crop = cv2.warpAffine(image, affine, (roix1 - roix0, roiy1 - roiy0))
-        # imageh,imagew = image.shape[0:2]
-        # if roix0 < 0 or roix1 >= imagew or roiy0 < 0 or roiy1 >= imageh:
-        #    print(roix0,roix1,roiy0,roiy1,imagew,imageh)
-        #    return None
-        # crop = image[roiy0:roiy1, roix0:roix1, :]
-        res = cv2.matchTemplate(crop, template, cv2.TM_SQDIFF_NORMED)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-        # loc is given by x,y
+        crop = cv2.warpAffine(
+            image, affine, (wmax - wmin + 2 * maxaccel, hmax - hmin + 2 * maxaccel)
+        )
+        gray_crop = standardize(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY))
 
-        # Test: isn't it just a background?
-        roix02 = wmin - antishake
-        roiy02 = hmin - antishake
-        roix12 = wmax + antishake
-        roiy12 = hmax + antishake
-        crop = image[roiy02:roiy12, roix02:roix12, :]
-        res = cv2.matchTemplate(crop, template, cv2.TM_SQDIFF_NORMED)
-        min_val2, max_val2, min_loc2, max_loc2 = cv2.minMaxLoc(res)
-        # loc is given by x,y
-        if min_val <= min_val2:
-            return (min_loc[0] + roix0 - wmin, min_loc[1] + roiy0 - hmin)
-        else:
-            return (min_loc2[0] + roix02 - wmin, min_loc2[1] + roiy02 - hmin)
+        # res = cv2.matchTemplate(gray_crop, gray_template, cv2.TM_SQDIFF_NORMED)
+        # min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        min_loc, fractional_shift = subpixel_match(
+            gray_crop, gray_template  # , subpixel=False
+        )
+
+        # print(min_loc[0] - maxaccel, min_loc[1] - maxaccel)
+
+        new_delta = (
+            min_loc[0] + roix0 - wmin + fractional_shift[0],
+            min_loc[1] + roiy0 - hmin + fractional_shift[1],
+        )
+        return new_delta
 
 
 def diffImage(frame1, frame2, dx, dy):  # , focus=None, slitpos=None):
@@ -113,8 +109,10 @@ def diffImage(frame1, frame2, dx, dy):  # , focus=None, slitpos=None):
     """
     affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
     h, w = frame1.shape[0:2]
+    std2 = standardize(frame2)
     frame1 = cv2.warpAffine(frame1, affine, (w, h))
-    diff = 255 - cv2.absdiff(frame1, frame2)
+    std1 = standardize(frame1)
+    diff = (255 * cv2.absdiff(std1, std2)).astype(np.uint8)
     # if focus is not None:
     #     draw_focus_area(diff, focus, delta=(dx, dy))
     # if slitpos is not None:
