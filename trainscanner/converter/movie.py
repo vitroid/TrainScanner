@@ -228,21 +228,21 @@ def get_parser():
         "-d",
         type=float,
         default=8,
-        help=tr("Duration of the movie (seconds)") + "-- 10,1000",
+        help=tr("Duration of the movie (seconds)") + "-- 10:1000",
     )
     parser.add_argument(
         "--height",
         "-H",
         type=int,
         default=1080,
-        help=tr("Height of the movie") + "-- 100,4096",
+        help=tr("Height of the movie") + "-- 100:4096",
     )
     parser.add_argument(
         "--width",
         "-W",
         type=int,
         default=1920,
-        help=tr("Width of the movie") + "-- 100,4096",
+        help=tr("Width of the movie") + "-- 100:4096",
     )
     parser.add_argument(
         "--head-right",
@@ -251,14 +251,14 @@ def get_parser():
         help=tr("The train heads to the right."),
     )
     parser.add_argument(
-        "--fps", "-r", type=int, default=30, help=tr("Frame rate") + "-- 1,120"
+        "--fps", "-r", type=int, default=30, help=tr("Frame rate") + "-- 1:120"
     )
     parser.add_argument(
         "--crf",
         "-c",
         type=int,
         default=21,
-        help=tr("CRF (Constant Rate Factor)") + " -- 16,30",
+        help=tr("CRF (Constant Rate Factor)") + " -- 16:30",
     )
     parser.add_argument(
         "--png", "-p", action="store_true", help=tr("Intermediate files are png")

@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QSplitter,
     QFileDialog,
     QProgressBar,
+    QComboBox,
 )
 from PyQt6.QtGui import QKeySequence, QShortcut, QPixmap, QImage
 from PyQt6.QtCore import QTranslator, QLocale, Qt, QTimer
@@ -31,13 +32,7 @@ from itertools import cycle
 
 # final image tranformation
 import trainscanner
-from trainscanner.converter import helix
-from trainscanner.converter import rect
-from trainscanner.converter import movie
 from trainscanner.converter import list_cli_options
-from trainscanner.converter.helix import get_parser as helix_parser
-from trainscanner.converter.rect import get_parser as rect_parser
-from trainscanner.converter.movie import get_parser as movie2_parser
 from trainscanner.widget.qfloatslider import QFloatSlider
 from trainscanner.widget.qlogslider import LogSliderHandle
 from trainscanner.widget.qvalueslider import QValueSlider
@@ -157,10 +152,29 @@ def converter_control_widget(
                 getter[option_keyword] = checkbox
                 continue
 
-        if option["type"] in (int, float):
+        if "spec" in option:
             help = option["help"]
-            min = option["min"]
-            max = option["max"]
+            spec = option["spec"]
+            if "|" in spec:
+                # "|"で仕切られた値の場合は、selectorを作成する。
+                items = [x.strip() for x in spec.split("|")]
+                hbox = QHBoxLayout()
+                label = QLabel(tr(help))
+                hbox.addWidget(label)
+                selector = QComboBox()
+                for value in items:
+                    selector.addItem(str(value))
+                selector.currentIndexChanged.connect(
+                    lambda v, k=option_keyword: on_value_changed(k, items[v])
+                )
+                hbox.addWidget(selector)
+                tab_layout.addLayout(hbox)
+                getter[option_keyword] = selector
+                continue
+            assert ":" in spec, f"spec: {spec}"
+            assert option["type"] in (int, float)
+
+            min, max = [float(x) for x in spec.split(":")]
             hbox = QHBoxLayout()
             label = QLabel(tr(help))
             hbox.addWidget(label)
@@ -406,16 +420,7 @@ class SettingsGUI(QWidget):
 
         converter = self.tab_widget.tabText(self.tab_widget.currentIndex())
 
-        # gettersを使って、値を取得
-        args = dict()
-        for option_keyword, option in self.getters[converter].items():
-            if isinstance(option, QValueSlider):
-                args[option_keyword] = option.get_display_value()
-            elif isinstance(option, QLineEdit):
-                args[option_keyword] = option.text()
-            elif isinstance(option, QCheckBox):
-                args[option_keyword] = option.isChecked()
-        logger.debug(f"args: {args}")
+        args = self.get_current_args(converter)
 
         # スタートボタンを無効化
         self.start_button.setEnabled(False)
@@ -537,6 +542,8 @@ class SettingsGUI(QWidget):
                 args[option_keyword] = option.text()
             elif isinstance(option, QCheckBox):
                 args[option_keyword] = option.isChecked()
+            elif isinstance(option, QComboBox):
+                args[option_keyword] = option.currentText()
         return args
 
     def _create_slider_callback(self, key):

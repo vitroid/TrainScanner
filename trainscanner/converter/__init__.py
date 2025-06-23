@@ -31,14 +31,13 @@ def list_cli_options(parser: argparse.ArgumentParser):
             "default": action.default,
             "type": action.type if action.type else None,
         }
-        if opt["type"] in (int, float):
-            try:
-                help, minmax = opt["help"].split("--")
-                min, max = [float(x) for x in minmax.split(",")]
-                opt["help"] = help
-                opt["min"] = min
-                opt["max"] = max
-            except ValueError:
-                pass
+        try:
+            # ヘルプテキストからオプションの値の範囲を取得
+            # specの解釈はここでは行わない。
+            help, spec = opt["help"].split("--")
+            opt["help"] = help
+            opt["spec"] = spec
+        except ValueError:
+            pass
         options.append(opt)
     return options, parser.description
