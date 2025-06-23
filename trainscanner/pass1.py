@@ -90,8 +90,11 @@ def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0, 0)):
 
         # res = cv2.matchTemplate(gray_crop, gray_template, cv2.TM_SQDIFF_NORMED)
         # min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        fit_width = 2
+        if maxaccel == 1:
+            fit_width = 1
         min_loc, fractional_shift = subpixel_match(
-            gray_crop, gray_template  # , subpixel=False
+            gray_crop, gray_template, fit_width=fit_width  # , subpixel=False
         )
 
         # print(min_loc[0] - maxaccel, min_loc[1] - maxaccel)
