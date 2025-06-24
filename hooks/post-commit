@@ -50,8 +50,5 @@ else
     echo "タグ $TAG_NAME が作成されました"
 fi
 
-# CHANGELOG.mdの更新をコミット
-git add CHANGELOG.md
-git commit --amend --no-edit
-
-echo "post-commitフック完了" 
+echo "post-commitフック完了"
+echo "注意: CHANGELOG.mdが更新されました。必要に応じて手動でコミットしてください。" 

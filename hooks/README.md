@@ -50,17 +50,23 @@ git commit -m "バグ修正"
 # 3. コミットが完了
 # 4. CHANGELOG.md に新しいエントリが追加
 # 5. バージョンタグが作成される
+
+# CHANGELOG.md の変更を手動でコミット（必要に応じて）
+git add CHANGELOG.md
+git commit -m "CHANGELOG.md を更新"
 ```
 
 ## 処理フロー
 
 1. **pre-commit**: バージョン番号増加 → README.md 更新 → ファイルをステージング
 2. **コミット実行**: 通常のコミット処理
-3. **post-commit**: CHANGELOG.md 更新 → バージョンタグ作成 → CHANGELOG.md の変更をコミットに追加
+3. **post-commit**: CHANGELOG.md 更新 → バージョンタグ作成
+4. **手動コミット**: CHANGELOG.md の変更をコミット（推奨）
 
 ## 注意事項
 
 - この hooks は、Cursor でコミットする際にも自動的に実行されます
 - バージョン番号は毎回 patch レベルで増加します
 - コミットログはそのまま CHANGELOG.md に記録されるので、後で手動で分類してください
-- CHANGELOG.md の更新は post-commit で実行されるため、コミット完了後に変更履歴が記録されます
+- CHANGELOG.md の更新は post-commit で実行されますが、無限ループを避けるため手動でコミットする必要があります
+- CHANGELOG.md の変更はステージングされていないので、必要に応じて `git add CHANGELOG.md` してからコミットしてください
