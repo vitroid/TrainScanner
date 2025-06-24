@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# pre-commitフック: コミット時にバージョン番号を増やし、CHANGELOG.mdとREADME.mdを更新
+
+echo "pre-commitフック実行中..."
+
+# 現在のバージョンを取得
+CURRENT_VERSION=$(poetry version -s)
+echo "現在のバージョン: $CURRENT_VERSION"
+
+# バージョン番号を増加（patch）
+poetry version patch
+NEW_VERSION=$(poetry version -s)
+echo "新しいバージョン: $NEW_VERSION"
+
+# 前バージョンからの変更点をCHANGELOG.mdに追加
+echo "CHANGELOG.mdを更新中..."
+OLD_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+
+# CHANGELOG.mdの先頭に新しいエントリを追加
+TEMP_FILE=$(mktemp)
+cat > "$TEMP_FILE" << EOF
+## [$NEW_VERSION] - $(date +%Y-%m-%d)
+
+### 変更
+
+EOF
+
+# コミットログを追加
+git log --oneline "$OLD_VERSION"..HEAD | sed 's/^/- /' >> "$TEMP_FILE"
+
+cat >> "$TEMP_FILE" << EOF
+
+### 追加
+
+### 修正
+
+EOF
+
+# 既存のCHANGELOG.mdの内容を追加
+cat CHANGELOG.md >> "$TEMP_FILE"
+
+# 一時ファイルをCHANGELOG.mdに移動
+mv "$TEMP_FILE" CHANGELOG.md
+
+# README.mdを更新（replacer.pyを使用）
+echo "README.mdを更新中..."
+if [ -f "temp_README.md" ]; then
+    python replacer.py < temp_README.md > README.md
+fi
+
+# 更新されたファイルをステージングエリアに追加
+git add pyproject.toml CHANGELOG.md README.md
+
+echo "pre-commitフック完了: バージョン $NEW_VERSION に更新されました" 
