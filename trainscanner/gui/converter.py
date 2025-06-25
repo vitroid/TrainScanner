@@ -8,12 +8,9 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QApplication,
     QPushButton,
-    QCheckBox,
     QTabWidget,
     QLabel,
     QButtonGroup,
-    QLineEdit,
-    QSlider,
     QSplitter,
     QFileDialog,
     QProgressBar,
@@ -32,10 +29,6 @@ from itertools import cycle
 
 # final image tranformation
 import trainscanner
-from trainscanner.converter import list_cli_options
-from trainscanner.widget.qfloatslider import QFloatSlider
-from trainscanner.widget.qlogslider import LogSliderHandle
-from trainscanner.widget.qvalueslider import QValueSlider
 from tiledimage.cachedimage import CachedImage
 from trainscanner.i18n import tr
 
