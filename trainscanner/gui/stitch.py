@@ -25,7 +25,7 @@ from PyQt5.QtWidgets import (
 )
 
 # from QTiledImage import QTiledImage
-from tiledimage import cachedimage as ci
+from trainscanner.rasterio_canvas import RasterioCanvas
 
 from trainscanner import stitch
 from trainscanner.widget.scaledcanvas import ScaledCanvas
@@ -188,10 +188,10 @@ class StitcherUI(QDialog):
 
         self.setWindowTitle(tr("Stitcher Preview"))
         stitcher = stitch.Stitcher(argv=argv)
-        tilesize = (128, 512)  # can be smaller for smaller working memory
+        tilesize = (256, 256)  # can be smaller for smaller working memory
         cachesize = 10
         stitcher.set_canvas(
-            ci.CachedImage(
+            RasterioCanvas(
                 "new", dir=stitcher.cachedir, tilesize=tilesize, cachesize=cachesize
             )
         )

@@ -11,7 +11,7 @@ from logging import getLogger, basicConfig, WARN, DEBUG, INFO
 
 # from canvas import Canvas    #On-memory canvas
 # from canvas2 import Canvas   #Cached canvas
-from tiledimage import cachedimage as ci
+from trainscanner.rasterio_canvas import RasterioCanvas
 from trainscanner import trainscanner
 from trainscanner import video
 from trainscanner.i18n import init_translations, tr
@@ -162,6 +162,7 @@ class Stitcher:
                     argv += f.read().splitlines()
                 break
         self.params, unknown = parser.parse_known_args(argv[1:])
+        logger.info(f"params {self.params}")
         # Decide the paths
         moviepath = self.params.filename
         moviedir = os.path.dirname(moviepath)
@@ -175,13 +176,18 @@ class Stitcher:
             tsconfbase = os.path.basename(self.params.logbase)
             self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
         moviefile = tsconfdir + "/" + moviebase
-        self.outfilename = tsconfdir + "/" + tsconfbase + ".png"
-        self.cachedir = tsconfdir + "/" + tsconfbase + ".pngs"  # if required
+        self.outfilename = tsconfdir + "/" + tsconfbase + ".tiff"
+        self.cachedir = tsconfdir + "/" + tsconfbase + ".cache"  # if required
+        # もしcacheフォルダがなければ作成
+        if not os.path.exists(self.cachedir):
+            os.makedirs(self.cachedir)
+
         if not os.path.exists(moviefile):
             moviefile = moviepath
-        logger.info("TSPos  {0}".format(self.tsposfile))
-        logger.info("Movie  {0}".format(moviefile))
-        logger.info("Output {0}".format(self.outfilename))
+        logger.info(f"TSPos  {self.tsposfile}")
+        logger.info(f"Movie  {moviefile}")
+        logger.info(f"Output {self.outfilename}")
+        logger.info(f"Canvas {self.params.canvas}")
 
         self.vl = video.video_loader_factory(moviefile)
         self.firstFrame = True
@@ -207,6 +213,9 @@ class Stitcher:
     # Canvas should be set after the arguments are parsed.
     def set_canvas(self, canvas):
         self.canvas = canvas
+        # RasterioCanvasの場合、キャンバスサイズを設定
+        if hasattr(canvas, 'initialize_canvas'):
+            canvas.initialize_canvas(self.dimen[0], self.dimen[1])
 
     def before(self):
         """
@@ -290,9 +299,13 @@ class Stitcher:
         This is an optional process.
         """
         file_name = self.outfilename
-        # It costs high when using the CachedImage.
-        img = self.canvas.get_image()
-        cv2.imwrite(file_name, img)
+        # RasterioCanvasの場合はGeoTIFFとして保存
+        if hasattr(self.canvas, 'save_geotiff'):
+            self.canvas.save_geotiff(file_name)
+        else:
+            # 従来の方法（PNG形式）
+            img = self.canvas.get_image()
+            cv2.imwrite(file_name, img)
 
 
 if __name__ == "__main__":
@@ -309,7 +322,7 @@ if __name__ == "__main__":
 
     tilesize = (512, 512)  # canbe smaller for smaller machine
     cachesize = 10
-    canvas = ci.CachedImage(
+    canvas = RasterioCanvas(
         "new", dir=st.cachedir, tilesize=tilesize, cachesize=cachesize
     )
     st.set_canvas(canvas)

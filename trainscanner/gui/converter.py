@@ -37,7 +37,7 @@ from trainscanner.converter import list_cli_options
 from trainscanner.widget.qfloatslider import QFloatSlider
 from trainscanner.widget.qlogslider import LogSliderHandle
 from trainscanner.widget.qvalueslider import QValueSlider
-from tiledimage.cachedimage import CachedImage
+from trainscanner.rasterio_canvas import RasterioCanvas
 from trainscanner.i18n import tr
 
 # options handler
@@ -52,7 +52,7 @@ from trainscanner.widget import cv2toQImage
 def image_loader(filename, width=None):
     if filename[-6:] == ".pngs/":
         filename = filename[:-1]
-        cachedimage = CachedImage("inherit", dir=filename, disposal=False)
+        cachedimage = RasterioCanvas("inherit", dir=filename, disposal=False)
         current_image = cachedimage.get_region(None)
     else:
         current_image = cv2.imread(filename)
