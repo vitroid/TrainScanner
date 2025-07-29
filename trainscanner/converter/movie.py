@@ -6,10 +6,10 @@ import os
 import tempfile
 import shutil
 import logging
-from tqdm import tqdm
 import sys
 from trainscanner.i18n import tr, init_translations
 import time
+from trainscanner.video import ffmpeg
 
 
 def movie_iter(
@@ -86,11 +86,11 @@ def movie_iter(
 
     # 各フレームを生成
     # for frame in tqdm(range(total_frames)):
-    for frame in tqdm(range(len(frame_pointers))):
+    for current_scroll in frame_pointers:
         # for frame in range(len(frame_pointers)):
         single_frame = np.zeros((height, width, 3), dtype=np.uint8)
         # 現在のスクロール位置を計算
-        current_scroll = frame_pointers[frame]
+        # current_scroll = frame_pointers[frame]
 
         # 必要な部分を切り出し
         cropped = scaled[:, current_scroll : current_scroll + width]
@@ -117,18 +117,21 @@ def movie_iter(
 def make_movie(
     image: np.ndarray,
     basename: str,
+    png: bool = False,
+    imageseq: bool = False,
+    encoder: str = "libx264",
+    crf: int = None,
+    progress_callback=None,  # 進捗通知用のコールバック関数
+    # 以下はmovie_iterの引数
+    # 将来は、movie_iter自体を引数にし、これらを排除したい。
     head_right: bool = False,
     duration: float = 8,
     height: int = 1080,
     width: int = 1920,
     fps: int = 30,
     alternating: bool = False,
-    png: bool = False,
-    crf: int = None,
     accel: bool = False,
-    encoder: str = "libx264",
     thumbnail: bool = False,
-    imageseq: bool = False,
 ):
     if png:
         ext = "png"
@@ -143,6 +146,9 @@ def make_movie(
     if imageseq:
         # make dir named output
         os.makedirs(output, exist_ok=True)
+        total_frames = int(duration * fps)
+        if alternating:
+            total_frames *= 2
         for i, frame in enumerate(
             movie_iter(
                 image,
@@ -158,8 +164,17 @@ def make_movie(
         ):
             frame_path = os.path.join(output, f"frame_{i:06d}.{ext}")
             cv2.imwrite(frame_path, frame)
+
+            # 画像シーケンス生成の進捗を通知
+            if progress_callback:
+                progress = int((i + 1) / total_frames * 100)
+                progress_callback(progress)
     else:
         with tempfile.TemporaryDirectory() as temp_dir:
+            total_frames = int(duration * fps)
+            if alternating:
+                total_frames *= 2
+
             for i, frame in enumerate(
                 movie_iter(
                     image,
@@ -173,22 +188,32 @@ def make_movie(
                     thumbnail,
                 )
             ):
-                frame_path = os.path.join(temp_dir, f"frame_{i:06d}.{ext}")
+                frame_path = os.path.join(temp_dir, f"{i:06d}.{ext}")
                 cv2.imwrite(frame_path, frame)
 
-            cmd = [
-                "ffmpeg",
-                "-y",
-                f"-framerate {fps}",
-                f'-i "{temp_dir}/frame_%06d.{ext}"',
-                f"-c:v {encoder}",
-                "-pix_fmt yuv420p",
-                f"-crf {crf}" if crf else "",
-                f'"{output}"',
-            ]
-            cmd = " ".join(cmd)
-            print(cmd)
-            subprocess.run(cmd, shell=True)
+                # フレーム生成の進捗を通知（50%まで）
+                if progress_callback:
+                    progress = int((i + 1) / total_frames * 50)
+                    progress_callback(progress)
+
+            input_filename = os.path.join(temp_dir, f"%06d.{ext}")
+
+            # ffmpegの進捗コールバックを作成（50%-100%の範囲）
+            def ffmpeg_progress_callback(ffmpeg_progress):
+                if progress_callback:
+                    # ffmpegの進捗を50%-100%の範囲にマッピング
+                    overall_progress = 50 + int(ffmpeg_progress * 0.5)
+                    progress_callback(overall_progress)
+
+            ffmpeg.run(
+                input_filename=input_filename,
+                output_filename=output,
+                fps=fps,
+                encoder=encoder,
+                crf=crf,
+                total_frames=total_frames,
+                progress_callback=ffmpeg_progress_callback,
+            )
 
 
 def get_parser():
@@ -203,21 +228,21 @@ def get_parser():
         "-d",
         type=float,
         default=8,
-        help=tr("Duration of the movie (seconds)") + "-- 10,1000",
+        help=tr("Duration of the movie (seconds)") + "-- 10:1000",
     )
     parser.add_argument(
         "--height",
         "-H",
         type=int,
         default=1080,
-        help=tr("Height of the movie") + "-- 100,4096",
+        help=tr("Height of the movie") + "-- 100:4096",
     )
     parser.add_argument(
         "--width",
         "-W",
         type=int,
         default=1920,
-        help=tr("Width of the movie") + "-- 100,4096",
+        help=tr("Width of the movie") + "-- 100:4096",
     )
     parser.add_argument(
         "--head-right",
@@ -226,14 +251,14 @@ def get_parser():
         help=tr("The train heads to the right."),
     )
     parser.add_argument(
-        "--fps", "-r", type=int, default=30, help=tr("Frame rate") + "-- 1,120"
+        "--fps", "-r", type=int, default=30, help=tr("Frame rate") + "-- 1:120"
     )
     parser.add_argument(
         "--crf",
         "-c",
         type=int,
         default=21,
-        help=tr("CRF (Constant Rate Factor)") + " -- 16,30",
+        help=tr("CRF (Constant Rate Factor)") + " -- 16:30",
     )
     parser.add_argument(
         "--png", "-p", action="store_true", help=tr("Intermediate files are png")

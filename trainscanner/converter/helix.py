@@ -121,7 +121,7 @@ def get_parser():
         "-a",
         type=float,
         default=2.0**0.5,
-        help=tr("Aspect ratio") + "-- 0.1,10",
+        help=tr("Aspect ratio") + "-- 0.1:10",
     )
     parser.add_argument(
         "--head-right",
@@ -134,7 +134,7 @@ def get_parser():
         "-W",
         type=int,
         default=0,
-        help=tr("Width (pixels, 0 for original image size)") + "-- 0,10000",
+        help=tr("Width (pixels, 0 for original image size)") + "-- 0:10000",
     )
     return parser
 

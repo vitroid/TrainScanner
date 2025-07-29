@@ -7,61 +7,28 @@ from PyQt5.QtWidgets import (
     QWidget,
     QPushButton,
     QDialog,
-    QShortcut,
+    QFileDialog,
+    QHBoxLayout,
+    QRadioButton,
+    QButtonGroup,
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage, QPixmap, QKeySequence
-from trainscanner.video import VideoLoader
+from PyQt5.QtGui import QImage, QPixmap, QShortcut, QKeySequence
+from trainscanner.video import video_loader_factory, video_iter
 from trainscanner.shake_reduction import antishake
+from trainscanner.i18n import tr
 import sys
 import os
+import subprocess
+import time
 
 
-def video_iter(filename: str):
-    video_loader = VideoLoader(filename)
-    while True:
-        frame_index, frame = video_loader.next()
-        if frame_index == 0:
-            break
-        yield frame
-
-
-class DropArea(QLabel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setText("ここに動画ファイルをDrag & Dropして下さい")
-        self.setStyleSheet(
-            """
-            QLabel {
-                border: 2px dashed #aaa;
-                border-radius: 5px;
-                padding: 20px;
-                background-color: #f0f0f0;
-                color: #000000;
-                font-size: 14px;
-            }
-            @media (prefers-color-scheme: dark) {
-                QLabel {
-                    border-color: #666;
-                    background-color: #2d2d2d;
-                    color: #ffffff;
-                }
-            }
-        """
-        )
-        self.setAcceptDrops(True)
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event):
-        files = [u.toLocalFile() for u in event.mimeData().urls()]
-        if files:
-            self.parent().process_video(files[0])
+def check_ffmpeg():
+    try:
+        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+        return True
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
 
 
 class HelpDialog(QDialog):
@@ -93,10 +60,10 @@ class HelpDialog(QDialog):
         <ol style='font-size:15px;'>
             <li>マウスの左ボタンをドラッグして、背景(列車にかぶらない場所)に長方形を描きます</li>
             <li>車体と距離が近い場所(線路など)で、平滑でない場所が望ましいです</li>
-            <li>長方形1つを指定した場合は、その部分が固定されるように画像を平行移動します</li>
-            <li>長方形2つを指定した場合は、長方形0が固定され、長方形1で回転も補正します</li>
             <li>Deleteキーで長方形を消去できます</li>
             <li>「処理開始」ボタンをクリックして補正を開始します。</li>
+            <li>長方形1つが指定された場合は、その部分が固定されるように画像を平行移動します</li>
+            <li>長方形2つが指定された場合は、長方形0が固定され、長方形1で回転も補正します</li>
         </ol>
         """
         help_label = QLabel(help_text)
@@ -140,30 +107,42 @@ class ImageWindow(QMainWindow):
         self.original_image = None
         self.video_path = None
         self.help_shown = False  # ヘルプ表示済みフラグ
+        self.has_ffmpeg = check_ffmpeg()  # ffmpegの利用可能性を確認
+        self.processing = False  # 処理中フラグを追加
 
         # ウィンドウの設定
-        self.setWindowTitle("画像選択")
+        self.setWindowTitle(tr("Shake Reduction"))
         self.setGeometry(100, 100, 400, 300)
-        self.setAcceptDrops(True)  # ここでウィンドウ自体がDropを受け付ける
+        self.setAcceptDrops(True)  # ウィンドウ全体でドロップを受け付ける
 
-        # ドロップエリアの設定
-        self.drop_area = DropArea(self)
-        self.setCentralWidget(self.drop_area)
+        # メインウィジェットとレイアウトの設定
+        main_widget = QWidget()
+        self.setCentralWidget(main_widget)
+        layout = QVBoxLayout(main_widget)
+
+        # ファイル選択ボタンとラベルのレイアウト
+        file_layout = QVBoxLayout()
+        self.btn = QPushButton(tr("Open a movie"))
+        self.btn.clicked.connect(self.getfile)
+        file_layout.addWidget(self.btn)
+
+        self.le = QLabel(tr("(File name appears here)"))
+        file_layout.addWidget(self.le)
+        layout.addLayout(file_layout)
 
         # ショートカットの設定
         close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
         close_shortcut.activated.connect(self.close)
 
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event):
-        files = [u.toLocalFile() for u in event.mimeData().urls()]
-        if files:
-            self.process_video(files[0])
+    def getfile(self):
+        filename, types = QFileDialog.getOpenFileName(
+            self,
+            tr("Open a movie file"),
+            "",
+            "Movie files (*.mov *.mp4 *.m4v *.mts)",
+        )
+        if filename:
+            self.process_video(filename)
 
     def process_video(self, video_path):
         # 状態リセット
@@ -174,22 +153,48 @@ class ImageWindow(QMainWindow):
         self.original_image = None
         self.video_path = None
 
-        self.video_path = video_path
-        video_frames = video_iter(video_path)
-        frame = next(video_frames)
-
-        # 中央ウィジェットとレイアウトの設定
+        # 新しい中央ウィジェットを作成
         central_widget = QWidget()
-        self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
+
+        # ファイル選択ボタンとラベルのレイアウト
+        file_layout = QVBoxLayout()
+        self.btn = QPushButton(tr("Open a movie"))
+        self.btn.clicked.connect(self.getfile)
+        file_layout.addWidget(self.btn)
+
+        self.le = QLabel(tr("(File name appears here)"))
+        file_layout.addWidget(self.le)
+        layout.addLayout(file_layout)
 
         # 画像表示用のラベル
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.image_label)
 
+        # 出力形式選択のラジオボタン
+        output_layout = QVBoxLayout()
+        output_label = QLabel(tr("Output format:"))
+        output_layout.addWidget(output_label)
+
+        self.output_group = QButtonGroup(self)
+
+        self.radio_images = QRadioButton(tr("Image sequence (PNG)"))
+        self.radio_images.setChecked(True)
+        self.output_group.addButton(self.radio_images)
+        output_layout.addWidget(self.radio_images)
+
+        self.radio_video = QRadioButton(tr("Lossless video (FFmpeg)"))
+        self.radio_video.setEnabled(self.has_ffmpeg)
+        if not self.has_ffmpeg:
+            self.radio_video.setToolTip(tr("FFmpeg is not installed"))
+        self.output_group.addButton(self.radio_video)
+        output_layout.addWidget(self.radio_video)
+
+        layout.addLayout(output_layout)
+
         # スタートボタンの追加
-        self.start_button = QPushButton("処理開始")
+        self.start_button = QPushButton(tr("Start processing"))
         self.start_button.setStyleSheet(
             """
             QPushButton {
@@ -222,14 +227,28 @@ class ImageWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_processing)
         layout.addWidget(self.start_button)
 
+        # 既存のウィジェットをクリーンアップ
+        old_central_widget = self.centralWidget()
+        if old_central_widget:
+            old_central_widget.deleteLater()
+
+        # 新しい中央ウィジェットを設定
+        self.setCentralWidget(central_widget)
+
+        # ビデオの処理
+        self.video_path = video_path
+        video_frames = video_iter(video_path)
+        frame = next(video_frames)
+
         self.original_image = frame.copy()
         self.current_image = frame.copy()
         self.display_image()
-        # ヘルプは最初の1回だけ表示
+
+        # ヘルプは最初の1回だけ表示（ファイル読み込み後に表示）
         if not self.help_shown:
+            self.help_shown = True
             help_overlay = HelpDialog(self)
             help_overlay.exec()
-            self.help_shown = True
 
     def show_snapshot(self, frame):
         self.current_image = frame.copy()
@@ -238,39 +257,83 @@ class ImageWindow(QMainWindow):
 
     def start_processing(self):
         if self.video_path and self.rectangles:
+            self.processing = True  # 処理開始フラグを設定
+
             # ビデオをまきもどす
             video_frames = video_iter(self.video_path)
             rects = self.get_rectangles()
             rects = qt_to_cv(rects)
-            os.makedirs(f"{self.video_path}.dir", exist_ok=True)
 
-            with open(f"{self.video_path}.dir/log.txt", "w") as logfile:
+            video_writer = None
+            if self.radio_video.isChecked():
+                video_path = f"{self.video_path}.stabilized.mkv"
+                height, width = self.original_image.shape[:2]
+                fourcc = cv2.VideoWriter_fourcc(*"FFV1")
+                video_writer = cv2.VideoWriter(
+                    video_path, fourcc, 30.0, (width, height)
+                )
+            else:
+                output_dir = f"{self.video_path}.dir"
+                os.makedirs(output_dir, exist_ok=True)
+
+            with open(f"{self.video_path}.log.txt", "w") as logfile:
+                # VideoWriterの初期化（動画出力が選択されている場合）
+
                 for i, frame in enumerate(
                     antishake(
                         video_frames,
                         rects,
                         logfile=logfile,
                         show_snapshot=self.show_snapshot,
+                        max_shift=10,
                     )
                 ):
-                    # 画像を保存
-                    outfilename = f"{self.video_path}.dir/{i:06d}.png"
-                    cv2.imwrite(outfilename, frame)
+                    # 処理中にウィンドウが閉じられた場合、処理を中断
+                    if not self.processing:
+                        break
 
-                    # # 画像を表示（10フレームごと）
-                    # if i % 10 == 0:
-                    #     self.current_image = frame.copy()
-                    #     self.display_image()
-                    #     QApplication.processEvents()  # GUIの更新を強制
+                    if self.radio_images.isChecked():
+                        # 画像シーケンスとして保存
+                        outfilename = f"{output_dir}/{i:06d}.png"
+                        cv2.imwrite(outfilename, frame)
+                    elif video_writer is not None:
+                        # 動画として即座に書き出し
+                        video_writer.write(frame)
 
-            # print("処理完了")
+                # VideoWriterをクローズ
+                if video_writer is not None:
+                    video_writer.release()
+
             # 処理完了後、ドロップエリアに戻る
+            self.processing = False  # 処理完了フラグをリセット
             self.current_image = None
             self.original_image = None
             self.rectangles = []
             self.video_path = None
-            self.drop_area = DropArea(self)
-            self.setCentralWidget(self.drop_area)
+
+            # 既存のウィジェットをクリーンアップ
+            if hasattr(self, "image_label"):
+                self.image_label.deleteLater()
+            if hasattr(self, "start_button"):
+                self.start_button.deleteLater()
+            if hasattr(self, "output_group"):
+                self.output_group.deleteLater()
+
+            # 新しいドロップエリアを作成
+            main_widget = QWidget()
+            self.setCentralWidget(main_widget)
+            layout = QVBoxLayout(main_widget)
+
+            # ファイル選択ボタンとラベルのレイアウト
+            file_layout = QVBoxLayout()
+            self.btn = QPushButton(tr("Open a movie"))
+            self.btn.clicked.connect(self.getfile)
+            file_layout.addWidget(self.btn)
+
+            self.le = QLabel(tr("(File name appears here)"))
+            file_layout.addWidget(self.le)
+            layout.addLayout(file_layout)
+
             # ウィンドウサイズを初期サイズに戻す
             self.resize(400, 300)
 
@@ -442,7 +505,23 @@ class ImageWindow(QMainWindow):
             self.display_image()
 
     def closeEvent(self, event):
+        if self.processing:
+            # 処理中の場合は強制終了
+            self.processing = False
+            # 少し待ってからウィンドウを閉じる（処理ループが終了するのを待つ）
+            time.sleep(0.1)
         event.accept()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        if files:
+            self.process_video(files[0])
 
 
 def qt_to_cv(rects):
@@ -457,6 +536,19 @@ def qt_to_cv(rects):
 
 
 def main():
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
+    logger = logging.getLogger()
+
+    # 独自の翻訳システムを初期化
+    from trainscanner.i18n import init_translations
+
+    logger.debug("Initializing custom translation system")
+    init_translations()
+
     app = QApplication(sys.argv)
     window = ImageWindow()
     window.show()

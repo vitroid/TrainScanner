@@ -19,6 +19,12 @@ trainscanner
 pip install git+https://github.com/vitroid/TrainScanner.git
 ```
 
+Intel Macなど、PyQt6が動かない場合はこちらをどうぞ。
+
+```
+pip install git+https://github.com/vitroid/TrainScanner.git@PyQt5compat2
+```
+
 ## ドキュメント
 
 [Wiki](https://github.com/vitroid/TrainScanner/wiki)
@@ -41,7 +47,13 @@ TrainScanner で作成した画像は巨大でしかも長大なので、その�
 ts_converter
 ```
 
-これは、次節のコマンドに GUI を付与したものです。
+### 拡張プラグイン
+
+pynojectorをインストールすると、ts_converterに機能が追加されます。
+
+```
+pip install https://github.com/vitroid/pynojector.git
+```
 
 ## コマンドラインからの利用
 
@@ -67,18 +79,6 @@ rectify longimage.png
 
 ```
 {{ usage_rectify }}
-```
-
-### `filmify`: 長い写真をフィルム風にするツール
-
-長い写真の上下にフィルム風の穴を追加するだけのツールです。
-
-```
-filmify longimage.png
-```
-
-```
-{{ usage_filmify }}
 ```
 
 ### `movify`: スクロール動画を生成するツール

@@ -30,11 +30,8 @@ def get_usage(command: str, short_command: str):
 project = toml.load("pyproject.toml")
 
 project |= {
-    "usage_hansify": get_usage("hans_style", "hansify"),
     "usage_helicify": get_usage("helix", "helicify"),
-    "usage_filmify": get_usage("film", "filmify"),
     "usage_rectify": get_usage("rect", "rectify"),
-    "usage_scrollify": get_usage("scroll", "scrollify"),
     "usage_movify": get_usage("movie", "movify"),
 }
 

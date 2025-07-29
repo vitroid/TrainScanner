@@ -25,8 +25,8 @@ from trainscanner import trainscanner, video
 from trainscanner.widget.imageselector2 import ImageSelector2
 import trainscanner.widget.qrangeslider as rs
 from trainscanner.i18n import tr, init_translations
+from trainscanner.widget import cv2toQImage
 
-          
 perspectiveCSS = """
 QRangeSlider > QSplitter::handle {
     background: #55f;
@@ -76,7 +76,7 @@ class AsyncImageLoader(QObject):
         logger.debug("Open video: {0}".format(filename))
 
         try:
-            self.vl = video.VideoLoader(filename)
+            self.vl = video.video_loader_factory(filename)
             nframe, frame = self.vl.next()
             if self.size:
                 frame = trainscanner.fit_to_square(frame, self.size)
@@ -133,6 +133,8 @@ class AsyncImageLoader(QObject):
                     if nframe == 0:
                         logger.debug("End of video reached during skip")
                         break
+                # このやりかただと、一番最後のフレームを落してしまう。
+
             except Exception as e:
                 logger.error(f"Error during video loading: {str(e)}")
                 self.errorOccurred.emit(
@@ -450,7 +452,7 @@ class EditorGUI(QWidget):
         thumbh = 100
         thumbw = w * thumbh // h
         thumb = cv2.resize(cropped, (thumbw, thumbh), interpolation=cv2.INTER_CUBIC)
-        return self.cv2toQImage(thumb)
+        return cv2toQImage(thumb)
 
     def updateTimeLine(self, frameinfo: FrameInfo = None):
         # count time and limit update
@@ -725,16 +727,6 @@ class EditorGUI(QWidget):
         )
         self.show_snapshots()
 
-    def cv2toQImage(self, cv2image):
-        height, width = cv2image.shape[:2]
-        return QImage(
-            cv2.cvtColor(cv2image, cv2.COLOR_BGR2RGB).data,
-            width,
-            height,
-            width * 3,
-            QImage.Format.Format_RGB888,
-        )
-
     def show_snapshots(self):
         """
         put the snapshots in the preview panes
@@ -756,7 +748,7 @@ class EditorGUI(QWidget):
 
     def put_cv2_image(self, image, widget):
         height, width = image.shape[0:2]
-        qImg = self.cv2toQImage(image)
+        qImg = cv2toQImage(image)
         pixmap = QPixmap(qImg)
 
         # Get the current widget size

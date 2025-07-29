@@ -20,9 +20,10 @@ def extract_strings(file_path):
     for line_num, line in enumerate(content.splitlines(), 1):
         # tr()関数と_()関数の両方を検索
         patterns = [
-            r'tr\("([^"]*)"\)',  # 単純なtr()呼び出し
-            r'tr\(\s*"([^"]*)"\s*\)',  # 空白を含むtr()呼び出し
-            r'_\([\'"]([^\'"]*)[\'"]\)',  # _()関数の呼び出し
+            r'tr\s*\(\s*"([^"]*)"\s*\)',  # tr("...")
+            r"tr\s*\(\s*\'([^\']*)\'\s*\)",  # tr('...')
+            r'_\s*\(\s*"([^"]*)"\s*\)',  # _("...")
+            r"_\s*\(\s*\'([^\']*)\'\s*\)",  # _('...')
         ]
         for pattern in patterns:
             for match in re.finditer(pattern, line):
@@ -51,13 +52,14 @@ def read_existing_ts(ts_path):
                 "locations": [],
             }
             # 既存のlocationタグがあれば保持
+            unique_items = set()
             for location in message.findall("location"):
-                messages[source]["locations"].append(
-                    {
-                        "filename": location.get("filename", ""),
-                        "line": location.get("line", ""),
-                    }
+                unique_items.add(
+                    (location.get("filename", ""), location.get("line", ""))
                 )
+            # messages[source]["locations"] = [
+            #     {"filename": filename, "line": line} for filename, line in unique_items
+            # ]
         contexts[name] = messages
 
     return contexts
@@ -114,9 +116,17 @@ def main():
 
     # 各ファイルから文字列を抽出
     for file_path in input_files:
-        # context_name = Path(file_path).stem
+        # ファイルの存在確認
+        if not os.path.exists(file_path):
+            print(f"Warning: File not found: {file_path}", file=sys.stderr)
+            continue
+
+        # ファイルパスを正規化
+        abs_file_path = os.path.abspath(file_path)
+        print(f"Processing: {abs_file_path}", file=sys.stderr)  # デバッグ出力
+
         context_name = "trainscanner"  # single context
-        strings_with_location = extract_strings(file_path)
+        strings_with_location = extract_strings(abs_file_path)
 
         if context_name not in existing_contexts:
             existing_contexts[context_name] = {}
@@ -126,12 +136,12 @@ def main():
             if string not in existing_contexts[context_name]:
                 existing_contexts[context_name][string] = {
                     "translation": string,
-                    "locations": [{"filename": file_path, "line": line_num}],
+                    "locations": [{"filename": abs_file_path, "line": line_num}],
                 }
             else:
                 # 既存の文字列に新しいlocationを追加
                 existing_contexts[context_name][string]["locations"].append(
-                    {"filename": file_path, "line": line_num}
+                    {"filename": abs_file_path, "line": line_num}
                 )
 
     create_ts_file(existing_contexts, output_file)

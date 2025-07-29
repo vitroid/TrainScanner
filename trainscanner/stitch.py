@@ -183,7 +183,7 @@ class Stitcher:
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
 
-        self.vl = video.VideoLoader(moviefile)
+        self.vl = video.video_loader_factory(moviefile)
         self.firstFrame = True
         self.currentFrame = 0  # 1 is the first frame
 
@@ -204,18 +204,6 @@ class Stitcher:
             # for GUI
         self.dimen = [int(x * self.params.scale) for x in self.params.canvas]
 
-    #        if self.params.canvas is None:
-    #            Canvas.__init__(self)
-    #        else:
-    #            if self.params.scale == 1 and self.params.length > 0:
-    #                #product length is specified.
-    #                #scale is overridden
-    #                self.params.scale = self.params.length / self.params.canvas[0]
-    #                if self.params.scale > 1:
-    #                    self.params.scale = 1  #do not allow stretching
-    #            dimen = [int(x*self.params.scale) for x in self.params.canvas]
-    #            Canvas.__init__(self,image=np.zeros((dimen[1],dimen[0],3),np.uint8), position=dimen[2:4]) #python2 style
-
     # Canvas should be set after the arguments are parsed.
     def set_canvas(self, canvas):
         self.canvas = canvas
@@ -231,7 +219,7 @@ class Stitcher:
         tspos = open(self.tsposfile)
         for line in tspos.readlines():
             if len(line) > 0 and line[0] != "@":
-                cols = [int(x) for x in line.split()]
+                cols = [float(x) for x in line.split()]
                 if len(cols) > 0:
                     absx += cols[1]
                     absy += cols[2]

@@ -107,7 +107,7 @@ class SettingsGUI(QWidget):
             QLabel(tr("Slit mixing")), rows, 0, Qt.AlignmentFlag.AlignRight
         )
 
-        self.slitwidth_slider_valuelabel = QLabel("{0}%".format(self.slitwidth))
+        self.slitwidth_slider_valuelabel = QLabel(f"{self.slitwidth}%")
         settings2_layout.addWidget(
             self.slitwidth_slider_valuelabel, rows, 1, Qt.AlignmentFlag.AlignCenter
         )
@@ -136,9 +136,7 @@ class SettingsGUI(QWidget):
             Qt.AlignmentFlag.AlignRight,
         )
 
-        self.antishake_slider_valuelabel = QLabel(
-            "{0} ".format(self.antishake) + tr("pixels")
-        )
+        self.antishake_slider_valuelabel = QLabel(f"{self.antishake} " + tr("pixels"))
         settings2_layout.addWidget(
             self.antishake_slider_valuelabel, rows, 1, Qt.AlignmentFlag.AlignCenter
         )
@@ -168,9 +166,7 @@ class SettingsGUI(QWidget):
             Qt.AlignmentFlag.AlignRight,
         )
 
-        self.estimate_slider_valuelabel = QLabel(
-            "{0} ".format(self.estimate) + tr("frames")
-        )
+        self.estimate_slider_valuelabel = QLabel(f"{self.estimate} " + tr("frames"))
         settings2_layout.addWidget(
             self.estimate_slider_valuelabel, rows, 1, Qt.AlignmentFlag.AlignCenter
         )
@@ -255,31 +251,6 @@ class SettingsGUI(QWidget):
         rows += 1
         # #####################################################################
 
-        # #Example of a checkbox and slider with a label
-        # #-i (identity)
-
-        # settings2_layout.addWidget(QLabel(tr('Skip identical frames')), rows, 0, Qt.AlignmentFlag.AlignRight)
-
-        # #self.btn_skipident = QCheckBox(tr('Skip identical frames'))
-        # #self.b2.toggled.connect(lambda:self.btnstate(self.b2))
-        # #skipident_layout.addWidget(self.btn_skipident)
-
-        # self.skipident_valuelabel = QLabel(str(self.identity))
-        # settings2_layout.addWidget(self.skipident_valuelabel, rows, 1)
-
-        # settings2_layout.addWidget(QLabel(tr('Strict')), rows, 2)
-        # self.identthres_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
-        # self.identthres_slider.setRange(1, 5)  # スライダの範囲
-        # self.identthres_slider.setValue(2)  # 初期値
-        # #スライダの目盛りを両方に出す
-        # self.identthres_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        # self.connect(self.identthres_slider, SIGNAL('valueChanged(int)'), self.identthres_slider_on_draw)
-        # #the slider is in a Hbox
-        # settings2_layout.addWidget(self.identthres_slider, rows, 3)
-        # settings2_layout.addWidget(QLabel(tr('Loose')), rows, 4)
-        # rows += 1
-        # #####################################################################
-
         # Example of a slider with a label ###################################
         # the slider is in a Hbox
 
@@ -287,9 +258,7 @@ class SettingsGUI(QWidget):
             QLabel(tr("Trailing frames")), rows, 0, Qt.AlignmentFlag.AlignRight
         )
 
-        self.trailing_slider_valuelabel = QLabel(
-            "{0} ".format(self.trailing) + tr("frames")
-        )
+        self.trailing_slider_valuelabel = QLabel(f"{self.trailing} " + tr("frames"))
         settings2_layout.addWidget(
             self.trailing_slider_valuelabel, rows, 1, Qt.AlignmentFlag.AlignCenter
         )
@@ -367,8 +336,8 @@ class SettingsGUI(QWidget):
         mimeData = event.mimeData()
         logger.debug("dragEnterEvent")
         for mimetype in mimeData.formats():
-            logger.debug("MIMEType: {0}".format(mimetype))
-            logger.debug("Data: {0}".format(mimeData.data(mimetype)))
+            logger.debug(f"MIMEType: {mimetype}")
+            logger.debug(f"Data: {mimeData.data(mimetype)}")
 
     def dropEvent(self, event):
         logger = getLogger()
@@ -376,13 +345,13 @@ class SettingsGUI(QWidget):
         mimeData = event.mimeData()
         logger.debug("dropEvent")
         for mimetype in mimeData.formats():
-            logger.debug("MIMEType: {0}".format(mimetype))
-            logger.debug("Data: {0}".format(mimeData.data(mimetype)))
+            logger.debug(f"MIMEType: {mimetype}")
+            logger.debug(f"Data: {mimeData.data(mimetype)}")
         # Open only when:
         # 1. Only file is given
         # 3. and the mimetipe is text/uri-list
         # 2. That has the regular extension.
-        logger.debug("len:{0}".format(len(mimeData.formats())))
+        logger.debug(f"len:{len(mimeData.formats())}")
         if len(mimeData.formats()) == 1:
             mimetype = mimeData.formats()[0]
             if mimetype == "text/uri-list":
@@ -391,7 +360,7 @@ class SettingsGUI(QWidget):
 
                 for line in bytes(data).decode("utf8").splitlines():
                     parsed = urlparse(unquote(line))
-                    logger.debug("Data: {0}".format(parsed))
+                    logger.debug(f"Data: {parsed}")
                     if parsed.scheme == "file":
                         if self.editor is not None:
                             self.editor.close()
@@ -413,9 +382,9 @@ class SettingsGUI(QWidget):
             self,
             tr("Open a movie file"),
             "",
-            "Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf)",
+            "Movie files (*.mov *.mp4 *.m4v *.mts *.tsconf *.mkv)",
         )
-        logger.debug("File: {0}".format(filename))
+        logger.debug(f"File: {filename}")
         if filename == "":  # or if the file cannot be opened,
             return
         self.fileparser(filename)
@@ -437,18 +406,18 @@ class SettingsGUI(QWidget):
             with open(tsconf) as f:
                 args = f.read().splitlines()
             params, unknown = parser_stitch.parse_known_args(args)
-            logger.debug("Params1 {0} {1}".format(params, unknown))
+            logger.debug(f"Params1 {params} {unknown}")
             unknown += [params.filename]  # supply filename for pass1 parser
             # Assume the movie file is in the same dir as the tsconf
             self.filename = tsconfdir + "/" + os.path.basename(params.filename)
             # Otherwise use the path written in the tsconf file. (original location)
             if not os.path.exists(self.filename):
                 self.filename = params.filename
-            logger.debug("Movie  {0}".format(self.filename))
+            logger.debug(f"Movie  {self.filename}")
             parser_pass1 = pp1()
             ## modified params2,unknown2 = parser_pass1.parse_known_args(["@"+tsconf])
             params2, unknown2 = parser_pass1.parse_known_args(args)
-            logger.debug("Params2 {0} {1}".format(params2, unknown2))
+            logger.debug(f"Params2 {params2} {unknown2}")
             # Only non-default values should overwrite the pp2 result.
             p1 = vars(params)
             p2 = vars(params2)
@@ -490,18 +459,14 @@ class SettingsGUI(QWidget):
         self.editor.sliderR.setRange(
             self.editor.perspective[1], self.editor.perspective[3], 10
         )
-        logger.debug(
-            "setRange crop {0} {1}".format(self.editor.croptop, self.editor.cropbottom)
-        )
+        logger.debug(f"setRange crop {self.editor.croptop} {self.editor.cropbottom}")
         self.editor.crop_slider.setMin(0)
         self.editor.crop_slider.setMax(1000)
         self.editor.crop_slider.setRange(
             self.editor.croptop, self.editor.cropbottom, 10
         )
         self.editor.slit_slider.setValue(self.editor.slitpos)
-        self.editor.angle_label.setText(
-            "{0} ".format(self.editor.angle_degree) + tr("degrees")
-        )
+        self.editor.angle_label.setText(f"{self.editor.angle_degree} " + tr("degrees"))
         self.le.setText(self.filename)
 
     def toggle_debug(self):
@@ -520,25 +485,19 @@ class SettingsGUI(QWidget):
 
     def trailing_slider_on_draw(self):
         self.trailing = self.trailing_slider.value()
-        self.trailing_slider_valuelabel.setText(
-            "{0} ".format(self.trailing) + tr("frames")
-        )
+        self.trailing_slider_valuelabel.setText(f"{self.trailing} " + tr("frames"))
 
     def slitwidth_slider_on_draw(self):
         self.slitwidth = self.slitwidth_slider.value()
-        self.slitwidth_slider_valuelabel.setText("{0}%".format(self.slitwidth))
+        self.slitwidth_slider_valuelabel.setText(f"{self.slitwidth}%")
 
     def antishake_slider_on_draw(self):
         self.antishake = self.antishake_slider.value()
-        self.antishake_slider_valuelabel.setText(
-            "{0} ".format(self.antishake) + tr("pixels")
-        )
+        self.antishake_slider_valuelabel.setText(f"{self.antishake} " + tr("pixels"))
 
     def estimate_slider_on_draw(self):
         self.estimate = self.estimate_slider.value()
-        self.estimate_slider_valuelabel.setText(
-            "{0} ".format(self.estimate) + tr("frames")
-        )
+        self.estimate_slider_valuelabel.setText(f"{self.estimate} " + tr("frames"))
 
     def accel_slider_on_draw(self):
         self.accel = self.accel_slider.value()
