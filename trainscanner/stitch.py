@@ -17,6 +17,9 @@ from trainscanner import video
 from trainscanner.i18n import init_translations, tr
 from trainscanner.rasterio_canvas import RasterioCanvas
 
+#  単体で実行する方法
+# poetry run python -m trainscanner.stitch --file examples/sample2.mov.94839.tsconf  examples/sample2.mov
+
 
 class AlphaMask:
     def __init__(self, img_width, slit=0, width=1.0):
@@ -180,7 +183,7 @@ class Stitcher:
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
 
-        self.vl = video.VideoLoader(moviefile)
+        self.vl = video.video_loader_factory(moviefile)
         self.firstFrame = True
         self.currentFrame = 0  # 1 is the first frame
 
@@ -189,39 +192,10 @@ class Stitcher:
         self.transform = trainscanner.transformation(
             self.params.rotate, self.params.perspective, self.params.crop
         )
-        # initialization of the super class
-        # logger.info("scale:{0}".format(self.params.scale))
-        # logger.info("length:{0}".format(self.params.length))
-        if self.params.scale == 1 and self.params.length > 0:
-            # product length is specified.
-            # scale is overridden
-            self.params.scale = self.params.length / self.params.canvas[0]
-            if self.params.scale > 1:
-                self.params.scale = 1  # do not allow stretching
-            # for GUI
-        self.dimen = [int(x * self.params.scale) for x in self.params.canvas]
 
-    #        if self.params.canvas is None:
-    #            Canvas.__init__(self)
-    #        else:
-    #            if self.params.scale == 1 and self.params.length > 0:
-    #                #product length is specified.
-    #                #scale is overridden
-    #                self.params.scale = self.params.length / self.params.canvas[0]
-    #                if self.params.scale > 1:
-    #                    self.params.scale = 1  #do not allow stretching
-    #            dimen = [int(x*self.params.scale) for x in self.params.canvas]
-    #            Canvas.__init__(self,image=np.zeros((dimen[1],dimen[0],3),np.uint8), position=dimen[2:4]) #python2 style
-
-    # Canvas should be set after the arguments are parsed.
-    def set_canvas(self, canvas):
-        self.canvas = canvas
-
-    def before(self):
-        """
-        is a generator.
-        """
-        logger = getLogger()
+        # ファイルから位置を読み込む。
+        # canvasを正確に再定義する。
+        # そのためには、最初のフレームを読んでtransformする必要があるな。なので、Canvasは必要になるぎりぎりまで遅らせる?
         locations = []
         absx = 0
         absy = 0
@@ -235,9 +209,33 @@ class Stitcher:
                     cols = [cols[0], absx, absy] + cols[1:]
                     cols[1:] = [float(x * self.params.scale) for x in cols[1:]]
                     locations.append(cols)
+        locx = [x[1] for x in locations]
+        # logger.info(f"{locx=}")
+        locy = [x[2] for x in locations]
+        self.minx = min(locx)
+        self.maxx = max(locx)
+        self.miny = min(locy)
+        self.maxy = max(locy)
+        logger.info(f"{self.minx=}, {self.maxx=}, {self.miny=}, {self.maxy=}")
         self.locations = locations
         self.total_frames = len(locations)
-        if len(locations) == 0:
+
+        if self.params.scale == 1 and self.params.length > 0:
+            # product length is specified.
+            # scale is overridden
+            self.params.scale = self.params.length / self.params.canvas[0]
+            if self.params.scale > 1:
+                self.params.scale = 1  # do not allow stretching
+            # for GUI
+        self.dimen = [int(x * self.params.scale) for x in self.params.canvas]
+        self.canvas = None
+
+    def before(self):
+        """
+        is a generator.
+        """
+        logger = getLogger()
+        if len(self.locations) == 0:
             return
         # initial seek
         while self.currentFrame + 1 < self.locations[0][0]:
@@ -253,6 +251,15 @@ class Stitcher:
     def add_image(self, frame, absx, absy, idx, idy):
         rotated, warped, cropped = self.transform.process_image(frame)
         if self.firstFrame:
+            height, width = cropped.shape[:2]
+            canvas_width = self.maxx - self.minx + width
+            canvas_height = self.maxy - self.miny + height
+            self.canvas = RasterioCanvas(
+                "new",
+                (int(canvas_width), int(canvas_height)),
+                (int(self.minx), int(self.miny)),
+                self.outfilename,
+            )
             self.canvas.put_image((absx, absy), cropped)
             self.mask = AlphaMask(
                 cropped.shape[1], slit=self.params.slitpos, width=self.params.slitwidth
@@ -267,10 +274,8 @@ class Stitcher:
         for num, den in self.before():
             pass
         for num, den in self.loop():
-            logger.info(num / den)
-        # while result is None:
-        #    result = self.onestep()
-        # self.canvas.done()
+            pass
+        self.canvas.close()
 
     def loop(self):
         while self._onestep():
@@ -294,14 +299,14 @@ class Stitcher:
             return False
         return True  # not end
 
-    def make_a_big_picture(self):
-        """
-        This is an optional process.
-        """
-        file_name = self.outfilename
-        # It costs high when using the CachedImage.
-        img = self.canvas.get_image()
-        cv2.imwrite(file_name, img)
+    # def make_a_big_picture(self):
+    #     """
+    #     This is an optional process.
+    #     """
+    #     file_name = self.outfilename
+    #     # It costs high when using the CachedImage.
+    #     img = self.canvas.get_image()
+    #     cv2.imwrite(file_name, img)
 
 
 if __name__ == "__main__":
@@ -316,16 +321,5 @@ if __name__ == "__main__":
         basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(message)s")
     st = Stitcher(argv=sys.argv)
 
-    tilesize = (512, 512)  # canbe smaller for smaller machine
-    cachesize = 10
-    # canvas = ci.CachedImage(
-    #     "new", dir=st.cachedir, tilesize=tilesize, cachesize=cachesize
-    # )
-    width, height, left, top = st.params.canvas
-    canvas = RasterioCanvas(
-        "new", (width, height), (left, top), st.outfilename, tilesize=tilesize
-    )
-    st.set_canvas(canvas)
-
     st.stitch()
-    st.make_a_big_picture()
+    # st.make_a_big_picture()
