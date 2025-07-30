@@ -1,3 +1,19 @@
+## [] - 2025-07-30
+
+### 変更
+
+- 2120563 stitch.pyをrasterio対応にした。まだ、scaleがちゃんとできていないかも。また、GUIとの連携も確認していない。
+- 4d278c3 -
+- d779b86 -
+- 3ccd89d Merge master branch into PyQt5compat2
+- d56db47 Update TiledImage dependency to version 0.4 and enhance Makefile to automate image generation from .mov files.
+- 193f5e8 Merge master: Resolve conflicts in pyproject.toml, keep PyQt5 and Pillow dependencies
+- b49bc95 Qt5化
+
+### 追加
+
+### 修正
+
 # 変更履歴
 
 ## [0.16.1] - 2025-05-12
