@@ -15,6 +15,7 @@ from tiledimage import cachedimage as ci
 from trainscanner import trainscanner
 from trainscanner import video
 from trainscanner.i18n import init_translations, tr
+from trainscanner.rasterio_canvas import RasterioCanvas
 
 
 class AlphaMask:
@@ -22,7 +23,6 @@ class AlphaMask:
         self.img_width = img_width
         self.width = width
         self.slitpos = slit * img_width // 1000
-        self.alphas = dict()
 
     def make_linear_alpha(self, displace):
         """
@@ -30,29 +30,24 @@ class AlphaMask:
         slit position is -500 to 500
         slit width=1 is standard, width<1 is narrow (sharp) and width>1 is diffuse alpha
         """
-        if displace in self.alphas:
-            return self.alphas[displace]
         if displace == 0:
-            self.alphas[0.0] = np.ones((self.img_width, 3))
-            self.alphas[0] = self.alphas[0.0]
-            return self.alphas[0]
+            return np.ones(self.img_width)
         slitwidth = abs(int(displace * self.width))
-        alpha = np.zeros((self.img_width, 3))
+        alpha = np.zeros(self.img_width)
         if displace > 0:
             slitin = self.img_width // 2 - self.slitpos
             slitout = slitin + slitwidth
-            alpha[slitout:, :] = 1.0
-            alpha[slitin:slitout, :] = np.fromfunction(
-                lambda x, v: x / slitwidth, (slitwidth, 3)
+            alpha[slitout:] = 1.0
+            alpha[slitin:slitout] = np.fromfunction(
+                lambda x: x / slitwidth, (slitwidth,)
             )
         else:
             slitin = self.img_width // 2 + self.slitpos
             slitout = slitin - slitwidth
-            alpha[:slitout, :] = 1.0
-            alpha[slitout:slitin, :] = np.fromfunction(
-                lambda x, v: (slitwidth - x) / slitwidth, (slitwidth, 3)
+            alpha[:slitout] = 1.0
+            alpha[slitout:slitin] = np.fromfunction(
+                lambda x: (slitwidth - x) / slitwidth, (slitwidth,)
             )
-        self.alphas[displace] = alpha
         return alpha
 
 
@@ -175,15 +170,17 @@ class Stitcher:
             tsconfbase = os.path.basename(self.params.logbase)
             self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
         moviefile = tsconfdir + "/" + moviebase
-        self.outfilename = tsconfdir + "/" + tsconfbase + ".png"
-        self.cachedir = tsconfdir + "/" + tsconfbase + ".pngs"  # if required
+        self.outfilename = tsconfdir + "/" + tsconfbase + ".tiff"
+        self.cachedir = tsconfdir + "/" + tsconfbase + ".cache"  # if required
+        if not os.path.exists(self.cachedir):
+            os.makedirs(self.cachedir)
         if not os.path.exists(moviefile):
             moviefile = moviepath
         logger.info("TSPos  {0}".format(self.tsposfile))
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
 
-        self.vl = video.video_loader_factory(moviefile)
+        self.vl = video.VideoLoader(moviefile)
         self.firstFrame = True
         self.currentFrame = 0  # 1 is the first frame
 
@@ -203,6 +200,18 @@ class Stitcher:
                 self.params.scale = 1  # do not allow stretching
             # for GUI
         self.dimen = [int(x * self.params.scale) for x in self.params.canvas]
+
+    #        if self.params.canvas is None:
+    #            Canvas.__init__(self)
+    #        else:
+    #            if self.params.scale == 1 and self.params.length > 0:
+    #                #product length is specified.
+    #                #scale is overridden
+    #                self.params.scale = self.params.length / self.params.canvas[0]
+    #                if self.params.scale > 1:
+    #                    self.params.scale = 1  #do not allow stretching
+    #            dimen = [int(x*self.params.scale) for x in self.params.canvas]
+    #            Canvas.__init__(self,image=np.zeros((dimen[1],dimen[0],3),np.uint8), position=dimen[2:4]) #python2 style
 
     # Canvas should be set after the arguments are parsed.
     def set_canvas(self, canvas):
@@ -224,7 +233,7 @@ class Stitcher:
                     absx += cols[1]
                     absy += cols[2]
                     cols = [cols[0], absx, absy] + cols[1:]
-                    cols[1:] = [int(x * self.params.scale) for x in cols[1:]]
+                    cols[1:] = [float(x * self.params.scale) for x in cols[1:]]
                     locations.append(cols)
         self.locations = locations
         self.total_frames = len(locations)
@@ -309,8 +318,12 @@ if __name__ == "__main__":
 
     tilesize = (512, 512)  # canbe smaller for smaller machine
     cachesize = 10
-    canvas = ci.CachedImage(
-        "new", dir=st.cachedir, tilesize=tilesize, cachesize=cachesize
+    # canvas = ci.CachedImage(
+    #     "new", dir=st.cachedir, tilesize=tilesize, cachesize=cachesize
+    # )
+    width, height, left, top = st.params.canvas
+    canvas = RasterioCanvas(
+        "new", (width, height), (left, top), st.outfilename, tilesize=tilesize
     )
     st.set_canvas(canvas)
 
