@@ -11,11 +11,12 @@ from logging import getLogger, basicConfig, WARN, DEBUG, INFO
 
 # from canvas import Canvas    #On-memory canvas
 # from canvas2 import Canvas   #Cached canvas
-from tiledimage import cachedimage as ci
+# from tiledimage import cachedimage as ci
 from trainscanner import trainscanner
 from trainscanner import video
 from trainscanner.i18n import init_translations, tr
 from trainscanner.rasterio_canvas import RasterioCanvas
+from trainscanner.pass1 import extend_canvas
 
 #  単体で実行する方法
 # poetry run python -m trainscanner.stitch --file examples/sample2.mov.94839.tsconf  examples/sample2.mov
@@ -143,7 +144,7 @@ class Stitcher:
     exclude video handling
     """
 
-    def __init__(self, argv):
+    def __init__(self, argv, hook=None):
         logger = getLogger()
 
         init_translations()
@@ -160,6 +161,9 @@ class Stitcher:
                     argv += f.read().splitlines()
                 break
         self.params, unknown = parser.parse_known_args(argv[1:])
+        # 昔のpass1が計算したcanvasサイズは信用ならないので、自前で再計算する。
+        del self.params.canvas
+
         # Decide the paths
         moviepath = self.params.filename
         moviedir = os.path.dirname(moviepath)
@@ -174,16 +178,12 @@ class Stitcher:
             self.tsposfile = tsconfdir + "/" + tsconfbase + ".tspos"
         moviefile = tsconfdir + "/" + moviebase
         self.outfilename = tsconfdir + "/" + tsconfbase + ".tiff"
-        self.cachedir = tsconfdir + "/" + tsconfbase + ".cache"  # if required
-        if not os.path.exists(self.cachedir):
-            os.makedirs(self.cachedir)
         if not os.path.exists(moviefile):
             moviefile = moviepath
         logger.info("TSPos  {0}".format(self.tsposfile))
         logger.info("Movie  {0}".format(moviefile))
         logger.info("Output {0}".format(self.outfilename))
 
-        self.vl = video.video_loader_factory(moviefile)
         self.firstFrame = True
         self.currentFrame = 0  # 1 is the first frame
 
@@ -193,12 +193,20 @@ class Stitcher:
             self.params.rotate, self.params.perspective, self.params.crop
         )
 
+        # 1フレームだけ読んで、キャンバスの大きさを決定する。
+        self.vl = video.video_loader_factory(moviefile)
+        _, frame = self.vl.next()
+        _, _, cropped = self.transform.process_image(frame)
+        height, width = cropped.shape[:2]
+
+        self.vl = video.video_loader_factory(moviefile)
+
         # ファイルから位置を読み込む。
         # canvasを正確に再定義する。
-        # そのためには、最初のフレームを読んでtransformする必要があるな。なので、Canvasは必要になるぎりぎりまで遅らせる?
         locations = []
         absx = 0
         absy = 0
+        canvas_dimen = extend_canvas(None, width, height, 0, 0)
         tspos = open(self.tsposfile)
         for line in tspos.readlines():
             if len(line) > 0 and line[0] != "@":
@@ -206,29 +214,31 @@ class Stitcher:
                 if len(cols) > 0:
                     absx += cols[1]
                     absy += cols[2]
+                    canvas_dimen = extend_canvas(
+                        canvas_dimen, width, height, absx, absy
+                    )
                     cols = [cols[0], absx, absy] + cols[1:]
                     cols[1:] = [float(x * self.params.scale) for x in cols[1:]]
                     locations.append(cols)
-        locx = [x[1] for x in locations]
-        # logger.info(f"{locx=}")
-        locy = [x[2] for x in locations]
-        self.minx = min(locx)
-        self.maxx = max(locx)
-        self.miny = min(locy)
-        self.maxy = max(locy)
-        logger.info(f"{self.minx=}, {self.maxx=}, {self.miny=}, {self.maxy=}")
         self.locations = locations
         self.total_frames = len(locations)
 
         if self.params.scale == 1 and self.params.length > 0:
             # product length is specified.
             # scale is overridden
-            self.params.scale = self.params.length / self.params.canvas[0]
+            self.params.scale = self.params.length / canvas_dimen[0]
             if self.params.scale > 1:
                 self.params.scale = 1  # do not allow stretching
             # for GUI
-        self.dimen = [int(x * self.params.scale) for x in self.params.canvas]
-        self.canvas = None
+        # self.dimen = [int(x * self.params.scale) for x in self.params.canvas]
+        self.dimen = [int(x * self.params.scale) for x in canvas_dimen]
+        self.hook = hook
+        self.canvas = RasterioCanvas(
+            "new",
+            size=self.dimen[:2],
+            lefttop=self.dimen[2:],
+            tiff_filename=self.outfilename,
+        )
 
     def before(self):
         """
@@ -252,14 +262,6 @@ class Stitcher:
         rotated, warped, cropped = self.transform.process_image(frame)
         if self.firstFrame:
             height, width = cropped.shape[:2]
-            canvas_width = self.maxx - self.minx + width
-            canvas_height = self.maxy - self.miny + height
-            self.canvas = RasterioCanvas(
-                "new",
-                (int(canvas_width), int(canvas_height)),
-                (int(self.minx), int(self.miny)),
-                self.outfilename,
-            )
             self.canvas.put_image((absx, absy), cropped)
             self.mask = AlphaMask(
                 cropped.shape[1], slit=self.params.slitpos, width=self.params.slitwidth

@@ -9,7 +9,6 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-TiledImage = "^0.4"
 opencv-python-headless = "^4.10.0.84"
 tqdm = "^4.67.1"
 pillow = "^11.2.1"

@@ -124,31 +124,36 @@ def diffImage(frame1, frame2, dx, dy):  # , focus=None, slitpos=None):
 
 
 # Automatically extensible canvas.
-def canvas_size(canvas_dimen, image, x, y):
+# lpass1のcanvasがこれまで間違っていたので、この処理は今後はstitch.pyにまかせる。
+# いずれそちらに移す。
+def extend_canvas(canvas_dimen, w, h, x, y):
     """
     canvas_dimenで定義されるcanvasの，位置(x,y)にimageを貼りつけた場合の，拡張後のcanvasの大きさを返す．
     canvas_dimenはcanvasの左上角の絶対座標と，canvasの幅高さの4因子でできている．
     """
     # x = int(x)
     # y = int(y)
-    h, w = image.shape[:2]
+    # h, w = image.shape[:2]
     if canvas_dimen is None:
         return w, h, x, y
-    canvas_width, canvas_height, origin_x, origin_y = canvas_dimen  # absolute coordinate of the top left of the canvas
+    canvas_width, canvas_height, origin_x, origin_y = (
+        canvas_dimen  # absolute coordinate of the top left of the canvas
+    )
     cxmin = origin_x
     cymin = origin_y
     cxmax = canvas_width + origin_x
-    cymax = canvas_height+origin_y
+    cymax = canvas_height + origin_y
     ixmin = x
     iymin = y
-    ixmax = w + x
+    # よくわからないが、幅をひろめにしておかないと、stitchで足りなくなるので。
+    ixmax = w * 2 + x
     iymax = h + y
 
     xmin = min(cxmin, ixmin)
     xmax = max(cxmax, ixmax)
     ymin = min(cymin, iymin)
     ymax = max(cymax, iymax)
-    canvas_dimen = [xmax - xmin, ymax - ymin, xmin, ymin]
+    canvas_dimen = (xmax - xmin, ymax - ymin, xmin, ymin)
     getLogger().debug(f"{canvas_dimen=}")
     return canvas_dimen
 
@@ -494,8 +499,10 @@ class Pass1:
             angle=params.rotate, pers=params.perspective, crop=params.crop
         )
         rotated, warped, cropped = transform.process_first_image(rawframe)
+        # あとでcanvas の計算に使うために、frameの幅と高さを保存しておく。
+        self.frame_width, self.frame_height = cropped.shape[1], cropped.shape[0]
         # Prepare a scalable self.canvas with the origin.
-        self.canvas = None
+        # self.canvas = None
 
         absx, absy = 0, 0
         velx, vely = 0, 0
@@ -660,7 +667,8 @@ class Pass1:
             logger.info(f"Capture {nframe} {velx} {vely} #{np.amax(diff)}")
             absx += velx
             absy += vely
-            self.canvas = canvas_size(self.canvas, cropped, absx, absy)
+            # canvasの計算はここではやらず、最後にまとめて行うのがいい。
+            # self.canvas = canvas_size(self.canvas, frame_width, frame_height, absx, absy)
             self.tspos.append([nframe, velx, vely])
         # end of capture
 
@@ -681,10 +689,20 @@ class Pass1:
         Action after the loop
         """
         logger = getLogger()
-        if self.canvas is None or len(self.tspos) == 0:
+
+        if len(self.tspos) == 0:
             logger.error("No motion detected.")
             return
-        self.tsconf += "--canvas\n{0}\n{1}\n{2}\n{3}\n".format(*self.canvas)
+        left, top = 0, 0
+        canvas = extend_canvas(None, self.frame_width, self.frame_height, left, top)
+        for t, dx, dy in self.tspos:
+            left += dx
+            top += dy
+            canvas = extend_canvas(
+                canvas, self.frame_width, self.frame_height, left, top
+            )
+
+        self.tsconf += f"--canvas\n{canvas[0]}\n{canvas[1]}\n{canvas[2]}\n{canvas[3]}\n"
         if self.params.log is None:
             ostream = sys.stdout
         else:

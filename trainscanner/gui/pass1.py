@@ -53,7 +53,7 @@ class Worker(QObject):
                 break
             self.frameRendered.emit(cv2toQImage(img))
 
-        successful = self.pass1.canvas is not None and len(self.pass1.tspos) > 0
+        successful = len(self.pass1.tspos) > 0
         self.pass1.after()
         self.finished.emit(successful)
 

@@ -25,11 +25,12 @@ from PyQt5.QtWidgets import (
 )
 
 # from QTiledImage import QTiledImage
-from tiledimage import cachedimage as ci
+# from tiledimage import cachedimage as ci
 
 from trainscanner import stitch
 from trainscanner.widget.scaledcanvas import ScaledCanvas
 from trainscanner.i18n import init_translations, tr
+from trainscanner.rasterio_canvas import get_image, crop_image
 
 
 # It is run in the thread.
@@ -66,6 +67,7 @@ class Renderer(QObject):
         self.progress.emit(100)
         # self.stitcher.after()
         self.finished.emit()
+        self.stitcher.canvas.close()
 
     def stop(self):
         self._isRunning = False
@@ -92,8 +94,8 @@ class ExtensibleCanvasWidget(QLabel):
 class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
     def __init__(self, parent=None, preview_ratio=1.0):
         super(ExtensibleCroppingCanvasWidget, self).__init__(parent, preview_ratio)
-        self.left_edge = 0
-        self.right_edge = 0
+        self.left_cut = 0
+        self.right_cut = 0
         self.dragging = False
         self.drag_edge = None
         self.setMouseTracking(True)
@@ -113,8 +115,6 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
             )
             self.setPixmap(QPixmap.fromImage(qimage))
 
-        self.left_edge = 0
-        self.right_edge = self.width()
         self.update()
 
     def paintEvent(self, event):
@@ -131,9 +131,12 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
             # )
             # 垂直線を太く描画
             painter.setPen(QPen(Qt.GlobalColor.red, 4))
-            painter.drawLine(int(self.left_edge), 0, int(self.left_edge), self.height())
+            painter.drawLine(int(self.left_cut), 0, int(self.left_cut), self.height())
             painter.drawLine(
-                int(self.right_edge), 0, int(self.right_edge), self.height()
+                int(self.width() - self.right_cut - 1),
+                0,
+                int(self.width() - self.right_cut - 1),
+                self.height(),
             )
             painter.end()
 
@@ -142,11 +145,11 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
             return
         x = event.x()
         # 左端の近くをクリックした場合
-        if abs(x - self.left_edge) < self.drag_threshold:
+        if abs(x - self.left_cut) < self.drag_threshold:
             self.dragging = True
             self.drag_edge = "left"
         # 右端の近くをクリックした場合
-        elif abs(x - self.right_edge) < self.drag_threshold:
+        elif abs(x - (self.width() - self.right_cut - 1)) < self.drag_threshold:
             self.dragging = True
             self.drag_edge = "right"
 
@@ -156,17 +159,19 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
         x = event.x()
         if self.dragging:
             if self.drag_edge == "left":
-                self.left_edge = max(0, min(x, self.right_edge - self.drag_threshold))
+                self.left_cut = max(
+                    0, min(x, self.width() - self.right_cut - 1 - self.drag_threshold)
+                )
             else:  # right
-                self.right_edge = min(
-                    self.width(), max(x, self.left_edge + self.drag_threshold)
+                self.right_cut = self.width() - min(
+                    self.width(), max(x, self.left_cut + self.drag_threshold)
                 )
             self.update()
         else:
             # カーソル形状の変更
             if (
-                abs(x - self.left_edge) < self.drag_threshold
-                or abs(x - self.right_edge) < self.drag_threshold
+                abs(x - self.left_cut) < self.drag_threshold
+                or abs(x - (self.width() - self.right_cut - 1)) < self.drag_threshold
             ):
                 self.setCursor(Qt.CursorShape.SizeHorCursor)
             else:
@@ -188,21 +193,23 @@ class StitcherUI(QDialog):
 
         self.setWindowTitle(tr("Stitcher Preview"))
         stitcher = stitch.Stitcher(argv=argv)
-        tilesize = (128, 512)  # can be smaller for smaller working memory
-        cachesize = 10
-        stitcher.set_canvas(
-            ci.CachedImage(
-                "new", dir=stitcher.cachedir, tilesize=tilesize, cachesize=cachesize
-            )
-        )
+        # tilesize = (128, 512)  # can be smaller for smaller working memory
+        # cachesize = 10
+        # stitcher.set_canvas(
+        #     ci.CachedImage(
+        #         "new", dir=stitcher.cachedir, tilesize=tilesize, cachesize=cachesize
+        #     )
+        # )
         self.stitcher = stitcher
         # stitcherの幅
         width = stitcher.dimen[0]
 
         # determine the shrink ratio to avoid too huge preview
         self.preview_ratio = 1.0
+        self.preview_width = width
         if width > 10000:
             self.preview_ratio = 10000.0 / width
+            self.preview_width = 10000
         self.terminate = terminate
         self.thread = QThread()
         self.thread.start()
@@ -248,14 +255,14 @@ class StitcherUI(QDialog):
         close_shortcut.activated.connect(self.close)
 
     def crop_finished(self):
+        logger = getLogger()
+        # logger.info("crop_finished")
         # save the final image
-        left_edge = int(self.largecanvas.left_edge / self.preview_ratio)
-        right_edge = int(self.largecanvas.right_edge / self.preview_ratio)
-        # 読みなおす
-        big_image = self.stitcher.canvas.get_image()
-        cropped_image = big_image[:, left_edge:right_edge]
+        left_cut = int(self.largecanvas.left_cut / self.preview_ratio)
+        right_cut = int(self.largecanvas.right_cut / self.preview_ratio)
         file_name = self.stitcher.outfilename
-        cv2.imwrite(file_name, cropped_image)
+        cropped_file_name = file_name.replace(".tiff", "_cropped.tiff")
+        crop_image(file_name, left_cut, right_cut, cropped_file_name)
 
         self.stopbutton_pressed()
 
@@ -267,21 +274,17 @@ class StitcherUI(QDialog):
     def stitch_finished(self):
         # ボタンの機能を変える。
         self.btnStop.setText(tr("Crop + Finish"))
+        # 古い接続を切断してから新しい接続を設定
+        self.btnStop.clicked.disconnect()
         self.btnStop.clicked.connect(self.crop_finished)
 
         # ここで、tiledimageを読みこみ、スケールし、canvasをさしかえる。
         # ただ、cropping枠を変形した時にどこでそれを保存するのか。
-        file_name = self.stitcher.outfilename
         # It costs high when using the CachedImage.
-        big_image = self.stitcher.canvas.get_image()
-        cv2.imwrite(file_name, big_image)
-        scaled_img = cv2.resize(
-            big_image,
-            None,
-            fx=self.preview_ratio,
-            fy=self.preview_ratio,
+        scaled_image = get_image(
+            self.stitcher.outfilename, dst_width=self.preview_width
         )
-        self.largecanvas.setDrawComplete(scaled_img)
+        self.largecanvas.setDrawComplete(scaled_image)
 
         self.stop_thread()
 
