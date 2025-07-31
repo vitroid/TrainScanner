@@ -61,7 +61,7 @@ def prepare_parser(parser=None):
     parser.add_argument(
         "-C",
         "--canvas",
-        type=int,
+        type=float,
         nargs=4,
         default=None,
         dest="canvas",

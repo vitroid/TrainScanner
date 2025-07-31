@@ -129,28 +129,27 @@ def canvas_size(canvas_dimen, image, x, y):
     canvas_dimenで定義されるcanvasの，位置(x,y)にimageを貼りつけた場合の，拡張後のcanvasの大きさを返す．
     canvas_dimenはcanvasの左上角の絶対座標と，canvasの幅高さの4因子でできている．
     """
-    x = int(x)
-    y = int(y)
+    # x = int(x)
+    # y = int(y)
+    h, w = image.shape[:2]
     if canvas_dimen is None:
-        h, w = image.shape[:2]
         return w, h, x, y
-    absx, absy = canvas_dimen[2:4]  # absolute coordinate of the top left of the canvas
-    cxmin = absx
-    cymin = absy
-    cxmax = canvas_dimen[0] + absx
-    cymax = canvas_dimen[1] + absy
+    canvas_width, canvas_height, origin_x, origin_y = canvas_dimen  # absolute coordinate of the top left of the canvas
+    cxmin = origin_x
+    cymin = origin_y
+    cxmax = canvas_width + origin_x
+    cymax = canvas_height+origin_y
     ixmin = x
     iymin = y
-    ixmax = image.shape[1] + x
-    iymax = image.shape[0] + y
+    ixmax = w + x
+    iymax = h + y
 
     xmin = min(cxmin, ixmin)
     xmax = max(cxmax, ixmax)
     ymin = min(cymin, iymin)
     ymax = max(cymax, iymax)
-    if (xmax - xmin, ymax - ymin) != (canvas_dimen[0], canvas_dimen[1]):
-        canvas_dimen = [xmax - xmin, ymax - ymin, xmin, ymin]
-    getLogger().debug(canvas_dimen)
+    canvas_dimen = [xmax - xmin, ymax - ymin, xmin, ymin]
+    getLogger().debug(f"{canvas_dimen=}")
     return canvas_dimen
 
 
