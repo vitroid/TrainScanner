@@ -14,7 +14,7 @@ from trainscanner import trainscanner
 from trainscanner import video, standardize, subpixel_match
 
 
-def draw_focus_area(f, focus, delta=None):
+def draw_focus_area(f, focus, delta=None, active=False):
     """
     cv2形式の画像の中に四角を描く
     """
@@ -25,7 +25,11 @@ def draw_focus_area(f, focus, delta=None):
         h * focus[2] // 1000,
         h * focus[3] // 1000,
     ]
-    cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), (0, 255, 0), 1)
+    if active:
+        colors = [(0, 255, 0), (255, 255, 0)]
+    else:
+        colors = [(0, 128, 0), (128, 128, 0)]
+    cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), colors[0], 1)
     if delta is not None:
         dx, dy = delta
         pos = [
@@ -34,7 +38,7 @@ def draw_focus_area(f, focus, delta=None):
             h * focus[2] // 1000 + dy,
             h * focus[3] // 1000 + dy,
         ]
-        cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), (255, 255, 0), 1)
+        cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), colors[1], 1)
 
 
 def draw_slit_position(f, slitpos, dx):
@@ -122,21 +126,29 @@ def motion(
         return new_delta
 
 
-def diffImage(frame1, frame2, dx, dy):  # , focus=None, slitpos=None):
+def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=None):
     """
     2枚のcv2画像の差を返す．
     """
-    affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
-    h, w = frame1.shape[0:2]
-    std2 = standardize(frame2)
-    frame1 = cv2.warpAffine(frame1, affine, (w, h))
-    std1 = standardize(frame1)
-    diff = (255 * cv2.absdiff(std1, std2)).astype(np.uint8)
-    # if focus is not None:
-    #     draw_focus_area(diff, focus, delta=(dx, dy))
-    # if slitpos is not None:
-    #     draw_slit_position(diff, slitpos, dx)
-    return diff
+    if mode == "diff":
+        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
+        h, w = frame1.shape[0:2]
+        std2 = standardize(frame2)
+        frame1 = cv2.warpAffine(frame1, affine, (w, h))
+        std1 = standardize(frame1)
+        diff = (255 * cv2.absdiff(std1, std2)).astype(np.uint8)
+        # if focus is not None:
+        #     draw_focus_area(diff, focus, delta=(dx, dy))
+        # if slitpos is not None:
+        #     draw_slit_position(diff, slitpos, dx)
+        return diff
+    elif mode == "stack":
+        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
+        h, w = frame1.shape[0:2]
+        flags = np.arange(h) * 16 % h > h // 2
+        frame1 = cv2.warpAffine(frame1, affine, (w, h))
+        frame1[flags] = frame2[flags]
+        return frame1
 
 
 # Automatically extensible canvas.
@@ -615,6 +627,7 @@ class Pass1:
                 diff_img,
                 params.focus,
                 delta=(int(dx * preview_ratio), int(dy * preview_ratio)),
+                active=in_action,
             )
             # previewを表示
             yield diff_img
