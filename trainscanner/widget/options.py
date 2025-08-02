@@ -2,6 +2,7 @@ import argparse
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QLabel,
     QCheckBox,
     QComboBox,

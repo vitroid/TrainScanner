@@ -14,8 +14,9 @@ from PyQt5.QtWidgets import (
     QSplitter,
     QFileDialog,
     QProgressBar,
+    QShortcut,
 )
-from PyQt5.QtGui import QKeySequence, QShortcut, QPixmap
+from PyQt5.QtGui import QKeySequence, QPixmap
 from PyQt5.QtCore import Qt, QTimer
 import cv2
 import logging

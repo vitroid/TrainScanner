@@ -1,3 +1,68 @@
+## [] - 2025-08-02
+
+### 変更
+
+- 9f1402c 逆順動画作成
+- 588497c 差分表現の改良
+- 27a8c46 subpixel対応
+- eb4bd1e PyQt5対応
+- 10dc8c7 旧MacOSとの互換性のため、PyQt5に戻す。
+- 93d238c Refactor subpixel matching and motion detection logic to support variable fit widths and improve accuracy. Updated `subpixel_match` to use CCOEFF method and adjusted handling of maximum acceleration in `motion` function. Enhanced parameter handling for improved flexibility in image processing.
+
+### 追加
+
+### 修正
+
+## [] - 2025-08-02
+
+### 変更
+
+- 588497c 差分表現の改良
+- 27a8c46 subpixel対応
+- eb4bd1e PyQt5対応
+- 10dc8c7 旧MacOSとの互換性のため、PyQt5に戻す。
+- 93d238c Refactor subpixel matching and motion detection logic to support variable fit widths and improve accuracy. Updated `subpixel_match` to use CCOEFF method and adjusted handling of maximum acceleration in `motion` function. Enhanced parameter handling for improved flexibility in image processing.
+
+### 追加
+
+### 修正
+
+## [] - 2025-08-02
+
+### 変更
+
+- 27a8c46 subpixel対応
+- eb4bd1e PyQt5対応
+- 10dc8c7 旧MacOSとの互換性のため、PyQt5に戻す。
+- 93d238c Refactor subpixel matching and motion detection logic to support variable fit widths and improve accuracy. Updated `subpixel_match` to use CCOEFF method and adjusted handling of maximum acceleration in `motion` function. Enhanced parameter handling for improved flexibility in image processing.
+
+### 追加
+
+### 修正
+
+## [] - 2025-08-02
+
+### 変更
+
+- eb4bd1e PyQt5対応
+- 10dc8c7 旧MacOSとの互換性のため、PyQt5に戻す。
+- 93d238c Refactor subpixel matching and motion detection logic to support variable fit widths and improve accuracy. Updated `subpixel_match` to use CCOEFF method and adjusted handling of maximum acceleration in `motion` function. Enhanced parameter handling for improved flexibility in image processing.
+
+### 追加
+
+### 修正
+
+## [] - 2025-08-02
+
+### 変更
+
+- 10dc8c7 旧MacOSとの互換性のため、PyQt5に戻す。
+- 93d238c Refactor subpixel matching and motion detection logic to support variable fit widths and improve accuracy. Updated `subpixel_match` to use CCOEFF method and adjusted handling of maximum acceleration in `motion` function. Enhanced parameter handling for improved flexibility in image processing.
+
+### 追加
+
+### 修正
+
 ## [0.29.3] - 2025-06-24
 
 ### 修正
