@@ -87,8 +87,8 @@ class ExtensibleCanvasWidget(QLabel):
 class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
     def __init__(self, parent=None, preview_ratio=1.0):
         super(ExtensibleCroppingCanvasWidget, self).__init__(parent, preview_ratio)
-        self.left_edge = 0
-        self.right_edge = 0
+        self.left_cut = 0
+        self.right_cut = 0
         self.dragging = False
         self.drag_edge = None
         self.setMouseTracking(True)
@@ -108,8 +108,6 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
             )
             self.setPixmap(QPixmap.fromImage(qimage))
 
-        self.left_edge = 0
-        self.right_edge = self.width()
         self.update()
 
     def paintEvent(self, event):
@@ -119,49 +117,54 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
             # 長方形を描画
             # painter.setPen(QPen(Qt.GlobalColor.red, 2))
             # painter.drawRect(
-            #     int(self.left_edge),
+            #     int(self.left_cut),
             #     0,
-            #     int(self.right_edge - self.left_edge),
+            #     int(self.width() - self.left_cut - self.right_cut),
             #     self.height(),
             # )
             # 垂直線を太く描画
             painter.setPen(QPen(Qt.GlobalColor.red, 4))
-            painter.drawLine(int(self.left_edge), 0, int(self.left_edge), self.height())
+            painter.drawLine(int(self.left_cut), 0, int(self.left_cut), self.height())
             painter.drawLine(
-                int(self.right_edge), 0, int(self.right_edge), self.height()
+                int(self.width() - self.right_cut - 1),
+                0,
+                int(self.width() - self.right_cut - 1),
+                self.height(),
             )
             painter.end()
 
     def mousePressEvent(self, event):
         if not self.draw_complete:
             return
-        x = int(event.position().x())
+        x = int(event.x())
         # 左端の近くをクリックした場合
-        if abs(x - self.left_edge) < self.drag_threshold:
+        if abs(x - self.left_cut) < self.drag_threshold:
             self.dragging = True
             self.drag_edge = "left"
         # 右端の近くをクリックした場合
-        elif abs(x - self.right_edge) < self.drag_threshold:
+        elif abs(x - (self.width() - self.right_cut - 1)) < self.drag_threshold:
             self.dragging = True
             self.drag_edge = "right"
 
     def mouseMoveEvent(self, event):
         if not self.draw_complete:
             return
-        x = int(event.position().x())
+        x = int(event.x())
         if self.dragging:
             if self.drag_edge == "left":
-                self.left_edge = max(0, min(x, self.right_edge - self.drag_threshold))
+                self.left_cut = max(
+                    0, min(x, self.width() - self.right_cut - 1 - self.drag_threshold)
+                )
             else:  # right
-                self.right_edge = min(
-                    self.width(), max(x, self.left_edge + self.drag_threshold)
+                self.right_cut = self.width() - min(
+                    self.width(), max(x, self.left_cut + self.drag_threshold)
                 )
             self.update()
         else:
             # カーソル形状の変更
             if (
-                abs(x - self.left_edge) < self.drag_threshold
-                or abs(x - self.right_edge) < self.drag_threshold
+                abs(x - self.left_cut) < self.drag_threshold
+                or abs(x - (self.width() - self.right_cut - 1)) < self.drag_threshold
             ):
                 self.setCursor(Qt.CursorShape.SizeHorCursor)
             else:
@@ -244,11 +247,11 @@ class StitcherUI(QDialog):
 
     def crop_finished(self):
         # save the final image
-        left_edge = int(self.largecanvas.left_edge / self.preview_ratio)
-        right_edge = int(self.largecanvas.right_edge / self.preview_ratio)
+        left_cut = int(self.largecanvas.left_cut / self.preview_ratio)
+        right_cut = int(self.largecanvas.right_cut / self.preview_ratio)
         # 読みなおす
         big_image = self.stitcher.canvas.get_image()
-        cropped_image = big_image[:, left_edge:right_edge]
+        cropped_image = big_image[:, left_cut : -right_cut if right_cut > 0 else None]
         file_name = self.stitcher.outfilename
         cv2.imwrite(file_name, cropped_image)
 

@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
     QSlider,
     QRubberBand,
     QMessageBox,
+    QShortcut,
 )
 from PyQt5.QtGui import QPixmap, QPainter, QKeySequence
 
