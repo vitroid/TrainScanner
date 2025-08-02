@@ -1,17 +1,16 @@
 import argparse
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QLabel,
     QCheckBox,
-    QHBoxLayout,
     QComboBox,
     QLineEdit,
     QApplication,
     QGroupBox,
     QGridLayout,
 )
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import Qt
 from trainscanner.widget.qfloatslider import QFloatSlider
 from trainscanner.widget.qvalueslider import QValueSlider
 from trainscanner.widget.qlogslider import LogSliderHandle

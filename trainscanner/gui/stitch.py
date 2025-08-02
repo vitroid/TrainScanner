@@ -6,9 +6,9 @@ from logging import DEBUG, WARN, basicConfig, getLogger, INFO
 
 import cv2
 import numpy as np
-from PyQt6.QtCore import QObject, QPoint, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QImage, QPainter, QPixmap, QPen, QKeySequence, QShortcut
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QImage, QPainter, QPixmap, QPen, QKeySequence
+from PyQt5.QtWidgets import (
     QApplication,
     QDialog,
     QLabel,
@@ -16,11 +16,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
-    QGroupBox,
-    QSizePolicy,
-    QSlider,
+    QShortcut,
 )
 
 # from QTiledImage import QTiledImage

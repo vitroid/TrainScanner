@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Core of the GUI and image process
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -14,10 +14,9 @@ from PyQt6.QtWidgets import (
     QSplitter,
     QFileDialog,
     QProgressBar,
-    QComboBox,
 )
-from PyQt6.QtGui import QKeySequence, QShortcut, QPixmap, QImage
-from PyQt6.QtCore import QTranslator, QLocale, Qt, QTimer
+from PyQt5.QtGui import QKeySequence, QShortcut, QPixmap
+from PyQt5.QtCore import Qt, QTimer
 import cv2
 import logging
 import importlib

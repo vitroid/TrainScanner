@@ -13,14 +13,13 @@ import time
 from logging import DEBUG, WARN, basicConfig, getLogger, root
 
 # external modules
-from PyQt6.QtCore import (
+from PyQt5.QtCore import (
     QLocale,
     Qt,
-    QTranslator,
 )
 
 # Core of the GUI and image process
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
     QFileDialog,
@@ -33,9 +32,9 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
     QWidget,
-    QSizePolicy,
 )
-from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtWidgets import QShortcut
 
 #
 # sub dialog windows

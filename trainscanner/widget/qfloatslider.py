@@ -1,13 +1,13 @@
 # 実数を扱えるQSliderを作成する
 
-from PyQt6.QtCore import (
+from PyQt5.QtCore import (
     pyqtSignal,
     Qt,
     QSize,
     QRectF,
 )
 from .qvalueslider import QValueSlider, ValueSliderHandle
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QSlider,
     QWidget,
     QHBoxLayout,
@@ -15,7 +15,8 @@ from PyQt6.QtWidgets import (
     QStyle,
     QStyleOptionSlider,
 )
-from PyQt6.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
+
+# from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
 
 
 class FloatSliderHandle(ValueSliderHandle):

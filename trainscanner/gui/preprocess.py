@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 import time
-from logging import DEBUG, WARN, basicConfig, getLogger, root
+from logging import DEBUG, WARN, basicConfig, getLogger
 
 import cv2
 import numpy as np
 
-from PyQt6.QtCore import pyqtSignal, Qt, QObject, QPoint, QRect, QThread, QSize
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import pyqtSignal, Qt, QObject, QPoint, QRect, QThread, QSize
+from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QRubberBand,
     QMessageBox,
 )
-from PyQt6.QtGui import QImage, QPixmap, QPainter, QKeySequence, QShortcut
+from PyQt5.QtGui import QPixmap, QPainter, QKeySequence
 
 from trainscanner import trainscanner, video
 from trainscanner.widget.imageselector2 import ImageSelector2
