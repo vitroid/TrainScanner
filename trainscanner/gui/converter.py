@@ -37,7 +37,8 @@ from trainscanner.converter import list_cli_options
 from trainscanner.widget.qfloatslider import QFloatSlider
 from trainscanner.widget.qlogslider import LogSliderHandle
 from trainscanner.widget.qvalueslider import QValueSlider
-from tiledimage.cachedimage import CachedImage
+
+# from tiledimage.cachedimage import CachedImage
 from trainscanner.i18n import tr
 
 # options handler

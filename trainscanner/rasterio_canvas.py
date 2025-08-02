@@ -2,23 +2,36 @@ import rasterio
 import numpy as np
 from logging import getLogger
 from rasterio.windows import Window
+import cv2
 
 
 class RasterioCanvas:
-    def __init__(self, mode: str, size, lefttop, tiff_filename: str):
+    def __init__(
+        self, mode: str, size, lefttop, tiff_filename: str, scale: float = 1.0
+    ):
         self.mode = mode
         self.hook = None
         self.tilesize = 256
-        width, height = size
-        self.topleft = lefttop
-        left, top = lefttop
-        self.transform = rasterio.Affine(1, 0, left, 0, -1, top + height)
+        self.scale = scale
+        self.width, self.height = size[0], size[1]
+        left, top = lefttop[0], lefttop[1]
+        self.topleft = left, top
+        self.transform = rasterio.Affine(
+            1 / scale,
+            0,
+            left,
+            0,
+            -1 / scale,
+            -top + self.height,
+        )
+        # logger = getLogger()
+        # logger.info(f"{self.width=}, {self.height=}, {self.scale=}")
         self.dataset = rasterio.open(
             tiff_filename,
             "w",
             driver="GTiff",
-            width=width,
-            height=height,
+            width=self.width * scale,
+            height=self.height * scale,
             count=3,  # RGB
             dtype=np.uint8,
             tiled=True,
@@ -28,7 +41,12 @@ class RasterioCanvas:
             transform=self.transform,
         )
         # canvas全体を黒く塗る。
-        self.put_image((left, top), np.zeros((height, width, 3), dtype=np.uint8))
+        # self.put_image(
+        #     (left, top),
+        #     np.zeros(
+        #         (int(self.height * scale), int(self.width * scale), 3), dtype=np.uint8
+        #     ),
+        # )
         self.dataset.close()
         # 再度読み書き用にひらく。
         self.dataset = rasterio.open(
@@ -45,62 +63,44 @@ class RasterioCanvas:
         window = rasterio.windows.from_bounds(
             xmin, ymin, xmax, ymax, transform=self.transform
         )
-        # windowがself.datasetからはみ出ている可能性がある。
-        # その場合は、windowを修正する。
-        if (
-            window.col_off < 0
-            or window.row_off < 0
-            or window.col_off + window.width > self.dataset.width
-            or window.row_off + window.height > self.dataset.height
-        ):
-            logger.warning(f"window is out of dataset: {window=}")
-            # おさまるようにxmin,xmax,ymin,ymaxを修正する。
-            if window.col_off < 0:
-                xmin -= window.col_off
-            if window.row_off < 0:
-                ymin -= window.row_off
-            if window.col_off + window.width > self.dataset.width:
-                xmax -= window.col_off + window.width - self.dataset.width
-            if window.row_off + window.height > self.dataset.height:
-                ymax -= window.row_off + window.height - self.dataset.height
-            if xmin > xmax or ymin > ymax:
-                logger.warning(f"window is out of dataset: {window=}")
-                return
-
-            window = rasterio.windows.from_bounds(
-                xmin,
-                ymin,
-                xmax,
-                ymax,
-                transform=self.transform,
-            )
-
-            logger.info(f"window is corrected: {window=}")
-        image_chw = np.transpose(image, (2, 0, 1))[::-1, :, :]
+        # windowの幅は実数で、それをつかって切りだしたoriginalの大きさは予測不能。
+        # logger.info(f"{window=}, {window.height=}, {image.shape=}")
         if linear_alpha is not None:
-            original = self.dataset.read(window=window)
-            original = original.astype(np.uint8)
-            # logger.info(f"{original.shape=}")
-            # originalの幅が足りない場合がある
+            original = self.dataset.read(window=window).astype(np.uint8)
+            image_chw = np.transpose(
+                cv2.resize(
+                    image,
+                    (original.shape[2], original.shape[1]),
+                ),
+                (2, 0, 1),
+            )[::-1, :, :]
             height, width = original.shape[1:3]
-            logger.info(f"{width=}, {height=}, {image.shape[1]=}, {image.shape[0]=}")
-            if width < image.shape[1] or height < image.shape[0]:
-                logger.warning(f"image is too large for canvas: {image.shape=}")
-                return
-            alpha = linear_alpha[np.newaxis, np.newaxis, :]
-            image_chw = image_chw * alpha + original * (1 - alpha)
-            image_chw = image_chw.astype(np.uint8)
-            # windowを修正する。
-            window = rasterio.windows.from_bounds(
-                xmin, ymin, xmin + width, ymax, transform=self.transform
+            new_range = np.linspace(0, len(linear_alpha) - 1, width)
+            scaled_linear_alpha = np.interp(
+                new_range, np.arange(len(linear_alpha)), linear_alpha
             )
+            alpha = scaled_linear_alpha[np.newaxis, np.newaxis, :]
+            image_chw = image_chw * alpha + original * (1 - alpha)
+            # logger.info(f"{image_chw.shape=}, {alpha.shape=}, {original.shape=}")
+            image_chw = image_chw.astype(np.uint8)
+        else:
+            image_chw = np.transpose(
+                cv2.resize(
+                    image,
+                    (int(window.width), int(window.height)),
+                ),
+                (2, 0, 1),
+            )[::-1, :, :]
         # 画像をHWC(height, width, channels)からCHW(channels, height, width)に変換
         self.dataset.write(
             image_chw,
             window=window,
         )
         if self.hook:
-            self.hook(xy, image_chw[::-1].transpose(1, 2, 0))
+            self.hook(
+                (xy[0] * self.scale, xy[1] * self.scale),
+                image_chw[::-1].transpose(1, 2, 0),
+            )
 
     def get_region(self, xy, size):
         x, y = xy
@@ -145,12 +145,14 @@ def crop_image(tiff_filename, leftcut, rightcut, out_filename):
     # logger.info(f"{left=}, {right=}, {out_filename=}")
     with rasterio.open(tiff_filename) as dataset:
         width, height = dataset.width, dataset.height
-        window = Window(leftcut, 0, width - rightcut, height)
+        logger.info(f"{width=} {height=} {leftcut=} {rightcut=}")
+        width -= leftcut + rightcut
+        window = Window(leftcut, 0, width, height)
         transform_cropped = dataset.window_transform(window)
         profile = dataset.profile
         profile.update(
             transform=transform_cropped,
-            width=width - rightcut - leftcut,
+            width=width,
             height=height,
             compress="lzw",
             tiled=True,

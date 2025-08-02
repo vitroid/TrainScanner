@@ -223,21 +223,24 @@ class Stitcher:
         self.locations = locations
         self.total_frames = len(locations)
 
-        if self.params.scale == 1 and self.params.length > 0:
+        # scaleオプションは無視する。
+        del self.params.scale
+        scale = 1.0
+        if self.params.length > 0:
             # product length is specified.
             # scale is overridden
-            self.params.scale = self.params.length / canvas_dimen[0]
-            if self.params.scale > 1:
-                self.params.scale = 1  # do not allow stretching
+            scale = self.params.length / canvas_dimen[0]
+            if scale > 1:
+                scale = 1  # do not allow stretching
             # for GUI
-        # self.dimen = [int(x * self.params.scale) for x in self.params.canvas]
-        self.dimen = [int(x * self.params.scale) for x in canvas_dimen]
+        self.dimen = canvas_dimen
         self.hook = hook
         self.canvas = RasterioCanvas(
             "new",
-            size=self.dimen[:2],
-            lefttop=self.dimen[2:],
+            size=canvas_dimen[:2],
+            lefttop=canvas_dimen[2:],
             tiff_filename=self.outfilename,
+            scale=scale,
         )
 
     def before(self):
@@ -293,8 +296,6 @@ class Stitcher:
         self.currentFrame, frame = self.vl.next()
         if self.currentFrame == 0:
             return False
-        if self.params.scale != 1:
-            frame = cv2.resize(frame, None, fx=self.params.scale, fy=self.params.scale)
         self.add_image(frame, *self.locations[0][1:])
         self.locations.pop(0)
         if len(self.locations) == 0:

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 # options handler
 import sys
 import time
-from logging import DEBUG, WARN, basicConfig, getLogger, root
+from logging import DEBUG, WARN, INFO, basicConfig, getLogger, root
 
 # external modules
 import cv2
@@ -604,20 +604,21 @@ def resource_path(relative):
 
 def main():
     # pyqt_set_trace()
-    basicConfig(level=WARN, format="%(asctime)s %(levelname)s %(message)s")
-    
+    basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(message)s")
+
     # Initialize QApplication first
     app = QApplication(sys.argv)
-    
+
     # Initialize translations
     from trainscanner.i18n import init_translations
+
     init_translations()
-    
+
     # Create and show the main window
     se = SettingsGUI()
     se.show()
     se.raise_()
-    
+
     # Start the event loop
     sys.exit(app.exec())
 

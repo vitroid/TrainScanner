@@ -448,7 +448,7 @@ class Pass1:
         Add leading frames to tspos.
         """
         logger = getLogger()
-        logger.info(f"Adding leading frames to tspos. {self.tspos}")
+        logger.info(f"Adding leading frames to tspos.")
 
         if len(self.tspos) < self.params.estimate:
             return

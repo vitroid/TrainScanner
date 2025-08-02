@@ -203,6 +203,10 @@ class StitcherUI(QDialog):
         self.stitcher = stitcher
         # stitcherの幅
         width = stitcher.dimen[0]
+        # このwidthは原寸の幅。
+        # stitchが幅を-Wで指定している場合はそちらの幅を使う
+        if 0 < stitcher.params.length < stitcher.dimen[0]:
+            width = stitcher.params.length
 
         # determine the shrink ratio to avoid too huge preview
         self.preview_ratio = 1.0
@@ -280,7 +284,6 @@ class StitcherUI(QDialog):
 
         # ここで、tiledimageを読みこみ、スケールし、canvasをさしかえる。
         # ただ、cropping枠を変形した時にどこでそれを保存するのか。
-        # It costs high when using the CachedImage.
         scaled_image = get_image(
             self.stitcher.outfilename, dst_width=self.preview_width
         )
