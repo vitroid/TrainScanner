@@ -13,8 +13,6 @@ import time
 from logging import DEBUG, WARN, INFO, basicConfig, getLogger, root
 
 # external modules
-import cv2
-import numpy as np
 from PyQt5.QtCore import (
     QLocale,
     QObject,
@@ -22,11 +20,9 @@ from PyQt5.QtCore import (
     QRect,
     QSize,
     Qt,
-    QThread,
-    QTranslator,
-    pyqtSignal,
 )
-from PyQt5.QtGui import QImage, QPainter, QPixmap, QKeySequence
+
+# Core of the GUI and image process
 from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -43,8 +39,9 @@ from PyQt5.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
     QWidget,
-    QSizePolicy,
 )
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtWidgets import QShortcut
 
 #
 # sub dialog windows

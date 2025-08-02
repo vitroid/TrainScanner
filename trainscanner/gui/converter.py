@@ -8,20 +8,17 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QApplication,
     QPushButton,
-    QCheckBox,
     QTabWidget,
     QLabel,
     QButtonGroup,
-    QLineEdit,
-    QSlider,
     QSplitter,
     QShortcut,
     QFileDialog,
     QProgressBar,
-    QComboBox,
+    QShortcut,
 )
-from PyQt5.QtGui import QKeySequence, QPixmap, QImage
-from PyQt5.QtCore import QTranslator, QLocale, Qt, QTimer
+from PyQt5.QtGui import QKeySequence, QPixmap
+from PyQt5.QtCore import Qt, QTimer
 import cv2
 import logging
 import importlib
@@ -46,6 +43,7 @@ import sys
 
 from concurrent.futures import ThreadPoolExecutor
 from trainscanner.widget import cv2toQImage
+from trainscanner.widget.options import OptionsControlWidget
 
 # Drag and drop work. Buttons would not be necessary.
 
@@ -76,10 +74,7 @@ def get_converters():
     for _, module_name, is_pkg in pkgutil.iter_modules(trainscanner.converter.__path__):
         if not is_pkg:  # パッケージではなくモジュールの場合のみ
             module = importlib.import_module(f"trainscanner.converter.{module_name}")
-            converters[module_name] = {
-                "module": module,
-                "options_list": list_cli_options(module.get_parser()),
-            }
+            converters[module_name] = module
 
     # 2. エントリーポイントを通じて登録されたコンバーターを読み込む
     try:
@@ -93,10 +88,7 @@ def get_converters():
                 module_path = entry_point.value.split(":")[0]
                 # モジュールを直接読み込む
                 module = importlib.import_module(module_path)
-                converters[entry_point.name] = {
-                    "module": module,
-                    "options_list": list_cli_options(module.get_parser()),
-                }
+                converters[entry_point.name] = module
             except Exception as e:
                 logging.getLogger(__name__).warning(
                     f"Failed to load converter {entry_point.name}: {str(e)}"
@@ -106,154 +98,6 @@ def get_converters():
         pass
 
     return converters
-
-
-def converter_control_widget(
-    converter: str,
-    options: list,
-    description: str,
-    has_ffmpeg: bool,
-    on_value_changed: callable,
-):
-    logger = logging.getLogger()
-
-    tab = QWidget()
-    tab_layout = QVBoxLayout()
-    if not has_ffmpeg and converter in [
-        "movie",
-    ]:
-        description += " (ffmpeg required)"
-    tab_layout.addWidget(QLabel(description))
-
-    getter = dict()
-
-    # オプションの表示
-    for option in options:
-        # オプションのキーワードを取得
-        for option_keyword in option["option_strings"]:
-            if option_keyword[:2] == "--":
-                option_keyword = option_keyword[2:]
-                break
-        else:
-            continue
-
-        # ffmpegがインストールされていない場合のmovieオプション制御
-        if not has_ffmpeg:
-            if option_keyword in ["crf", "encoder"]:
-                # CRFとエンコーダーを無効化
-                continue
-            elif option_keyword == "imageseq":
-                # imageseqオプションを強制的にチェック状態で無効化
-                checkbox = QCheckBox(tr(option["help"]))
-                checkbox.setChecked(True)  # 強制的にチェック
-                checkbox.setEnabled(False)  # 無効化
-                logger.debug(
-                    f"Setting imageseq checkbox to checked and disabled for {option_keyword}"
-                )
-                tab_layout.addWidget(checkbox)
-                getter[option_keyword] = checkbox
-                continue
-
-        if "spec" in option:
-            help = option["help"]
-            spec = option["spec"]
-            if "|" in spec:
-                # "|"で仕切られた値の場合は、selectorを作成する。
-                items = [x.strip() for x in spec.split("|")]
-                hbox = QHBoxLayout()
-                label = QLabel(tr(help))
-                hbox.addWidget(label)
-                selector = QComboBox()
-                for value in items:
-                    selector.addItem(str(value))
-                selector.currentIndexChanged.connect(
-                    lambda v, k=option_keyword: on_value_changed(k, items[v])
-                )
-                hbox.addWidget(selector)
-                tab_layout.addLayout(hbox)
-                getter[option_keyword] = selector
-                continue
-            assert ":" in spec, f"spec: {spec}"
-            assert option["type"] in (int, float)
-
-            min, max = [float(x) for x in spec.split(":")]
-            hbox = QHBoxLayout()
-            label = QLabel(tr(help))
-            hbox.addWidget(label)
-            if option["type"] == int:
-                slider = QValueSlider()
-                slider.setMinimum(int(min))
-                slider.setMaximum(int(max))
-                if option["default"] is not None:
-                    slider.setValue(int(option["default"]))
-                else:
-                    slider.setValue(int(min))
-                logger.debug(f"Connecting valueChanged signal for {option_keyword}")
-                # スライダーの値変更を監視
-                slider.valueChanged.connect(
-                    lambda v, k=option_keyword: on_value_changed(k, v)
-                )
-                min_label = QLabel(f"{int(min)}")
-                max_label = QLabel(f"{int(max)}")
-            else:  # float
-                if 0 < min < max and max / min > 99:
-                    slider = QFloatSlider(
-                        float_min_value=min,
-                        float_max_value=max,
-                        sliderhandleclass=LogSliderHandle,
-                    )
-                else:
-                    slider = QFloatSlider(
-                        float_min_value=min,
-                        float_max_value=max,
-                    )
-                slider.setMinimum(min)
-                slider.setMaximum(max)
-                if option["default"] is not None:
-                    slider.setValue(float(option["default"]))
-                else:
-                    slider.setValue(min)
-                logger.debug(f"Connecting valueChanged signal for {option_keyword}")
-                # スライダーの値変更を監視
-                slider.valueChanged.connect(
-                    lambda v, k=option_keyword: on_value_changed(k, v)
-                )
-                min_label = QLabel(f"{min}")
-                max_label = QLabel(f"{max}")
-            hbox.addWidget(min_label)
-            hbox.addWidget(slider)
-            hbox.addWidget(max_label)
-            tab_layout.addLayout(hbox)
-            getter[option_keyword] = slider
-        elif (
-            option["type"] is None
-            and option["nargs"] == 0
-            and "-h" not in option["option_strings"]
-            and "-R" not in option["option_strings"]
-        ):
-            checkbox = QCheckBox(tr(option["help"]))
-            logger.debug(f"Connecting stateChanged signal for {option_keyword}")
-            checkbox.stateChanged.connect(
-                lambda state, k=option_keyword: on_value_changed(k, state)
-            )
-            tab_layout.addWidget(checkbox)
-            getter[option_keyword] = checkbox
-        elif option["type"] == str:
-            hbox = QHBoxLayout()
-            label = QLabel(tr(option["help"]))
-            hbox.addWidget(label)
-            lineedit = QLineEdit(tr(option["default"]))
-            logger.debug(f"Connecting textChanged signal for {option_keyword}")
-            lineedit.textChanged.connect(
-                lambda text, k=option_keyword: on_value_changed(k, text)
-            )
-            hbox.addWidget(lineedit)
-            tab_layout.addLayout(hbox)
-            getter[option_keyword] = lineedit
-        # else:
-        #     tab_layout.addWidget(QLabel(tr(option["help"])))
-    tab.setLayout(tab_layout)
-    return tab, getter
 
 
 # https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
@@ -310,25 +154,22 @@ class SettingsGUI(QWidget):
         self.has_ffmpeg = shutil.which("ffmpeg") is not None
 
         self.converters = get_converters()
+        self.controlpanels = dict()
 
-        self.getters = dict()
-        # ffmpegの確認
-        self.tab_widgets = []
-        for converter, contents in self.converters.items():
+        for converter, module in self.converters.items():
             # module = contents["module"]
-            options, description = contents["options_list"]
-
-            tab, getter = converter_control_widget(
-                converter,
-                options,
-                tr(description),
-                self.has_ffmpeg,
-                self.on_value_changed,
+            if not self.has_ffmpeg:
+                disable_options = ["crf", "encoder"]
+            else:
+                disable_options = []
+            widget = OptionsControlWidget(
+                module.get_parser(),
+                on_value_changed=self.on_value_changed,
+                ignore_options=["help", "head-right"],
+                disable_options=disable_options,
             )
-            self.getters[converter] = getter
-
-            self.tab_widget.addTab(tab, tr(converter))
-            self.tab_widgets.append(tab)
+            self.controlpanels[converter] = widget
+            self.tab_widget.addTab(widget, tr(converter))
 
         finish_layout.addWidget(self.tab_widget)
 
@@ -440,8 +281,7 @@ class SettingsGUI(QWidget):
             self.start_button.setText(tr("Start Conversion"))
 
     def process_image(self, tab, img, file_name, head_right, args):
-        converter = self.converters[tab]
-        module = converter["module"]
+        module = self.converters[tab]
         if hasattr(module, "convert"):
             rimg = module.convert(img, head_right=head_right, **args)
             cv2.imwrite(f"{file_name}.{tab}.png", rimg)
@@ -536,17 +376,9 @@ class SettingsGUI(QWidget):
 
     def get_current_args(self, converter):
         """現在の設定値を取得する関数"""
-        args = dict()
-        for option_keyword, option in self.getters[converter].items():
-            if isinstance(option, QValueSlider):
-                args[option_keyword] = option.get_display_value()
-            elif isinstance(option, QLineEdit):
-                args[option_keyword] = option.text()
-            elif isinstance(option, QCheckBox):
-                args[option_keyword] = option.isChecked()
-            elif isinstance(option, QComboBox):
-                args[option_keyword] = option.currentText()
-        return args
+        controlpanel = self.controlpanels[converter]
+        values = controlpanel.get_values()
+        return values
 
     def _create_slider_callback(self, key):
         """スライダーの値変更時のコールバック関数を作成"""
@@ -568,8 +400,9 @@ class SettingsGUI(QWidget):
         self.update_preview(converter)
 
     def preview(self, tab, img, head_right, args):
-        converter = self.converters[tab]
-        module = converter["module"]
+        module = self.converters[tab]
+        controlpanel = self.controlpanels[tab]
+        args = controlpanel.get_values()
         if hasattr(module, "convert"):
             # image converter
             args["head_right"] = head_right

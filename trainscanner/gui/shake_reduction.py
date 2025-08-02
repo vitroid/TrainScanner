@@ -8,13 +8,13 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QDialog,
     QFileDialog,
-    QHBoxLayout,
     QRadioButton,
     QButtonGroup,
+    QShortcut,
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage, QPixmap, QShortcut, QKeySequence
-from trainscanner.video import video_loader_factory, video_iter
+from PyQt5.QtGui import QImage, QPixmap, QKeySequence
+from trainscanner.video import video_iter
 from trainscanner.shake_reduction import antishake
 from trainscanner.i18n import tr
 import sys

@@ -6,7 +6,7 @@ from logging import DEBUG, WARN, basicConfig, getLogger, INFO
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QObject, QPoint, Qt, QThread, pyqtSignal
+from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPainter, QPixmap, QPen, QKeySequence
 from PyQt5.QtWidgets import (
     QApplication,
@@ -16,11 +16,6 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QScrollArea,
     QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
-    QGroupBox,
-    QSizePolicy,
-    QSlider,
     QShortcut,
 )
 
@@ -124,9 +119,9 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
             # 長方形を描画
             # painter.setPen(QPen(Qt.GlobalColor.red, 2))
             # painter.drawRect(
-            #     int(self.left_edge),
+            #     int(self.left_cut),
             #     0,
-            #     int(self.right_edge - self.left_edge),
+            #     int(self.width() - self.left_cut - self.right_cut),
             #     self.height(),
             # )
             # 垂直線を太く描画
@@ -143,7 +138,7 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
     def mousePressEvent(self, event):
         if not self.draw_complete:
             return
-        x = event.x()
+        x = int(event.x())
         # 左端の近くをクリックした場合
         if abs(x - self.left_cut) < self.drag_threshold:
             self.dragging = True
@@ -156,7 +151,7 @@ class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
     def mouseMoveEvent(self, event):
         if not self.draw_complete:
             return
-        x = event.x()
+        x = int(event.x())
         if self.dragging:
             if self.drag_edge == "left":
                 self.left_cut = max(

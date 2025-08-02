@@ -56,47 +56,63 @@ def draw_slit_position(f, slitpos, dx):
     cv2.line(f, (x2, 0), (x2, h), (0, 255, 0), 1)
 
 
-def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0, 0)):
+def motion(
+    image, ref, focus=(333, 666, 333, 666), maxaccel=None, delta=(0, 0), yfixed=False
+):
     """
     ref画像のfocusで指定された領域内の画像と同じ画像をimage内で探して、その変位を返す。
     maxaccelとdeltaが指定されている場合は、探索範囲を絞り高速にマッチングできる。
     """
     logger = getLogger()
     hi, wi = ref.shape[0:2]
-    wmin = wi * focus[0] // 1000
-    wmax = wi * focus[1] // 1000
-    hmin = hi * focus[2] // 1000
-    hmax = hi * focus[3] // 1000
-    template = ref[hmin:hmax, wmin:wmax, :]
+    xmin = wi * focus[0] // 1000
+    xmax = wi * focus[1] // 1000
+    ymin = hi * focus[2] // 1000
+    ymax = hi * focus[3] // 1000
+    template = ref[ymin:ymax, xmin:xmax, :]
     gray_template = standardize(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY))
     h, w = template.shape[0:2]
 
     # Apply template Matching
-    if maxaccel == 0:
+    if maxaccel is None:
+        # maxaccelは指定されていない場合は、画像全体がマッチング対象になる。
+        if yfixed:
+            # x方向にのみずらして照合する。
+            image = image[ymin:ymax, :, :]
+            min_loc, fractional_shift = subpixel_match(image, template, subpixel=False)
+            # min_locはtemplateの左上角を原点とした相対座標なので、xminを引く。
+            min_loc = (min_loc[0] - xmin, min_loc[1])
+            return min_loc
+
         min_loc, fractional_shift = subpixel_match(image, template, subpixel=False)
-        min_loc = (min_loc[0] - wmin, min_loc[1] - hmin)
+        min_loc = (min_loc[0] - xmin, min_loc[1] - ymin)
         # print(min_loc)
         return min_loc
     else:
         # use delta here
         # print(f"maxaccel: {maxaccel} delta: {delta}")
-        roix0 = wmin + delta[0] - maxaccel
-        roiy0 = hmin + delta[1] - maxaccel
-        roix1 = wmax + delta[0] + maxaccel
-        roiy1 = hmax + delta[1] + maxaccel
+        roix0 = xmin + delta[0] - maxaccel[0]
+        roiy0 = ymin + delta[1] - maxaccel[1]
+        roix1 = xmax + delta[0] + maxaccel[0]
+        roiy1 = ymax + delta[1] + maxaccel[1]
         # subpixel transformation
         affine = np.matrix(((1.0, 0.0, -roix0), (0.0, 1.0, -roiy0)))
-        logger.debug("maxaccel:{0} delta:{1}".format(maxaccel, delta))
+        logger.debug(f"maxaccel:{maxaccel} delta:{delta}")
         crop = cv2.warpAffine(
-            image, affine, (wmax - wmin + 2 * maxaccel, hmax - hmin + 2 * maxaccel)
+            image,
+            affine,
+            (xmax - xmin + 2 * maxaccel[0], ymax - ymin + 2 * maxaccel[1]),
         )
         gray_crop = standardize(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY))
 
         # res = cv2.matchTemplate(gray_crop, gray_template, cv2.TM_SQDIFF_NORMED)
         # min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-        fit_width = 2
-        if maxaccel == 1:
-            fit_width = 1
+        fit_width = [2, 2]
+        if maxaccel[0] < 2:
+            fit_width[0] = maxaccel[0]
+        if maxaccel[1] < 2:
+            fit_width[1] = maxaccel[1]
+
         min_loc, fractional_shift = subpixel_match(
             gray_crop, gray_template, fit_width=fit_width  # , subpixel=False
         )
@@ -104,8 +120,8 @@ def motion(image, ref, focus=(333, 666, 333, 666), maxaccel=0, delta=(0, 0)):
         # print(min_loc[0] - maxaccel, min_loc[1] - maxaccel)
 
         new_delta = (
-            min_loc[0] + roix0 - wmin + fractional_shift[0],
-            min_loc[1] + roiy0 - hmin + fractional_shift[1],
+            min_loc[0] + roix0 - xmin + fractional_shift[0],
+            min_loc[1] + roiy0 - ymin + fractional_shift[1],
         )
         return new_delta
 
@@ -570,12 +586,16 @@ class Pass1:
             # This mode is activated after the 10th frames.
 
             # Now I do care only magrin case.
+            maxaccel = [params.maxaccel, params.maxaccel]
+            if params.zero:
+                maxaccel = [params.maxaccel, 0]
             if in_action or coldstart:
+                # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
                 delta = motion(
                     lastframe,
                     cropped,
                     focus=params.focus,
-                    maxaccel=params.maxaccel,
+                    maxaccel=maxaccel,
                     delta=(velx, vely),
                 )
                 if delta is None:
@@ -585,11 +605,14 @@ class Pass1:
                     break
                 dx, dy = delta
             else:
-                dx, dy = motion(lastframe, cropped, focus=params.focus)
+                # 速度不明なので、広い範囲でマッチングを行う。
+                dx, dy = motion(
+                    lastframe, cropped, focus=params.focus, yfixed=params.zero
+                )
 
-            ##### Suppress drifting.
-            if params.zero:
-                dy = 0
+            # ##### Suppress drifting.
+            # if params.zero:
+            #     dy = 0
             # 直近5フレームの移動量を記録する．
             deltax.append(dx)
             deltay.append(dy)

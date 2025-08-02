@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# pre-commitフック: コミット時にバージョン番号を増やし、README.mdを更新
+
+echo "pre-commitフック実行中..."
+
+# 現在のバージョンを取得
+CURRENT_VERSION=$(poetry version -s)
+echo "現在のバージョン: $CURRENT_VERSION"
+
+# バージョン番号を増加（patch）
+poetry version patch
+NEW_VERSION=$(poetry version -s)
+echo "新しいバージョン: $NEW_VERSION"
+
+# README.mdを更新（replacer.pyを使用）
+echo "README.mdを更新中..."
+if [ -f "temp_README.md" ]; then
+    python replacer.py < temp_README.md > README.md
+fi
+
+# 更新されたファイルをステージングエリアに追加
+git add pyproject.toml README.md
+
+echo "pre-commitフック完了: バージョン $NEW_VERSION に更新されました" 

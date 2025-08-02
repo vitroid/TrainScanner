@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from PyQt5.QtWidgets import (
     QSlider,
     QWidget,
@@ -8,7 +6,7 @@ from PyQt5.QtWidgets import (
     QStyle,
     QStyleOptionSlider,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QRect, QSize, QRectF
+from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
 
 

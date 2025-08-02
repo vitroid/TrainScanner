@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# post-commitフック: コミット後にバージョンタグを作成し、CHANGELOG.mdを更新
+
+echo "post-commitフック実行中..."
+
+# 現在のバージョンを取得
+CURRENT_VERSION=$(poetry version -s)
+echo "現在のバージョン: $CURRENT_VERSION"
+
+# 前バージョンからの変更点をCHANGELOG.mdに追加
+echo "CHANGELOG.mdを更新中..."
+OLD_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | grep -v "^v$CURRENT_VERSION$" || echo "v0.0.0")
+
+# CHANGELOG.mdの先頭に新しいエントリを追加
+TEMP_FILE=$(mktemp)
+cat > "$TEMP_FILE" << EOF
+## [$CURRENT_VERSION] - $(date +%Y-%m-%d)
+
+### 変更
+
+EOF
+
+# コミットログを追加（前回のタグから現在のコミットまで）
+git log --oneline "$OLD_VERSION"..HEAD | sed 's/^/- /' >> "$TEMP_FILE"
+
+cat >> "$TEMP_FILE" << EOF
+
+### 追加
+
+### 修正
+
+EOF
+
+# 既存のCHANGELOG.mdの内容を追加
+cat CHANGELOG.md >> "$TEMP_FILE"
+
+# 一時ファイルをCHANGELOG.mdに移動
+mv "$TEMP_FILE" CHANGELOG.md
+
+# バージョンタグを作成
+TAG_NAME="v$CURRENT_VERSION"
+echo "タグ $TAG_NAME を作成中..."
+
+# 既存のタグがあるかチェック
+if git tag -l | grep -q "^$TAG_NAME$"; then
+    echo "タグ $TAG_NAME は既に存在します"
+else
+    git tag -a "$TAG_NAME" -m "Release version $CURRENT_VERSION"
+    echo "タグ $TAG_NAME が作成されました"
+fi
+
+echo "post-commitフック完了"
+echo "注意: CHANGELOG.mdが更新されました。必要に応じて手動でコミットしてください。" 

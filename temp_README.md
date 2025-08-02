@@ -19,12 +19,6 @@ trainscanner
 pip install git+https://github.com/vitroid/TrainScanner.git
 ```
 
-Intel Macなど、PyQt6が動かない場合はこちらをどうぞ。
-
-```
-pip install git+https://github.com/vitroid/TrainScanner.git@PyQt5compat2
-```
-
 ## ドキュメント
 
 [Wiki](https://github.com/vitroid/TrainScanner/wiki)
@@ -49,7 +43,7 @@ ts_converter
 
 ### 拡張プラグイン
 
-pynojectorをインストールすると、ts_converterに機能が追加されます。
+pynojector をインストールすると、ts_converter に機能が追加されます。
 
 ```
 pip install https://github.com/vitroid/pynojector.git

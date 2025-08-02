@@ -1,7 +1,6 @@
 # 実数を扱えるQSliderを作成する
 
-from PyQt5.QtWidgets import QSlider, QWidget, QVBoxLayout, QLabel
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
 from trainscanner.widget.qfloatslider import QFloatSlider, FloatSliderHandle
 from math import log10
 

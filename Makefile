@@ -13,6 +13,17 @@ all: #macapp install #macapp-personally
 	python replacer.py < $< > $@
 
 ##############################
+#  Git Hooks
+##############################
+setup-hooks:
+	@echo "Git hooksを設定中..."
+	@cp hooks/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@cp hooks/post-commit .git/hooks/post-commit
+	@chmod +x .git/hooks/post-commit
+	@echo "Git hooksの設定が完了しました"
+
+##############################
 #  PyPI
 ##############################
 test-deploy: build
