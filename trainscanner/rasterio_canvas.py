@@ -5,6 +5,14 @@ from rasterio.windows import Window
 import cv2
 
 
+def rasterio_to_cv2(image):
+    return np.transpose(image, (1, 2, 0))[:, :, ::-1]
+
+
+def cv2_to_rasterio(image):
+    return np.transpose(image, (2, 0, 1))[::-1, :, :]
+
+
 class RasterioCanvas:
     def __init__(
         self, mode: str, size, lefttop, tiff_filename: str, scale: float = 1.0
@@ -67,40 +75,35 @@ class RasterioCanvas:
         # logger.info(f"{window=}, {window.height=}, {image.shape=}")
         if linear_alpha is not None:
             original = self.dataset.read(window=window).astype(np.uint8)
-            image_chw = np.transpose(
-                cv2.resize(
-                    image,
-                    (original.shape[2], original.shape[1]),
-                ),
-                (2, 0, 1),
-            )[::-1, :, :]
+            scaled_image = cv2.resize(
+                image,
+                (original.shape[2], original.shape[1]),
+            )
+            scaled_image_rasterio = cv2_to_rasterio(scaled_image)
             height, width = original.shape[1:3]
             new_range = np.linspace(0, len(linear_alpha) - 1, width)
             scaled_linear_alpha = np.interp(
                 new_range, np.arange(len(linear_alpha)), linear_alpha
             )
             alpha = scaled_linear_alpha[np.newaxis, np.newaxis, :]
-            image_chw = image_chw * alpha + original * (1 - alpha)
+            mixed_image_rasterio = scaled_image_rasterio * alpha + original * (
+                1 - alpha
+            )
             # logger.info(f"{image_chw.shape=}, {alpha.shape=}, {original.shape=}")
-            image_chw = image_chw.astype(np.uint8)
+            mixed_image = rasterio_to_cv2(mixed_image_rasterio)
         else:
-            image_chw = np.transpose(
-                cv2.resize(
-                    image,
-                    (int(window.width), int(window.height)),
-                ),
-                (2, 0, 1),
-            )[::-1, :, :]
+            mixed_image = cv2.resize(
+                image,
+                (int(window.width), int(window.height)),
+            )
+            mixed_image_rasterio = cv2_to_rasterio(mixed_image)
         # 画像をHWC(height, width, channels)からCHW(channels, height, width)に変換
         self.dataset.write(
-            image_chw,
+            mixed_image_rasterio,
             window=window,
         )
         if self.hook:
-            self.hook(
-                (xy[0] * self.scale, xy[1] * self.scale),
-                image_chw[::-1].transpose(1, 2, 0),
-            )
+            self.hook((xy[0] * self.scale, xy[1] * self.scale), mixed_image)
 
     def get_region(self, xy, size):
         x, y = xy
