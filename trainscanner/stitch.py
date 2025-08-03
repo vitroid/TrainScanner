@@ -22,36 +22,33 @@ from trainscanner.pass1 import extend_canvas
 # poetry run python -m trainscanner.stitch --file examples/sample2.mov.94839.tsconf  examples/sample2.mov
 
 
-class AlphaMask:
-    def __init__(self, img_width, slit=0, width=1.0):
-        self.img_width = img_width
-        self.width = width
-        self.slitpos = slit * img_width // 1000
+def linear_alpha(img_width: int, mixing_width: float, slit_pos: int, head_right: bool):
+    """2画面を混合するアルファマスクを作成する。幅は固定。
 
-    def make_linear_alpha(self, displace):
-        """
-        Make an orthogonal mask of only one line.
-        slit position is -500 to 500
-        slit width=1 is standard, width<1 is narrow (sharp) and width>1 is diffuse alpha
-        """
-        if displace == 0:
-            return np.ones(self.img_width)
-        slitwidth = abs(int(displace * self.width))
-        alpha = np.zeros(self.img_width)
-        if displace > 0:
-            slitin = self.img_width // 2 - self.slitpos
-            slitout = slitin + slitwidth
-            alpha[slitout:] = 1.0
-            alpha[slitin:slitout] = np.fromfunction(
-                lambda x: x / slitwidth, (slitwidth,)
-            )
-        else:
-            slitin = self.img_width // 2 + self.slitpos
-            slitout = slitin - slitwidth
-            alpha[:slitout] = 1.0
-            alpha[slitout:slitin] = np.fromfunction(
-                lambda x: (slitwidth - x) / slitwidth, (slitwidth,)
-            )
+    Args:
+        img_width (int): 画像の幅
+        mixing_width (float): ミキシング幅 (画面幅に対するパーセント)
+        slit_pos (int): スリット位置。+500が一番前(列車が左に向かってすすみ、画像を右へ右へ重ねている場合には左端)、-500が一番うしろ。
+        head_right (bool): 右向きならTrue
+
+    Returns:
+        np.ndarray: アルファマスク
+    """
+    # logger = getLogger()
+    left_pixels = int(img_width * (500 - slit_pos) / 1000)
+    mixing_pixels = int(img_width * mixing_width / 100)
+    # logger.info(
+    #     f"img_width: {img_width}, mixing_width: {mixing_width}, slit_pos: {slit_pos}, head_right: {head_right}, left_pixels: {left_pixels}, mixing_pixels: {mixing_pixels}"
+    # )
+    alpha = np.zeros(left_pixels + mixing_pixels + img_width)
+    alpha[left_pixels : left_pixels + mixing_pixels] = np.linspace(
+        0.0, 1.0, mixing_pixels
+    )
+    alpha[left_pixels + mixing_pixels :] = 1.0
+    alpha = alpha[:img_width]
+    if head_right:
+        return alpha[::-1]
+    else:
         return alpha
 
 
@@ -102,7 +99,7 @@ def prepare_parser(parser=None):
         default=1.0,
         dest="slitwidth",
         metavar="x",
-        help="Slit mixing width.",
+        help="Slit mixing width (percent of image width).",
     )
     parser.add_argument(
         "-c",
@@ -262,16 +259,19 @@ class Stitcher:
         return (num, den)
 
     def add_image(self, frame, absx, absy, idx, idy):
-        rotated, warped, cropped = self.transform.process_image(frame)
+        _, _, cropped = self.transform.process_image(frame)
         if self.firstFrame:
-            height, width = cropped.shape[:2]
             self.canvas.put_image((absx, absy), cropped)
-            self.mask = AlphaMask(
-                cropped.shape[1], slit=self.params.slitpos, width=self.params.slitwidth
-            )
             self.firstFrame = False
         else:
-            alpha = self.mask.make_linear_alpha(int(idx))
+            width = cropped.shape[1]
+            alpha = linear_alpha(
+                img_width=width,
+                mixing_width=self.params.slitwidth,
+                # defaultは1.0で、これは画面幅の1%に相当する。
+                slit_pos=self.params.slitpos,
+                head_right=idx < 0,
+            )
             self.canvas.put_image((absx, absy), cropped, linear_alpha=alpha)
 
     def stitch(self):
@@ -301,15 +301,6 @@ class Stitcher:
         if len(self.locations) == 0:
             return False
         return True  # not end
-
-    # def make_a_big_picture(self):
-    #     """
-    #     This is an optional process.
-    #     """
-    #     file_name = self.outfilename
-    #     # It costs high when using the CachedImage.
-    #     img = self.canvas.get_image()
-    #     cv2.imwrite(file_name, img)
 
 
 if __name__ == "__main__":
