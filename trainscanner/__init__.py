@@ -29,7 +29,7 @@ def subpixel_match(
         or not subpixel
     ):
         # print(11)
-        return max_loc, (0.0, 0.0)
+        return max_loc, (0.0, 0.0), max_val
 
     def parabola(xy, x0, y0, sigma_x, sigma_y, B):
         x, y = xy
@@ -64,15 +64,16 @@ def subpixel_match(
                 p0,
             )
         except RuntimeError:
-            return max_loc, (0.0, 0.0)
+            return max_loc, (0.0, 0.0), max_val
         p[0] -= fit_width[0]
         # print(0)
         if -0.8 < p[0] < 0.8:
             # print(1)
-            return max_loc, (p[0], 0.0)
+            value = parabola1D([x, y], p[0], p[1], p[2])
+            return max_loc, (p[0], 0.0), value
         # fitting failed
         # print(2)
-        return max_loc, (0.0, 0.0)
+        return max_loc, (0.0, 0.0), max_val
     else:
         try:
             p0 = [1, 1, 1, 1, 1.0]
@@ -85,12 +86,19 @@ def subpixel_match(
             # print(3)
         except RuntimeError:
             # print(4)
-            return max_loc, (0.0, 0.0)
+            return max_loc, (0.0, 0.0), max_val
         p[0] -= fit_width[0]
         p[1] -= fit_width[1]
         if -1 / 2 < p[0] < 1 / 2 and -1 / 2 < p[1] < 1 / 2:
             # print(5)
-            return max_loc, (p[0], p[1])
+            value = parabola([x, y], p[0], p[1], p[2], p[3], p[4])
+            return max_loc, (p[0], p[1]), value
         # fitting failed
         # print(6)
-        return max_loc, (0.0, 0.0)
+        return max_loc, (0.0, 0.0), max_val
+
+
+def match(target_area: np.ndarray, focus: np.ndarray):
+    scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(scores)
+    return max_loc, max_val

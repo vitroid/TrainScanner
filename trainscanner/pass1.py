@@ -11,7 +11,7 @@ import itertools
 from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
 from trainscanner import trainscanner
-from trainscanner import video, standardize, subpixel_match
+from trainscanner import video, standardize, subpixel_match, match
 
 
 def draw_focus_area(f, focus, delta=None, active=False):
@@ -57,11 +57,18 @@ def draw_slit_position(f, slitpos, dx):
 
 
 def motion(
-    image, ref, focus=(333, 666, 333, 666), maxaccel=None, delta=(0, 0), yfixed=False
+    image,
+    ref,
+    focus=(333, 666, 333, 666),
+    maxaccel=None,
+    delta=(0, 0),
+    yfixed=False,
+    dropframe=0,
 ):
     """
     ref画像のfocusで指定された領域内の画像と同じ画像をimage内で探して、その変位を返す。
     maxaccelとdeltaが指定されている場合は、探索範囲を絞り高速にマッチングできる。
+    dropfameが0でない場合、N+1倍の移動がありうる。
     """
     logger = getLogger()
     hi, wi = ref.shape[0:2]
@@ -79,51 +86,69 @@ def motion(
         if yfixed:
             # x方向にのみずらして照合する。
             image = image[ymin:ymax, :, :]
-            min_loc, fractional_shift = subpixel_match(image, template, subpixel=False)
-            # min_locはtemplateの左上角を原点とした相対座標なので、xminを引く。
-            min_loc = (min_loc[0] - xmin, min_loc[1])
-            return min_loc
+            # max_loc, fractional_shift, max_val = subpixel_match(
+            #     image, template, subpixel=False
+            # )
+            max_loc, max_val = match(image, template)
+            # max_locはtemplateの左上角を原点とした相対座標なので、xminを引く。
+            max_loc = (max_loc[0] - xmin, max_loc[1])
+            return max_loc
 
-        min_loc, fractional_shift = subpixel_match(image, template, subpixel=False)
-        min_loc = (min_loc[0] - xmin, min_loc[1] - ymin)
+        # max_loc, fractional_shift, max_val = subpixel_match(
+        #     image, template, subpixel=False
+        # )
+        max_loc, max_val = match(image, template)
+        max_loc = (max_loc[0] - xmin, max_loc[1] - ymin)
         # print(min_loc)
-        return min_loc
+        return max_loc
     else:
-        # use delta here
-        # print(f"maxaccel: {maxaccel} delta: {delta}")
-        roix0 = xmin + delta[0] - maxaccel[0]
-        roiy0 = ymin + delta[1] - maxaccel[1]
-        roix1 = xmax + delta[0] + maxaccel[0]
-        roiy1 = ymax + delta[1] + maxaccel[1]
-        # subpixel transformation
-        affine = np.matrix(((1.0, 0.0, -roix0), (0.0, 1.0, -roiy0)))
-        logger.debug(f"maxaccel:{maxaccel} delta:{delta}")
-        crop = cv2.warpAffine(
-            image,
-            affine,
-            (xmax - xmin + 2 * maxaccel[0], ymax - ymin + 2 * maxaccel[1]),
-        )
-        gray_crop = standardize(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY))
+        maxmax_loc = None
+        maxmax_val = 0
+        maxmax_hop = 0
+        for hop in range(1, dropframe + 2):
 
-        # res = cv2.matchTemplate(gray_crop, gray_template, cv2.TM_SQDIFF_NORMED)
-        # min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-        fit_width = [2, 2]
-        if maxaccel[0] < 2:
-            fit_width[0] = maxaccel[0]
-        if maxaccel[1] < 2:
-            fit_width[1] = maxaccel[1]
+            # use delta here
+            # print(f"maxaccel: {maxaccel} delta: {delta}")
+            roix0 = xmin + delta[0] * hop - maxaccel[0]
+            roiy0 = ymin + delta[1] * hop - maxaccel[1]
+            # subpixel transformation
+            affine = np.matrix(((1.0, 0.0, -roix0), (0.0, 1.0, -roiy0)))
+            logger.debug(f"maxaccel:{maxaccel} delta:{delta}")
+            crop = cv2.warpAffine(
+                image,
+                affine,
+                (xmax - xmin + 2 * maxaccel[0], ymax - ymin + 2 * maxaccel[1]),
+            )
+            gray_crop = standardize(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY))
 
-        min_loc, fractional_shift = subpixel_match(
-            gray_crop, gray_template, fit_width=fit_width  # , subpixel=False
-        )
+            # res = cv2.matchTemplate(gray_crop, gray_template, cv2.TM_SQDIFF_NORMED)
+            # min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+            fit_width = [2, 2]
+            if maxaccel[0] < 2:
+                fit_width[0] = maxaccel[0]
+            if maxaccel[1] < 2:
+                fit_width[1] = maxaccel[1]
 
-        # print(min_loc[0] - maxaccel, min_loc[1] - maxaccel)
+            # max_loc, fractional_shift, max_val = subpixel_match(
+            #     gray_crop, gray_template, fit_width=fit_width  # , subpixel=False
+            # )
+            max_loc, max_val = match(gray_crop, gray_template)
+            logger.info(f"{hop=} {max_loc=} {max_val=} ")
+            if maxmax_val < max_val:
+                maxmax_loc = max_loc
+                maxmax_val = max_val
+                maxmax_hop = hop
+
+        roix0 = xmin + delta[0] * maxmax_hop - maxaccel[0]
+        roiy0 = ymin + delta[1] * maxmax_hop - maxaccel[1]
 
         new_delta = (
-            min_loc[0] + roix0 - xmin + fractional_shift[0],
-            min_loc[1] + roiy0 - ymin + fractional_shift[1],
+            maxmax_loc[0] + roix0 - xmin,
+            maxmax_loc[1] + roiy0 - ymin,
         )
-        return new_delta
+        # dropframeがあった場合、2倍や3倍の移動が検出される。
+        # new_deltaには変位をそのまま返すが、同時に倍率も返す。
+        return new_delta, maxmax_hop
 
 
 def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=None):
@@ -305,6 +330,14 @@ def prepare_parser():
         dest="maxaccel",
         metavar="N",
         help="Interframe acceleration in pixels.",
+    )
+    parser.add_argument(
+        "-D",
+        "--dropframe",
+        type=int,
+        default=2,
+        metavar="N",
+        help="Maximum number of dropped frames accepted.",
     )
     parser.add_argument(
         "-2",
@@ -540,8 +573,8 @@ class Pass1:
 
         self.tspos = []
         self.cache = []  # save only "active" frames.
-        deltax = []  # store displacements
-        deltay = []  # store displacements
+        velx_history = []  # store velocities
+        vely_history = []  # store velocities
 
         if not self.valid_focus(params.focus):
             return
@@ -585,34 +618,40 @@ class Pass1:
                 maxaccel = [params.maxaccel, 0]
             if in_action or coldstart:
                 # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
-                delta = motion(
+                logger.info(f"velx: {velx} vely: {vely}")
+                delta, hop = motion(
                     lastframe,
                     cropped,
                     focus=params.focus,
                     maxaccel=maxaccel,
                     delta=(velx, vely),
+                    dropframe=params.dropframe,
                 )
                 if delta is None:
                     logger.error(
                         "Matching failed (probabily the motion detection window goes out of the image)."
                     )
                     break
-                dx, dy = delta
+                hopx, hopy = delta
+                velx, vely = delta[0] / hop, delta[1] / hop
+                logger.info(f"hop: {hop} velx: {velx} vely: {vely}")
             else:
                 # 速度不明なので、広い範囲でマッチングを行う。
-                dx, dy = motion(
+                velx, vely = motion(
                     lastframe, cropped, focus=params.focus, yfixed=params.zero
                 )
+                hopx, hopy = velx, vely
 
             # ##### Suppress drifting.
             # if params.zero:
             #     dy = 0
             # 直近5フレームの移動量を記録する．
-            deltax.append(dx)
-            deltay.append(dy)
-            if len(deltax) > 5:
-                deltax.pop(0)
-                deltay.pop(0)
+            # ここではhopの大きさ(dropframeのせいでときどき倍になる)ではなく、真の速度を記録する。
+            velx_history.append(velx)
+            vely_history.append(vely)
+            if len(velx_history) > 5:
+                velx_history.pop(0)
+                vely_history.pop(0)
             # 最大100フレームの画像を記録する．
             if cropped is not None and self.cache is not None:
                 self.cache.append([nframe, cropped])
@@ -621,12 +660,12 @@ class Pass1:
             ##### Make the preview image
             # preview = trainscanner.fit_to_square(cropped,preview_size)
             # diff_img = diffImage(preview,lastpreview,int(dx*preview_ratio),int(dy*preview_ratio),focus=params.focus)
-            diff_img = diffImage(cropped, lastframe, int(dx), int(dy))
+            diff_img = diffImage(cropped, lastframe, int(hopx), int(hopy))
             diff_img = trainscanner.fit_to_square(diff_img, preview_size)
             draw_focus_area(
                 diff_img,
                 params.focus,
-                delta=(int(dx * preview_ratio), int(dy * preview_ratio)),
+                delta=(int(hopx * preview_ratio), int(hopy * preview_ratio)),
                 active=in_action,
             )
             # previewを表示
@@ -634,6 +673,7 @@ class Pass1:
             ##### if the motion is larger than the params.antishake
 
             if coldstart:
+                assert False, "まだ考えてない"
                 if not in_action:
                     logger.debug(f"Accept the motion ({nframe} {dx} {dy})")
                     velx = dx
@@ -646,32 +686,30 @@ class Pass1:
                         coldstart = False
 
             else:
-                if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
+                if abs(velx) >= params.antishake or abs(vely) >= params.antishake:
                     if not in_action:
                         # number of frames since the first motion is detected.
                         precount += 1
                         # 過去5フレームでの移動量の変化
-                        ddx = max(deltax) - min(deltax)
-                        ddy = max(deltay) - min(deltay)
+                        ddx = max(velx_history) - min(velx_history)
+                        ddy = max(vely_history) - min(vely_history)
                         # if the displacements are almost constant in the last 5 frames,
                         if params.antishake <= ddx or params.antishake <= ddy:
-                            logger.debug(
-                                f"Wait for the camera to stabilize ({nframe} {dx} {dy})"
+                            logger.info(
+                                f"Wait for the camera to stabilize ({nframe=} {velx=} {vely=} {ddx=} {ddy=})"
                             )
                             continue
                         else:
                             # 速度は安定した．
                             in_action = True
                             # 十分変位が大きくなったらcoldstartフラグはおろす。
-                            logger.debug(
-                                f"The camera is stabilized. {nframe} {dx} {dy}"
+                            logger.info(
+                                f"The camera is stabilized. {nframe=} {velx=} {vely=}"
                             )
                             # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
                             # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
                     # 変位をそのまま採用する．
-                    logger.debug(f"Accept the motion ({nframe} {dx} {dy})")
-                    velx = dx
-                    vely = dy
+                    logger.debug(f"Accept the motion ({nframe} {velx} {vely})")
                     match_fail = 0
                 else:
                     if in_action:
@@ -686,19 +724,19 @@ class Pass1:
 
                             break
                         logger.info(
-                            f"Ignore a small motion ({nframe} {dx} {dy} +{match_fail}/{params.trailing})"
+                            f"Ignore a small motion ({nframe} {velx} {vely} +{match_fail}/{params.trailing})"
                         )
                         # believe the last velx and vely
                     else:
                         # not guess mode, not large motion: just ignore.
-                        logger.info(f"Still frame ({nframe} {dx} {dy})")
+                        logger.info(f"Still frame ({nframe} {velx} {vely})")
                         continue
 
-            logger.info(f"Capture {nframe} {velx} {vely} #{np.amax(diff)}")
-            absx += velx
-            absy += vely
+            logger.info(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
+            absx += hopx
+            absy += hopy
             self.canvas = canvas_size(self.canvas, cropped, absx, absy)
-            self.tspos.append([nframe, velx, vely])
+            self.tspos.append([nframe, hopx, hopy])
         # end of capture
 
         # 最後の、match_failフレームを削除する。
