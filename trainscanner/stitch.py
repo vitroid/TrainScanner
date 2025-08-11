@@ -306,7 +306,7 @@ class Stitcher:
 
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     if debug:
         basicConfig(
             level=DEBUG,
