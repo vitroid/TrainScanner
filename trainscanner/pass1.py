@@ -488,15 +488,15 @@ class Pass1:
         ay, by = np.polyfit(t, y, 1)
 
         t_extrapolated = np.linspace(
-            t[0] - num_frames,
+            t[0] - (num_frames - 1),
             t[0] - 1,
-            num_frames,
+            num_frames - 1,
             dtype=int,
         )
         x_extrapolated = (ax * t_extrapolated + bx).astype(int)
         y_extrapolated = (ay * t_extrapolated + by).astype(int)
         leading_tspos = []
-        for i in range(num_frames):
+        for i in range(num_frames - 1):
             leading_tspos.append(
                 [t_extrapolated[i], x_extrapolated[i], y_extrapolated[i]]
             )
