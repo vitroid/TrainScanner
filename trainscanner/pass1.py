@@ -10,7 +10,7 @@ import re
 import itertools
 from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
-from trainscanner import trainscanner
+from trainscanner import trainscanner, diffImage
 from trainscanner import video, standardize, subpixel_match, match
 
 
@@ -133,7 +133,7 @@ def motion(
             #     gray_crop, gray_template, fit_width=fit_width  # , subpixel=False
             # )
             max_loc, max_val = match(gray_crop, gray_template)
-            logger.info(f"{hop=} {max_loc=} {max_val=} ")
+            logger.debug(f"{hop=} {max_loc=} {max_val=} ")
             if maxmax_val < max_val:
                 maxmax_loc = max_loc
                 maxmax_val = max_val
@@ -149,31 +149,6 @@ def motion(
         # dropframeがあった場合、2倍や3倍の移動が検出される。
         # new_deltaには変位をそのまま返すが、同時に倍率も返す。
         return new_delta, maxmax_hop
-
-
-def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=None):
-    """
-    2枚のcv2画像の差を返す．
-    """
-    if mode == "diff":
-        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
-        h, w = frame1.shape[0:2]
-        std2 = standardize(frame2)
-        frame1 = cv2.warpAffine(frame1, affine, (w, h))
-        std1 = standardize(frame1)
-        diff = (255 * cv2.absdiff(std1, std2)).astype(np.uint8)
-        # if focus is not None:
-        #     draw_focus_area(diff, focus, delta=(dx, dy))
-        # if slitpos is not None:
-        #     draw_slit_position(diff, slitpos, dx)
-        return diff
-    elif mode == "stack":
-        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
-        h, w = frame1.shape[0:2]
-        flags = np.arange(h) * 16 % h > h // 2
-        frame1 = cv2.warpAffine(frame1, affine, (w, h))
-        frame1[flags] = frame2[flags]
-        return frame1
 
 
 # Automatically extensible canvas.
@@ -335,7 +310,7 @@ def prepare_parser():
         "-D",
         "--dropframe",
         type=int,
-        default=2,
+        default=3,
         metavar="N",
         help="Maximum number of dropped frames accepted.",
     )
@@ -465,7 +440,7 @@ class Pass1:
         Add trailing frames to tspos.
         """
         logger = getLogger()
-        logger.info("Adding trailing frames to tspos.")
+        logger.debug("Adding trailing frames to tspos.")
 
         if len(self.tspos) < self.params.estimate:
             return
@@ -505,10 +480,11 @@ class Pass1:
         Add leading frames to tspos.
         """
         logger = getLogger()
-        logger.info(f"Adding leading frames to tspos. {self.tspos}")
+        logger.debug(f"Adding leading frames to tspos. {self.tspos}")
 
         if len(self.tspos) < self.params.estimate:
             return
+        # 事前の速度を予測するために用いるフレーム数。
         num_frames = self.params.trailing
         if self.tspos[0][0] < num_frames:
             num_frames = self.tspos[0][0]
@@ -521,15 +497,15 @@ class Pass1:
         ay, by = np.polyfit(t, y, 1)
 
         t_extrapolated = np.linspace(
-            t[0] - num_frames,
+            t[0] - (num_frames - 1),
             t[0] - 1,
-            num_frames,
+            num_frames - 1,
             dtype=int,
         )
         x_extrapolated = (ax * t_extrapolated + bx).astype(int)
         y_extrapolated = (ay * t_extrapolated + by).astype(int)
         leading_tspos = []
-        for i in range(num_frames):
+        for i in range(num_frames - 1):
             leading_tspos.append(
                 [t_extrapolated[i], x_extrapolated[i], y_extrapolated[i]]
             )
@@ -603,7 +579,7 @@ class Pass1:
             # It happens in the frame rate adjustment between PAL and NTSC
             diff = np.sum(diff) / np.prod(diff.shape)
             if diff < params.identity:
-                logger.info("skip identical frame #{0}".format(diff))
+                logger.debug("skip identical frame #{0}".format(diff))
                 continue
             ##### Warping the frame
             _, _, cropped = transform.process_next_image(rawframe)
@@ -618,7 +594,7 @@ class Pass1:
                 maxaccel = [params.maxaccel, 0]
             if in_action or coldstart:
                 # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
-                logger.info(f"velx: {velx} vely: {vely}")
+                logger.debug(f"velx: {velx} vely: {vely}")
                 delta, hop = motion(
                     lastframe,
                     cropped,
@@ -634,7 +610,7 @@ class Pass1:
                     break
                 hopx, hopy = delta
                 velx, vely = delta[0] / hop, delta[1] / hop
-                logger.info(f"hop: {hop} velx: {velx} vely: {vely}")
+                logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
             else:
                 # 速度不明なので、広い範囲でマッチングを行う。
                 velx, vely = motion(
@@ -691,19 +667,22 @@ class Pass1:
                         # number of frames since the first motion is detected.
                         precount += 1
                         # 過去5フレームでの移動量の変化
-                        ddx = max(velx_history) - min(velx_history)
-                        ddy = max(vely_history) - min(vely_history)
+                        fluctuation_x = max(velx_history) - min(velx_history)
+                        fluctuation_y = max(vely_history) - min(vely_history)
                         # if the displacements are almost constant in the last 5 frames,
-                        if params.antishake <= ddx or params.antishake <= ddy:
-                            logger.info(
-                                f"Wait for the camera to stabilize ({nframe=} {velx=} {vely=} {ddx=} {ddy=})"
+                        if (
+                            params.antishake <= fluctuation_x
+                            or params.antishake <= fluctuation_y
+                        ):
+                            logger.debug(
+                                f"Wait for the camera to stabilize ({nframe=} {velx=} {vely=} {fluctuation_x=} {fluctuation_y=})"
                             )
                             continue
                         else:
                             # 速度は安定した．
                             in_action = True
                             # 十分変位が大きくなったらcoldstartフラグはおろす。
-                            logger.info(
+                            logger.debug(
                                 f"The camera is stabilized. {nframe=} {velx=} {vely=}"
                             )
                             # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
@@ -723,19 +702,20 @@ class Pass1:
                             # ここで、マッチしはじめる前の部分と、マッチしおえたあとの部分を整える。
 
                             break
-                        logger.info(
+                        logger.debug(
                             f"Ignore a small motion ({nframe} {velx} {vely} +{match_fail}/{params.trailing})"
                         )
                         # believe the last velx and vely
                     else:
                         # not guess mode, not large motion: just ignore.
-                        logger.info(f"Still frame ({nframe} {velx} {vely})")
+                        logger.debug(f"Still frame ({nframe} {velx} {vely})")
                         continue
 
-            logger.info(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
+            logger.debug(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
             absx += hopx
             absy += hopy
             self.canvas = canvas_size(self.canvas, cropped, absx, absy)
+            # フレーム番号と、直前のフレームからの移動距離。
             self.tspos.append([nframe, hopx, hopy])
         # end of capture
 

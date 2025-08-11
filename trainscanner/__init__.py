@@ -102,3 +102,28 @@ def match(target_area: np.ndarray, focus: np.ndarray):
     scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(scores)
     return max_loc, max_val
+
+
+def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=None):
+    """
+    2枚のcv2画像の差を返す．
+    """
+    if mode == "diff":
+        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
+        h, w = frame1.shape[0:2]
+        std2 = standardize(frame2)
+        frame1 = cv2.warpAffine(frame1, affine, (w, h))
+        std1 = standardize(frame1)
+        diff = (255 * cv2.absdiff(std1, std2)).astype(np.uint8)
+        # if focus is not None:
+        #     draw_focus_area(diff, focus, delta=(dx, dy))
+        # if slitpos is not None:
+        #     draw_slit_position(diff, slitpos, dx)
+        return diff
+    elif mode == "stack":
+        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
+        h, w = frame1.shape[0:2]
+        flags = np.arange(h) * 16 % h > h // 2
+        frame1 = cv2.warpAffine(frame1, affine, (w, h))
+        frame1[flags] = frame2[flags]
+        return frame1
