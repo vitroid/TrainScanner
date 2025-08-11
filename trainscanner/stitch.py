@@ -12,8 +12,7 @@ from logging import getLogger, basicConfig, WARN, DEBUG, INFO
 # from canvas import Canvas    #On-memory canvas
 # from canvas2 import Canvas   #Cached canvas
 from tiledimage import cachedimage as ci
-from trainscanner import trainscanner
-from trainscanner import video
+from trainscanner import trainscanner, video, diffImage
 from trainscanner.i18n import init_translations, tr
 
 
@@ -187,8 +186,8 @@ class Stitcher:
         self.firstFrame = True
         self.currentFrame = 0  # 1 is the first frame
 
-        self.R = None
-        self.M = None
+        # self.R = None
+        # self.M = None
         self.transform = trainscanner.transformation(
             self.params.rotate, self.params.perspective, self.params.crop
         )
@@ -221,6 +220,7 @@ class Stitcher:
             if len(line) > 0 and line[0] != "@":
                 cols = [float(x) for x in line.split()]
                 if len(cols) > 0:
+                    # この計算順序は正しい。まず変位を足してから、画像を置く。
                     absx += cols[1]
                     absy += cols[2]
                     cols = [cols[0], absx, absy] + cols[1:]
@@ -233,6 +233,7 @@ class Stitcher:
         # initial seek
         while self.currentFrame + 1 < self.locations[0][0]:
             logger.debug((self.currentFrame, self.locations[0][0]))
+            # このyieldは要るのか?
             yield self.currentFrame, self.locations[0][0]
             self.currentFrame = self.vl.skip()
 
@@ -242,6 +243,7 @@ class Stitcher:
         return (num, den)
 
     def add_image(self, frame, absx, absy, idx, idy):
+        logger = getLogger()
         rotated, warped, cropped = self.transform.process_image(frame)
         if self.firstFrame:
             self.canvas.put_image((absx, absy), cropped)
@@ -250,6 +252,14 @@ class Stitcher:
             )
             self.firstFrame = False
         else:
+            # debug modeでは、ここで差分を表示したい。そのためには、canvasから重ねる部分をとってくる必要がある。
+            if logger.level == DEBUG:
+                original = self.canvas.get_region(
+                    ((absx, absx + cropped.shape[1]), (absy, absy + cropped.shape[0]))
+                )
+                cv2.imshow("diff", diffImage(original, cropped, 0, 0))
+                cv2.waitKey(0)
+
             alpha = self.mask.make_linear_alpha(int(idx))
             self.canvas.put_image((absx, absy), cropped, linear_alpha=alpha)
 
