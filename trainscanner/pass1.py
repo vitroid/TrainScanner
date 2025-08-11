@@ -11,7 +11,7 @@ import itertools
 from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
 from trainscanner import trainscanner, diffImage
-from trainscanner import video, standardize, subpixel_match, match
+from trainscanner import video, standardize, subpixel_match, match, debug_log
 
 
 def draw_focus_area(f, focus, delta=None, active=False):
@@ -56,6 +56,7 @@ def draw_slit_position(f, slitpos, dx):
     cv2.line(f, (x2, 0), (x2, h), (0, 255, 0), 1)
 
 
+@debug_log
 def motion(
     image,
     ref,
@@ -105,6 +106,7 @@ def motion(
         maxmax_loc = None
         maxmax_val = 0
         maxmax_hop = 0
+        maxmax_fra = None
         for hop in range(1, dropframe + 2):
 
             # use delta here
@@ -123,36 +125,37 @@ def motion(
 
             # res = cv2.matchTemplate(gray_crop, gray_template, cv2.TM_SQDIFF_NORMED)
             # min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-            fit_width = [2, 2]
+            fit_margins = [2, 2]
             if maxaccel[0] < 2:
-                fit_width[0] = maxaccel[0]
+                fit_margins[0] = maxaccel[0]
             if maxaccel[1] < 2:
-                fit_width[1] = maxaccel[1]
+                fit_margins[1] = maxaccel[1]
 
-            # max_loc, fractional_shift, max_val = subpixel_match(
-            #     gray_crop, gray_template, fit_width=fit_width  # , subpixel=False
-            # )
-            max_loc, max_val = match(gray_crop, gray_template)
-            logger.debug(f"{hop=} {max_loc=} {max_val=} ")
+            max_loc, fractional_shift, max_val = subpixel_match(
+                gray_crop, gray_template, fit_margins=fit_margins, subpixel=True
+            )
+            # max_loc, max_val = match(gray_crop, gray_template)
             if maxmax_val < max_val:
                 maxmax_loc = max_loc
                 maxmax_val = max_val
                 maxmax_hop = hop
+                maxmax_fra = fractional_shift
 
         roix0 = xmin + delta[0] * maxmax_hop - maxaccel[0]
         roiy0 = ymin + delta[1] * maxmax_hop - maxaccel[1]
 
         new_delta = (
-            maxmax_loc[0] + roix0 - xmin,
-            maxmax_loc[1] + roiy0 - ymin,
+            maxmax_loc[0] + maxmax_fra[0] + roix0 - xmin,
+            maxmax_loc[1] + maxmax_fra[1] + roiy0 - ymin,
         )
         # dropframeがあった場合、2倍や3倍の移動が検出される。
         # new_deltaには変位をそのまま返すが、同時に倍率も返す。
+        logger.debug(f"{maxmax_fra=} {maxmax_hop=}")
         return new_delta, maxmax_hop
 
 
 # Automatically extensible canvas.
-def canvas_size(canvas_dimen, image, x, y):
+def expand_canvas(canvas_dimen, image, x, y):
     """
     canvas_dimenで定義されるcanvasの，位置(x,y)にimageを貼りつけた場合の，拡張後のcanvasの大きさを返す．
     canvas_dimenはcanvasの左上角の絶対座標と，canvasの幅高さの4因子でできている．
@@ -439,8 +442,6 @@ class Pass1:
         """
         Add trailing frames to tspos.
         """
-        logger = getLogger()
-        logger.debug("Adding trailing frames to tspos.")
 
         if len(self.tspos) < self.params.estimate:
             return
@@ -479,8 +480,6 @@ class Pass1:
         """
         Add leading frames to tspos.
         """
-        logger = getLogger()
-        logger.debug(f"Adding leading frames to tspos. {self.tspos}")
 
         if len(self.tspos) < self.params.estimate:
             return
@@ -714,16 +713,14 @@ class Pass1:
             logger.debug(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
             absx += hopx
             absy += hopy
-            self.canvas = canvas_size(self.canvas, cropped, absx, absy)
+            self.canvas = expand_canvas(self.canvas, cropped, absx, absy)
             # フレーム番号と、直前のフレームからの移動距離。
             self.tspos.append([nframe, hopx, hopy])
         # end of capture
 
         # 最後の、match_failフレームを削除する。
-        logger.debug(f"tspos before: {self.tspos} {match_fail}")
         if match_fail > 0:
             self.tspos = self.tspos[:-match_fail]
-        logger.debug(f"tspos after: {self.tspos}")
         # 10枚ほど余分に削る。
         # self.tspos = self.tspos[:-10]
         # self.tspos = self.tspos[10:]
@@ -755,6 +752,15 @@ class Pass1:
 
 
 def main():
+    debug = True
+    if debug:
+        basicConfig(
+            level=DEBUG,
+            # filename='log.txt',
+            format="%(asctime)s %(levelname)s %(message)s",
+        )
+    else:
+        basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(message)s")
     pass1 = Pass1(argv=sys.argv)
     for num, den in pass1.before():
         pass
