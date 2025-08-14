@@ -134,6 +134,7 @@ def motion(
             max_loc, fractional_shift, max_val = subpixel_match(
                 gray_crop, gray_template, fit_margins=fit_margins, subpixel=True
             )
+            logger.debug(f"{hop=} {max_val=}")
             # max_loc, max_val = match(gray_crop, gray_template)
             if maxmax_val < max_val:
                 maxmax_loc = max_loc
@@ -313,7 +314,7 @@ def prepare_parser():
         "-D",
         "--dropframe",
         type=int,
-        default=3,
+        default=0,
         metavar="N",
         help="Maximum number of dropped frames accepted.",
     )
@@ -648,14 +649,10 @@ class Pass1:
             ##### if the motion is larger than the params.antishake
 
             if coldstart:
-                assert False, "まだ考えてない"
                 if not in_action:
-                    logger.debug(f"Accept the motion ({nframe} {dx} {dy})")
-                    velx = dx
-                    vely = dy
                     match_fail = 0
 
-                if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
+                if abs(velx) >= params.antishake or abs(vely) >= params.antishake:
                     if not in_action:
                         in_action = True
                         coldstart = False
@@ -766,7 +763,7 @@ def main():
         pass
     for ret in pass1.iter():
         cv2.imshow("pass1", ret)
-        cv2.waitKey(1)
+        cv2.waitKey(0)
     pass1.after()
 
 

@@ -65,6 +65,7 @@ class SettingsGUI(QWidget):
         self.slitwidth = 50
         self.identity = 0.5
         self.accel = 1
+        self.dropframe = 0
 
         # private
         # layout
@@ -258,12 +259,41 @@ class SettingsGUI(QWidget):
         )
         self.trailing_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
         self.trailing_slider.setRange(1, 150)  # スライダの範囲
-        self.trailing_slider.setValue(10)  # 初期値
+        self.trailing_slider.setValue(self.trailing)  # 初期値
         # スライダの目盛りを両方に出す
         self.trailing_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.trailing_slider.valueChanged.connect(self.trailing_slider_on_draw)
         settings2_layout.addWidget(self.trailing_slider, rows, 3)
         settings2_layout.addWidget(QLabel(tr("Long")), rows, 4)
+
+        rows += 1
+        #####################################################################
+
+        # Dropframe #########################################################
+
+        settings2_layout.addWidget(
+            QLabel(tr("Maximum number of dropped frames accepted.")),
+            rows,
+            0,
+            Qt.AlignmentFlag.AlignRight,
+        )
+
+        self.dropframe_slider_valuelabel = QLabel(f"{self.dropframe} " + tr("frames"))
+        settings2_layout.addWidget(
+            self.dropframe_slider_valuelabel, rows, 1, Qt.AlignmentFlag.AlignCenter
+        )
+
+        settings2_layout.addWidget(
+            QLabel(tr("None")), rows, 2, Qt.AlignmentFlag.AlignRight
+        )
+        self.dropframe_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
+        self.dropframe_slider.setRange(0, 3)  # スライダの範囲
+        self.dropframe_slider.setValue(self.dropframe)  # 初期値
+        # スライダの目盛りを両方に出す
+        self.dropframe_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.dropframe_slider.valueChanged.connect(self.dropframe_slider_on_draw)
+        settings2_layout.addWidget(self.dropframe_slider, rows, 3)
+        settings2_layout.addWidget(QLabel(tr("3")), rows, 4)
 
         rows += 1
         #####################################################################
@@ -493,6 +523,10 @@ class SettingsGUI(QWidget):
         self.accel = self.accel_slider.value()
         self.accel_slider_valuelabel.setText(str(self.accel))
 
+    def dropframe_slider_on_draw(self):
+        self.dropframe = self.dropframe_slider.value()
+        self.dropframe_slider_valuelabel.setText(str(self.dropframe))
+
     ##    def identthres_slider_on_draw(self):
     ##        self.identity = self.identthres_slider.value()
     ##        self.skipident_valuelabel.setText(str(self.identity))
@@ -543,6 +577,7 @@ class SettingsGUI(QWidget):
             ]
         pass1_options += ["--maxaccel", f"{self.accel}"]
         pass1_options += ["--log", logfilenamebase]
+        pass1_options += ["--dropframe", f"{self.dropframe}"]
 
         # wrap the options to record in the tsconf file
         # THIS IS WEIRD. FIND BETTER WAY.

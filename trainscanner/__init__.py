@@ -32,15 +32,14 @@ def standardize(x):
     return ((x - np.mean(x)) / np.std(x)).astype(np.float32)
 
 
-@debug_log
+# @debug_log
 def subpixel_match(
     target_area: np.ndarray, focus: np.ndarray, fit_margins=[2, 2], subpixel=True
 ):
     logger = getLogger()
-    scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF)
-    scores_resized = cv2.resize(
-        scores, (scores.shape[1], 10), interpolation=cv2.INTER_NEAREST
-    )
+    scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF_NORMED)
+    # scores = standardize(scores)
+    logger.debug(f"{scores=}")
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(scores)
     # print(10, fit_width, max_loc, scores.shape)
     # print(
@@ -76,7 +75,7 @@ def subpixel_match(
         max_loc[1] - fit_margins[1] : max_loc[1] + fit_margins[1] + 1,
         max_loc[0] - fit_margins[0] : max_loc[0] + fit_margins[0] + 1,
     ]
-    local_scores = standardize(local_scores).flatten()
+    local_scores = local_scores.flatten()
     if local_scores.shape != (scores_w * scores_h,):
         logger.debug(f"12 {local_scores.shape=} {scores_w=} {scores_h=}")
         return  # terminate
@@ -121,7 +120,7 @@ def subpixel_match(
         p[1] -= fit_margins[1]
         if -1 / 2 < p[0] < 1 / 2 and -1 / 2 < p[1] < 1 / 2:
             # print(5)
-            logger.debug("4")
+            logger.debug(f"4 {local_scores=}")
             return max_loc, (p[0], p[1]), p[4]
         # fitting failed
         # print(6)
