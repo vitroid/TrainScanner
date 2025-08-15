@@ -16,6 +16,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap, QKeySequence
 from trainscanner.video import video_iter
 from trainscanner.shake_reduction import antishake
+from trainscanner import Region
 from trainscanner.i18n import tr
 import sys
 import os
@@ -262,7 +263,7 @@ class ImageWindow(QMainWindow):
             # ビデオをまきもどす
             video_frames = video_iter(self.video_path)
             rects = self.get_rectangles()
-            rects = qt_to_cv(rects)
+            regions = qt_to_region(rects)
 
             video_writer = None
             if self.radio_video.isChecked():
@@ -282,7 +283,7 @@ class ImageWindow(QMainWindow):
                 for i, frame in enumerate(
                     antishake(
                         video_frames,
-                        rects,
+                        regions,
                         logfile=logfile,
                         show_snapshot=self.show_snapshot,
                         max_shift=10,
@@ -524,15 +525,15 @@ class ImageWindow(QMainWindow):
             self.process_video(files[0])
 
 
-def qt_to_cv(rects):
-    cv_rects = []
+def qt_to_region(rects):
+    regions = []
     for rect in rects:
         left = min(rect[0][0], rect[1][0])
         right = max(rect[0][0], rect[1][0])
         top = min(rect[0][1], rect[1][1])
         bottom = max(rect[0][1], rect[1][1])
-        cv_rects.append((left, top, right - left, bottom - top))
-    return cv_rects
+        regions.append(Region(left=left, top=top, right=right, bottom=bottom))
+    return regions
 
 
 def main():

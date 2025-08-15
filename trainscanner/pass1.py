@@ -11,56 +11,56 @@ import itertools
 from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
 from trainscanner import trainscanner, diffImage
-from trainscanner import video, standardize, subpixel_match, match, debug_log
+from trainscanner import video, standardize, subpixel_match, match, debug_log, Region
 
 
-def draw_focus_area(f, focus, delta=None, active=False):
+def draw_focus_area(f, focus: Region, delta=None, active=False):
     """
     cv2形式の画像の中に四角を描く
     """
     h, w = f.shape[0:2]
-    pos = [
-        w * focus[0] // 1000,
-        w * focus[1] // 1000,
-        h * focus[2] // 1000,
-        h * focus[3] // 1000,
-    ]
+    pos = Region(
+        left=w * focus.left // 1000,
+        right=w * focus.right // 1000,
+        top=h * focus.top // 1000,
+        bottom=h * focus.bottom // 1000,
+    )
     if active:
         colors = [(0, 255, 0), (255, 255, 0)]
     else:
         colors = [(0, 128, 0), (128, 128, 0)]
-    cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), colors[0], 1)
+    cv2.rectangle(f, (pos.left, pos.top), (pos.right, pos.bottom), colors[0], 1)
     if delta is not None:
         dx, dy = delta
-        pos = [
-            w * focus[0] // 1000 + dx,
-            w * focus[1] // 1000 + dx,
-            h * focus[2] // 1000 + dy,
-            h * focus[3] // 1000 + dy,
-        ]
-        cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), colors[1], 1)
+        pos = Region(
+            left=w * focus.left // 1000 + dx,
+            right=w * focus.right // 1000 + dx,
+            top=h * focus.top // 1000 + dy,
+            bottom=h * focus.bottom // 1000 + dy,
+        )
+        cv2.rectangle(f, (pos.left, pos.top), (pos.right, pos.bottom), colors[1], 1)
 
 
-def draw_slit_position(f, slitpos, dx):
+def draw_slit_position(img, slitpos, dx):
     """
     cv2形式の画像の中にスリットマーカーを描く
     """
-    h, w = f.shape[0:2]
+    h, w = img.shape[0:2]
     if dx > 0:
         x1 = w // 2 + slitpos * w // 1000
         x2 = x1 - dx
     else:
         x1 = w // 2 - slitpos * w // 1000
         x2 = x1 - dx
-    cv2.line(f, (x1, 0), (x1, h), (0, 255, 0), 1)
-    cv2.line(f, (x2, 0), (x2, h), (0, 255, 0), 1)
+    cv2.line(img, (x1, 0), (x1, h), (0, 255, 0), 1)
+    cv2.line(img, (x2, 0), (x2, h), (0, 255, 0), 1)
 
 
 @debug_log
 def motion(
     image,
     ref,
-    focus=(333, 666, 333, 666),
+    focus: Region = Region(left=333, right=666, top=333, bottom=666),
     maxaccel=None,
     delta=(0, 0),
     yfixed=False,
@@ -73,10 +73,10 @@ def motion(
     """
     logger = getLogger()
     hi, wi = ref.shape[0:2]
-    xmin = wi * focus[0] // 1000
-    xmax = wi * focus[1] // 1000
-    ymin = hi * focus[2] // 1000
-    ymax = hi * focus[3] // 1000
+    xmin = wi * focus.left // 1000
+    xmax = wi * focus.right // 1000
+    ymin = hi * focus.top // 1000
+    ymax = hi * focus.bottom // 1000
     template = ref[ymin:ymax, xmin:xmax, :]
     gray_template = standardize(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY))
     h, w = template.shape[0:2]
@@ -400,9 +400,9 @@ class Pass1:
                 for v in value:
                     equal = v.find("=")
                     if equal >= 0:
-                        self.tsconf += "--{0}\n{1}\n".format(v[:equal], v[equal + 1 :])
+                        self.tsconf += f"--{v[:equal]}\n{v[equal + 1 :]}\n"
                     else:
-                        self.tsconf += "--{0}\n".format(v)
+                        self.tsconf += f"--{v}\n"
             else:
                 if option in (
                     "--perspective",
@@ -419,7 +419,7 @@ class Pass1:
                     if value is True:
                         self.tsconf += option + "\n"
                 else:
-                    self.tsconf += "{0}\n{1}\n".format(option, value)
+                    self.tsconf += f"{option}\n{value}\n"
         # print(self.tsconf)
         # end of the header
 
@@ -511,12 +511,12 @@ class Pass1:
             )
         self.tspos = leading_tspos + self.tspos
 
-    def valid_focus(self, focus):
+    def valid_focus(self, focus: Region):
         if focus is None:
             return False
-        if focus[0] >= focus[1]:
+        if focus.left >= focus.right:
             return False
-        if focus[2] >= focus[3]:
+        if focus.top >= focus.bottom:
             return False
         return True
 
@@ -527,6 +527,12 @@ class Pass1:
         vl = self.vl
         params = self.params
         nframe = self.lastnframe
+        focus = Region(
+            left=params.focus[0],
+            right=params.focus[1],
+            top=params.focus[2],
+            bottom=params.focus[3],
+        )
 
         transform = trainscanner.transformation(
             angle=params.rotate, pers=params.perspective, crop=params.crop
@@ -552,7 +558,7 @@ class Pass1:
         velx_history = []  # store velocities
         vely_history = []  # store velocities
 
-        if not self.valid_focus(params.focus):
+        if not self.valid_focus(focus):
             return
 
         while True:
@@ -598,7 +604,7 @@ class Pass1:
                 delta, hop = motion(
                     lastframe,
                     cropped,
-                    focus=params.focus,
+                    focus=focus,
                     maxaccel=maxaccel,
                     delta=(velx, vely),
                     dropframe=params.dropframe,
@@ -613,9 +619,7 @@ class Pass1:
                 logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
             else:
                 # 速度不明なので、広い範囲でマッチングを行う。
-                velx, vely = motion(
-                    lastframe, cropped, focus=params.focus, yfixed=params.zero
-                )
+                velx, vely = motion(lastframe, cropped, focus=focus, yfixed=params.zero)
                 hopx, hopy = velx, vely
 
             # ##### Suppress drifting.
@@ -640,7 +644,7 @@ class Pass1:
             diff_img = trainscanner.fit_to_square(diff_img, preview_size)
             draw_focus_area(
                 diff_img,
-                params.focus,
+                focus,
                 delta=(int(hopx * preview_ratio), int(hopy * preview_ratio)),
                 active=in_action,
             )

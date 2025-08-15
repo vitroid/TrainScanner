@@ -3,6 +3,19 @@ import numpy as np
 import scipy.optimize
 from logging import getLogger
 import functools
+from dataclasses import dataclass
+
+
+@dataclass
+class Region:
+    """
+    cv2-like region specification.
+    """
+
+    left: int
+    right: int
+    top: int
+    bottom: int
 
 
 def debug_log(func):
@@ -157,3 +170,30 @@ def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=No
         frame1 = cv2.warpAffine(frame1, affine, (w, h))
         frame1[flags] = frame2[flags]
         return frame1
+
+
+def trim_region(region: Region, shape: tuple[int, int]) -> Region:
+    top = max(0, region.top)
+    bottom = min(shape[0], region.bottom)
+    left = max(0, region.left)
+    right = min(shape[1], region.right)
+    return Region(top=top, bottom=bottom, left=left, right=right)
+
+
+def region_to_cvrect(region: Region) -> tuple[int, int, int, int]:
+    return (
+        region.left,
+        region.top,
+        region.right - region.left,
+        region.bottom - region.top,
+    )
+
+
+def find_pattern_in_image(image, focus, pattern, relative=False):
+    """
+    画像中のlfocusエリア内に、パターンを検出する。
+    relativeの場合はfocusの左上を基準とした座標を返し、
+    そうでない場合はimageの左上を基準とした座標を返す。
+
+    """
+    pass
