@@ -10,67 +10,81 @@ import re
 import itertools
 from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
-from trainscanner import trainscanner
-from trainscanner import video, standardize, subpixel_match
+from trainscanner import trainscanner, diffImage
+from trainscanner import video, match, debug_log, Region, find_subimage
 
 
-def draw_focus_area(f, focus, delta=None, active=False):
+def draw_focus_area(f, focus: Region, delta=None, active=False):
     """
     cv2形式の画像の中に四角を描く
     """
     h, w = f.shape[0:2]
-    pos = [
-        w * focus[0] // 1000,
-        w * focus[1] // 1000,
-        h * focus[2] // 1000,
-        h * focus[3] // 1000,
-    ]
+    pos = Region(
+        left=w * focus.left // 1000,
+        right=w * focus.right // 1000,
+        top=h * focus.top // 1000,
+        bottom=h * focus.bottom // 1000,
+    )
     if active:
         colors = [(0, 255, 0), (255, 255, 0)]
     else:
         colors = [(0, 128, 0), (128, 128, 0)]
-    cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), colors[0], 1)
+    cv2.rectangle(f, (pos.left, pos.top), (pos.right, pos.bottom), colors[0], 1)
     if delta is not None:
         dx, dy = delta
-        pos = [
-            w * focus[0] // 1000 + dx,
-            w * focus[1] // 1000 + dx,
-            h * focus[2] // 1000 + dy,
-            h * focus[3] // 1000 + dy,
-        ]
-        cv2.rectangle(f, (pos[0], pos[2]), (pos[1], pos[3]), colors[1], 1)
+        pos = Region(
+            left=w * focus.left // 1000 + dx,
+            right=w * focus.right // 1000 + dx,
+            top=h * focus.top // 1000 + dy,
+            bottom=h * focus.bottom // 1000 + dy,
+        )
+        cv2.rectangle(f, (pos.left, pos.top), (pos.right, pos.bottom), colors[1], 1)
 
 
-def draw_slit_position(f, slitpos, dx):
+def draw_slit_position(img, slitpos, dx):
     """
     cv2形式の画像の中にスリットマーカーを描く
     """
-    h, w = f.shape[0:2]
+    h, w = img.shape[0:2]
     if dx > 0:
         x1 = w // 2 + slitpos * w // 1000
         x2 = x1 - dx
     else:
         x1 = w // 2 - slitpos * w // 1000
         x2 = x1 - dx
-    cv2.line(f, (x1, 0), (x1, h), (0, 255, 0), 1)
-    cv2.line(f, (x2, 0), (x2, h), (0, 255, 0), 1)
+    cv2.line(img, (x1, 0), (x1, h), (0, 255, 0), 1)
+    cv2.line(img, (x2, 0), (x2, h), (0, 255, 0), 1)
 
 
+@debug_log
 def motion(
-    image, ref, focus=(333, 666, 333, 666), maxaccel=None, delta=(0, 0), yfixed=False
+    image,
+    ref,
+    focus: Region = Region(left=333, right=666, top=333, bottom=666),
+    maxaccel=None,
+    delta=(0, 0),
+    yfixed=False,
+    dropframe=0,
 ):
     """
     ref画像のfocusで指定された領域内の画像と同じ画像をimage内で探して、その変位を返す。
     maxaccelとdeltaが指定されている場合は、探索範囲を絞り高速にマッチングできる。
+    dropfameが0でない場合、N+1倍の移動がありうる。
     """
     logger = getLogger()
     hi, wi = ref.shape[0:2]
-    xmin = wi * focus[0] // 1000
-    xmax = wi * focus[1] // 1000
-    ymin = hi * focus[2] // 1000
-    ymax = hi * focus[3] // 1000
-    template = ref[ymin:ymax, xmin:xmax, :]
-    gray_template = standardize(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY))
+    template_region = Region(
+        left=wi * focus.left // 1000,
+        right=wi * focus.right // 1000,
+        top=hi * focus.top // 1000,
+        bottom=hi * focus.bottom // 1000,
+    )
+    template = ref[
+        template_region.top : template_region.bottom,
+        template_region.left : template_region.right,
+        :,
+    ]
+    # gray_template = standardize(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY))
     h, w = template.shape[0:2]
 
     # Apply template Matching
@@ -78,81 +92,76 @@ def motion(
         # maxaccelは指定されていない場合は、画像全体がマッチング対象になる。
         if yfixed:
             # x方向にのみずらして照合する。
-            image = image[ymin:ymax, :, :]
-            min_loc, fractional_shift = subpixel_match(image, template, subpixel=False)
-            # min_locはtemplateの左上角を原点とした相対座標なので、xminを引く。
-            min_loc = (min_loc[0] - xmin, min_loc[1])
-            return min_loc
+            image = image[template_region.top : template_region.bottom, :, :]
+            # max_loc, fractional_shift, max_val = subpixel_match(
+            #     image, template, subpixel=False
+            # )
+            max_loc, max_val = match(image, template)
+            # max_locはtemplateの左上角を原点とした相対座標なので、xminを引く。
+            max_loc = (
+                max_loc[0] - template_region.left,
+                max_loc[1],
+            )
+            return max_loc
 
-        min_loc, fractional_shift = subpixel_match(image, template, subpixel=False)
-        min_loc = (min_loc[0] - xmin, min_loc[1] - ymin)
+        # max_loc, fractional_shift, max_val = subpixel_match(
+        #     image, template, subpixel=False
+        # )
+        max_loc, max_val = match(image, template)
+        max_loc = (max_loc[0] - template_region.left, max_loc[1] - template_region.top)
         # print(min_loc)
-        return min_loc
+        return max_loc
     else:
-        # use delta here
-        # print(f"maxaccel: {maxaccel} delta: {delta}")
-        roix0 = xmin + delta[0] - maxaccel[0]
-        roiy0 = ymin + delta[1] - maxaccel[1]
-        roix1 = xmax + delta[0] + maxaccel[0]
-        roiy1 = ymax + delta[1] + maxaccel[1]
-        # subpixel transformation
-        affine = np.matrix(((1.0, 0.0, -roix0), (0.0, 1.0, -roiy0)))
-        logger.debug(f"maxaccel:{maxaccel} delta:{delta}")
-        crop = cv2.warpAffine(
-            image,
-            affine,
-            (xmax - xmin + 2 * maxaccel[0], ymax - ymin + 2 * maxaccel[1]),
-        )
-        gray_crop = standardize(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY))
+        maxmax_loc = None
+        maxmax_val = 0
+        maxmax_hop = 0
+        maxmax_fra = None
+        for hop in range(1, dropframe + 2):
+            # subpixel_matchingする時に必要なマージン
+            fit_margins = [min(2, maxaccel[0]), min(2, maxaccel[1])]
 
-        # res = cv2.matchTemplate(gray_crop, gray_template, cv2.TM_SQDIFF_NORMED)
-        # min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-        fit_width = [2, 2]
-        if maxaccel[0] < 2:
-            fit_width[0] = maxaccel[0]
-        if maxaccel[1] < 2:
-            fit_width[1] = maxaccel[1]
+            # 探査する範囲。整数にしておく。
+            roix0 = int(np.floor(template_region.left + delta[0] * hop - maxaccel[0]))
+            roiy0 = int(np.floor(template_region.top + delta[1] * hop - maxaccel[1]))
+            roix1 = int(
+                np.ceil(template_region.right + delta[0] * hop + maxaccel[0] + 1)
+            )
+            roiy1 = int(
+                np.ceil(template_region.bottom + delta[1] * hop + maxaccel[1] + 1)
+            )
+            region = Region(left=roix0, right=roix1, top=roiy0, bottom=roiy1)
 
-        min_loc, fractional_shift = subpixel_match(
-            gray_crop, gray_template, fit_width=fit_width  # , subpixel=False
-        )
-
-        # print(min_loc[0] - maxaccel, min_loc[1] - maxaccel)
+            result = find_subimage(
+                image,
+                template,
+                region,
+                relative=False,
+                fit_margins=fit_margins,
+                subpixel=False,  # あんまり正確じゃないので、とりあえず封印する。
+            )
+            if result is None:
+                continue
+            max_loc, fractional_shift, max_val = result
+            logger.debug(f"{hop=} {max_val=}")
+            # max_loc, max_val = match(gray_crop, gray_template)
+            if maxmax_val < max_val:
+                maxmax_loc = max_loc
+                maxmax_val = max_val
+                maxmax_hop = hop
+                maxmax_fra = fractional_shift
 
         new_delta = (
-            min_loc[0] + roix0 - xmin + fractional_shift[0],
-            min_loc[1] + roiy0 - ymin + fractional_shift[1],
+            maxmax_loc[0] + maxmax_fra[0] - template_region.left,
+            maxmax_loc[1] + maxmax_fra[1] - template_region.top,
         )
-        return new_delta
-
-
-def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=None):
-    """
-    2枚のcv2画像の差を返す．
-    """
-    if mode == "diff":
-        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
-        h, w = frame1.shape[0:2]
-        std2 = standardize(frame2)
-        frame1 = cv2.warpAffine(frame1, affine, (w, h))
-        std1 = standardize(frame1)
-        diff = (255 * cv2.absdiff(std1, std2)).astype(np.uint8)
-        # if focus is not None:
-        #     draw_focus_area(diff, focus, delta=(dx, dy))
-        # if slitpos is not None:
-        #     draw_slit_position(diff, slitpos, dx)
-        return diff
-    elif mode == "stack":
-        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
-        h, w = frame1.shape[0:2]
-        flags = np.arange(h) * 16 % h > h // 2
-        frame1 = cv2.warpAffine(frame1, affine, (w, h))
-        frame1[flags] = frame2[flags]
-        return frame1
+        # dropframeがあった場合、2倍や3倍の移動が検出される。
+        # new_deltaには変位をそのまま返すが、同時に倍率も返す。
+        logger.debug(f"{maxmax_fra=} {maxmax_hop=}")
+        return new_delta, maxmax_hop
 
 
 # Automatically extensible canvas.
-def canvas_size(canvas_dimen, image, x, y):
+def expand_canvas(canvas_dimen, image, x, y):
     """
     canvas_dimenで定義されるcanvasの，位置(x,y)にimageを貼りつけた場合の，拡張後のcanvasの大きさを返す．
     canvas_dimenはcanvasの左上角の絶対座標と，canvasの幅高さの4因子でできている．
@@ -307,6 +316,14 @@ def prepare_parser():
         help="Interframe acceleration in pixels.",
     )
     parser.add_argument(
+        "-D",
+        "--dropframe",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Maximum number of dropped frames accepted.",
+    )
+    parser.add_argument(
         "-2",
         "--option2",
         type=str,
@@ -388,9 +405,9 @@ class Pass1:
                 for v in value:
                     equal = v.find("=")
                     if equal >= 0:
-                        self.tsconf += "--{0}\n{1}\n".format(v[:equal], v[equal + 1 :])
+                        self.tsconf += f"--{v[:equal]}\n{v[equal + 1 :]}\n"
                     else:
-                        self.tsconf += "--{0}\n".format(v)
+                        self.tsconf += f"--{v}\n"
             else:
                 if option in (
                     "--perspective",
@@ -407,7 +424,7 @@ class Pass1:
                     if value is True:
                         self.tsconf += option + "\n"
                 else:
-                    self.tsconf += "{0}\n{1}\n".format(option, value)
+                    self.tsconf += f"{option}\n{value}\n"
         # print(self.tsconf)
         # end of the header
 
@@ -431,8 +448,6 @@ class Pass1:
         """
         Add trailing frames to tspos.
         """
-        logger = getLogger()
-        logger.info("Adding trailing frames to tspos.")
 
         if len(self.tspos) < self.params.estimate:
             return
@@ -471,11 +486,10 @@ class Pass1:
         """
         Add leading frames to tspos.
         """
-        logger = getLogger()
-        logger.info(f"Adding leading frames to tspos. {self.tspos}")
 
         if len(self.tspos) < self.params.estimate:
             return
+        # 事前の速度を予測するために用いるフレーム数。
         num_frames = self.params.trailing
         if self.tspos[0][0] < num_frames:
             num_frames = self.tspos[0][0]
@@ -502,12 +516,12 @@ class Pass1:
             )
         self.tspos = leading_tspos + self.tspos
 
-    def valid_focus(self, focus):
+    def valid_focus(self, focus: Region):
         if focus is None:
             return False
-        if focus[0] >= focus[1]:
+        if focus.left >= focus.right:
             return False
-        if focus[2] >= focus[3]:
+        if focus.top >= focus.bottom:
             return False
         return True
 
@@ -518,6 +532,12 @@ class Pass1:
         vl = self.vl
         params = self.params
         nframe = self.lastnframe
+        focus = Region(
+            left=params.focus[0],
+            right=params.focus[1],
+            top=params.focus[2],
+            bottom=params.focus[3],
+        )
 
         transform = trainscanner.transformation(
             angle=params.rotate, pers=params.perspective, crop=params.crop
@@ -540,10 +560,10 @@ class Pass1:
 
         self.tspos = []
         self.cache = []  # save only "active" frames.
-        deltax = []  # store displacements
-        deltay = []  # store displacements
+        velx_history = []  # store velocities
+        vely_history = []  # store velocities
 
-        if not self.valid_focus(params.focus):
+        if not self.valid_focus(focus):
             return
 
         while True:
@@ -570,7 +590,7 @@ class Pass1:
             # It happens in the frame rate adjustment between PAL and NTSC
             diff = np.sum(diff) / np.prod(diff.shape)
             if diff < params.identity:
-                logger.info("skip identical frame #{0}".format(diff))
+                logger.debug("skip identical frame #{0}".format(diff))
                 continue
             ##### Warping the frame
             _, _, cropped = transform.process_next_image(rawframe)
@@ -585,34 +605,38 @@ class Pass1:
                 maxaccel = [params.maxaccel, 0]
             if in_action or coldstart:
                 # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
-                delta = motion(
+                logger.debug(f"velx: {velx} vely: {vely}")
+                delta, hop = motion(
                     lastframe,
                     cropped,
-                    focus=params.focus,
+                    focus=focus,
                     maxaccel=maxaccel,
                     delta=(velx, vely),
+                    dropframe=params.dropframe,
                 )
                 if delta is None:
                     logger.error(
                         "Matching failed (probabily the motion detection window goes out of the image)."
                     )
                     break
-                dx, dy = delta
+                hopx, hopy = delta
+                velx, vely = delta[0] / hop, delta[1] / hop
+                logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
             else:
                 # 速度不明なので、広い範囲でマッチングを行う。
-                dx, dy = motion(
-                    lastframe, cropped, focus=params.focus, yfixed=params.zero
-                )
+                velx, vely = motion(lastframe, cropped, focus=focus, yfixed=params.zero)
+                hopx, hopy = velx, vely
 
             # ##### Suppress drifting.
             # if params.zero:
             #     dy = 0
             # 直近5フレームの移動量を記録する．
-            deltax.append(dx)
-            deltay.append(dy)
-            if len(deltax) > 5:
-                deltax.pop(0)
-                deltay.pop(0)
+            # ここではhopの大きさ(dropframeのせいでときどき倍になる)ではなく、真の速度を記録する。
+            velx_history.append(velx)
+            vely_history.append(vely)
+            if len(velx_history) > 5:
+                velx_history.pop(0)
+                vely_history.pop(0)
             # 最大100フレームの画像を記録する．
             if cropped is not None and self.cache is not None:
                 self.cache.append([nframe, cropped])
@@ -621,12 +645,12 @@ class Pass1:
             ##### Make the preview image
             # preview = trainscanner.fit_to_square(cropped,preview_size)
             # diff_img = diffImage(preview,lastpreview,int(dx*preview_ratio),int(dy*preview_ratio),focus=params.focus)
-            diff_img = diffImage(cropped, lastframe, int(dx), int(dy))
+            diff_img = diffImage(cropped, lastframe, int(hopx), int(hopy))
             diff_img = trainscanner.fit_to_square(diff_img, preview_size)
             draw_focus_area(
                 diff_img,
-                params.focus,
-                delta=(int(dx * preview_ratio), int(dy * preview_ratio)),
+                focus,
+                delta=(int(hopx * preview_ratio), int(hopy * preview_ratio)),
                 active=in_action,
             )
             # previewを表示
@@ -635,28 +659,28 @@ class Pass1:
 
             if coldstart:
                 if not in_action:
-                    logger.debug(f"Accept the motion ({nframe} {dx} {dy})")
-                    velx = dx
-                    vely = dy
                     match_fail = 0
 
-                if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
+                if abs(velx) >= params.antishake or abs(vely) >= params.antishake:
                     if not in_action:
                         in_action = True
                         coldstart = False
 
             else:
-                if abs(dx) >= params.antishake or abs(dy) >= params.antishake:
+                if abs(velx) >= params.antishake or abs(vely) >= params.antishake:
                     if not in_action:
                         # number of frames since the first motion is detected.
                         precount += 1
                         # 過去5フレームでの移動量の変化
-                        ddx = max(deltax) - min(deltax)
-                        ddy = max(deltay) - min(deltay)
+                        fluctuation_x = max(velx_history) - min(velx_history)
+                        fluctuation_y = max(vely_history) - min(vely_history)
                         # if the displacements are almost constant in the last 5 frames,
-                        if params.antishake <= ddx or params.antishake <= ddy:
+                        if (
+                            params.antishake <= fluctuation_x
+                            or params.antishake <= fluctuation_y
+                        ):
                             logger.debug(
-                                f"Wait for the camera to stabilize ({nframe} {dx} {dy})"
+                                f"Wait for the camera to stabilize ({nframe=} {velx=} {vely=} {fluctuation_x=} {fluctuation_y=})"
                             )
                             continue
                         else:
@@ -664,14 +688,12 @@ class Pass1:
                             in_action = True
                             # 十分変位が大きくなったらcoldstartフラグはおろす。
                             logger.debug(
-                                f"The camera is stabilized. {nframe} {dx} {dy}"
+                                f"The camera is stabilized. {nframe=} {velx=} {vely=}"
                             )
                             # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
                             # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
                     # 変位をそのまま採用する．
-                    logger.debug(f"Accept the motion ({nframe} {dx} {dy})")
-                    velx = dx
-                    vely = dy
+                    logger.debug(f"Accept the motion ({nframe} {velx} {vely})")
                     match_fail = 0
                 else:
                     if in_action:
@@ -685,27 +707,26 @@ class Pass1:
                             # ここで、マッチしはじめる前の部分と、マッチしおえたあとの部分を整える。
 
                             break
-                        logger.info(
-                            f"Ignore a small motion ({nframe} {dx} {dy} +{match_fail}/{params.trailing})"
+                        logger.debug(
+                            f"Ignore a small motion ({nframe} {velx} {vely} +{match_fail}/{params.trailing})"
                         )
                         # believe the last velx and vely
                     else:
                         # not guess mode, not large motion: just ignore.
-                        logger.info(f"Still frame ({nframe} {dx} {dy})")
+                        logger.debug(f"Still frame ({nframe} {velx} {vely})")
                         continue
 
-            logger.info(f"Capture {nframe} {velx} {vely} #{np.amax(diff)}")
-            absx += velx
-            absy += vely
-            self.canvas = canvas_size(self.canvas, cropped, absx, absy)
-            self.tspos.append([nframe, velx, vely])
+            logger.debug(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
+            absx += hopx
+            absy += hopy
+            self.canvas = expand_canvas(self.canvas, cropped, absx, absy)
+            # フレーム番号と、直前のフレームからの移動距離。
+            self.tspos.append([nframe, hopx, hopy])
         # end of capture
 
         # 最後の、match_failフレームを削除する。
-        logger.debug(f"tspos before: {self.tspos} {match_fail}")
         if match_fail > 0:
             self.tspos = self.tspos[:-match_fail]
-        logger.debug(f"tspos after: {self.tspos}")
         # 10枚ほど余分に削る。
         # self.tspos = self.tspos[:-10]
         # self.tspos = self.tspos[10:]
@@ -737,12 +758,21 @@ class Pass1:
 
 
 def main():
+    debug = True
+    if debug:
+        basicConfig(
+            level=DEBUG,
+            # filename='log.txt',
+            format="%(asctime)s %(levelname)s %(message)s",
+        )
+    else:
+        basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(message)s")
     pass1 = Pass1(argv=sys.argv)
     for num, den in pass1.before():
         pass
     for ret in pass1.iter():
         cv2.imshow("pass1", ret)
-        cv2.waitKey(1)
+        cv2.waitKey(0)
     pass1.after()
 
 

@@ -107,11 +107,11 @@ class SettingsGUI(QWidget):
         # メインレイアウト
         main_layout = QVBoxLayout()
 
-        # ファイル選択ボタンとラベルのレイアウト
+        # # ファイル選択ボタンとラベルのレイアウト
         file_layout = QHBoxLayout()
-        self.btn = QPushButton(tr("Open a movie"))
-        self.btn.clicked.connect(self.getfile)
-        file_layout.addWidget(self.btn)
+        # self.btn = QPushButton(tr("Open an image file"))
+        # self.btn.clicked.connect(self.getfile)
+        # file_layout.addWidget(self.btn)
 
         self.le = QLabel(tr("(File name appears here)"))
         file_layout.addWidget(self.le)

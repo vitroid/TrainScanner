@@ -5,27 +5,20 @@ import numpy as np
 import sys
 from dataclasses import dataclass
 import logging
-import scipy.optimize
-from trainscanner import standardize, subpixel_match
+from trainscanner import standardize, subpixel_match, Region, trim_region
 
 
 @dataclass
 class Focus:
-    rect: tuple[int, int, int, int]  # x, y, w, h
+    region: Region
     shift: tuple[int, int]
     subpixel_shift: tuple[float, float]
     match_area: np.ndarray
 
 
-def paddings(x, y, w, h, shape):
-    top = max(0, -y)
-    bottom = max(0, y + h - shape[0])
-    left = max(0, -x)
-    right = max(0, x + w - shape[1])
-    return top, bottom, left, right
-
-
-def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
+def antishake(
+    video_iter, foci: list[Region], max_shift=10, logfile=None, show_snapshot=None
+):
     """最初のフレームの、指定された領域内の画像が動かないように、各フレームを平行移動する。
 
     全自動で位置あわせしたいのだが、現実的には、列車のすぐそばで位置あわせしないと、列車のぶれを止めきれない。
@@ -41,10 +34,9 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
 
     foci_ = []
     for f in foci:
-        x, y, w, h = f
-        crop = standardize(gray0[y : y + h, x : x + w].astype(float))
+        crop = standardize(gray0[f.top : f.bottom, f.left : f.right].astype(float))
         focus = Focus(
-            rect=(x, y, w, h), shift=(0, 0), match_area=crop, subpixel_shift=(0.0, 0.0)
+            region=f, shift=(0, 0), match_area=crop, subpixel_shift=(0.0, 0.0)
         )
         foci_.append(focus)
 
@@ -54,16 +46,18 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
     if logfile is not None:
         logfile.write(f"{len(foci)}\n")
     for focus in foci:
-        x, y, w, h = focus.rect
+        region = focus.region
         cv2.rectangle(
             frame0,
-            (x, y),
-            (x + w, y + h),
+            (region.left, region.top),
+            (region.right, region.bottom),
             (0, 0, 255),
             2,
         )
         if logfile is not None:
-            logfile.write(f"{x} {y} {w} {h}\n")
+            logfile.write(
+                f"{region.left} {region.top} {region.right} {region.bottom}\n"
+            )
     # cv2.imshow("match_areas", frame0)
 
     for frame2 in video_iter:
@@ -71,30 +65,42 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
 
         for fi, focus in enumerate(foci):
             # 基準画像のfocusの位置。
-            x, y, w, h = focus.rect
-
+            region = Region(
+                left=focus.region.left,
+                top=focus.region.top,
+                right=focus.region.right,
+                bottom=focus.region.bottom,
+            )
+            logger.info(f"{region=}")
             # 直前のフレームで、focusの位置を移動した。
-            x += focus.shift[0] - max_shift
-            y += focus.shift[1] - max_shift
-            w += max_shift * 2
-            h += max_shift * 2
-
-            # 画面外に出てしまう範囲を計算する。
-            top, bottom, left, right = paddings(x, y, w, h, gray2.shape)
-
+            region.left += focus.shift[0] - max_shift
+            region.top += focus.shift[1] - max_shift
+            region.right += focus.shift[0] + max_shift
+            region.bottom += focus.shift[1] + max_shift
+            logger.info(f"{region=} {gray2.shape=}")
             # 照合したい画像のうち、マッチングに使う領域を切り取るための枠。
             # 初期値0は平均値を意味する。
-            target_area = np.zeros([h, w], dtype=np.float32)
+            target_area = np.zeros(
+                [region.bottom - region.top, region.right - region.left],
+                dtype=np.float32,
+            )
+            # 画面外に出てしまわない範囲を計算する。
+            trimmed_region = trim_region(region, gray2.shape)
+            logger.info(f"{trimmed_region=}")
             # 照合したい画像のうち、マッチングに使う領域を切り取る。
             # 画面外の領域は0になる。
             target_area[
-                top : h - bottom,
-                left : w - right,
+                trimmed_region.top - region.top : trimmed_region.bottom - region.top,
+                trimmed_region.left - region.left : trimmed_region.right - region.left,
             ] = standardize(
-                gray2[y + top : y + h - bottom, x + left : x + w - right].astype(float)
+                gray2[
+                    trimmed_region.top : trimmed_region.bottom,
+                    trimmed_region.left : trimmed_region.right,
+                ].astype(float)
             )
 
-            min_loc, fractional_shift = subpixel_match(target_area, focus.match_area)
+            logger.info(f"{target_area.shape=} {focus.match_area.shape=}")
+            min_loc, fractional_shift, _ = subpixel_match(target_area, focus.match_area)
 
             accel = (min_loc[0] - max_shift, min_loc[1] - max_shift)
             focus.shift = (focus.shift[0] + accel[0], focus.shift[1] + accel[1])
@@ -117,11 +123,11 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
             if show_snapshot is not None:
                 annotated = frame2_shifted.copy()
                 for focus in foci:
-                    x, y, w, h = focus.rect
+                    region = focus.region
                     cv2.rectangle(
                         annotated,
-                        (x, y),
-                        (x + w, y + h),
+                        (region.left, region.top),
+                        (region.right, region.bottom),
                         (0, 0, 255),
                         2,
                     )
@@ -131,8 +137,24 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
         # 2箇所の場合。
 
         # もとのmatch_areaの中心
-        center0 = np.array(foci[0].rect[:2]) + np.array(foci[0].rect[2:]) / 2
-        center1 = np.array(foci[1].rect[:2]) + np.array(foci[1].rect[2:]) / 2
+        center0 = (
+            np.array(
+                [
+                    foci[0].region.top + foci[0].region.bottom,
+                    foci[0].region.left + foci[0].region.right,
+                ]
+            )
+            / 2
+        )
+        center1 = (
+            np.array(
+                [
+                    foci[1].region.top + foci[1].region.bottom,
+                    foci[1].region.left + foci[1].region.right,
+                ]
+            )
+            / 2
+        )
         angle = np.arctan2(center1[1] - center0[1], center1[0] - center0[0])
 
         # 平行移動後のmatch_areaの中心
@@ -181,11 +203,11 @@ def antishake(video_iter, foci, max_shift=10, logfile=None, show_snapshot=None):
         if show_snapshot is not None:
             annotated = frame2_rotated.copy()
             for focus in foci:
-                x, y, w, h = focus.rect
+                region = focus.region
                 cv2.rectangle(
                     annotated,
-                    (x, y),
-                    (x + w, y + h),
+                    (region.left, region.top),
+                    (region.right, region.bottom),
                     (0, 0, 255),
                     2,
                 )
@@ -208,7 +230,11 @@ def main(
     for i, frame in enumerate(
         antishake(
             viter,
-            foci=[(1520, 430, 150, 80), (100, 465, 100, 50)],  # for Untitled.mp4
+            # foci=[(1520, 430, 150, 80), (100, 465, 100, 50)],  # for Untitled.mp4
+            foci=[
+                Region(left=1520, right=1670, top=430, bottom=510),
+                Region(left=100, right=200, top=465, bottom=515),
+            ],  # for Untitled.mp4
             # foci=[
             #     (1520, 430, 150, 80),
             # ],  # for Untitled.mp4
