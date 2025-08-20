@@ -12,7 +12,7 @@ from logging import getLogger, basicConfig, WARN, DEBUG, INFO
 # from canvas import Canvas    #On-memory canvas
 # from canvas2 import Canvas   #Cached canvas
 from tiledimage import cachedimage as ci
-from trainscanner import trainscanner, video, diffImage
+from trainscanner import trainscanner, video, diffImage, Region
 from trainscanner.i18n import init_translations, tr
 
 
