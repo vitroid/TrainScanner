@@ -11,7 +11,7 @@ import itertools
 from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
 from trainscanner import trainscanner, diffImage
-from trainscanner import video, standardize, subpixel_match, match, debug_log, Region
+from trainscanner import video, match, debug_log, Region, find_subimage
 
 
 def draw_focus_area(f, focus: Region, delta=None, active=False):
@@ -73,12 +73,18 @@ def motion(
     """
     logger = getLogger()
     hi, wi = ref.shape[0:2]
-    xmin = wi * focus.left // 1000
-    xmax = wi * focus.right // 1000
-    ymin = hi * focus.top // 1000
-    ymax = hi * focus.bottom // 1000
-    template = ref[ymin:ymax, xmin:xmax, :]
-    gray_template = standardize(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY))
+    template_region = Region(
+        left=wi * focus.left // 1000,
+        right=wi * focus.right // 1000,
+        top=hi * focus.top // 1000,
+        bottom=hi * focus.bottom // 1000,
+    )
+    template = ref[
+        template_region.top : template_region.bottom,
+        template_region.left : template_region.right,
+        :,
+    ]
+    # gray_template = standardize(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY))
     h, w = template.shape[0:2]
 
     # Apply template Matching
@@ -86,20 +92,23 @@ def motion(
         # maxaccelは指定されていない場合は、画像全体がマッチング対象になる。
         if yfixed:
             # x方向にのみずらして照合する。
-            image = image[ymin:ymax, :, :]
+            image = image[template_region.top : template_region.bottom, :, :]
             # max_loc, fractional_shift, max_val = subpixel_match(
             #     image, template, subpixel=False
             # )
             max_loc, max_val = match(image, template)
             # max_locはtemplateの左上角を原点とした相対座標なので、xminを引く。
-            max_loc = (max_loc[0] - xmin, max_loc[1])
+            max_loc = (
+                max_loc[0] - template_region.left,
+                max_loc[1],
+            )
             return max_loc
 
         # max_loc, fractional_shift, max_val = subpixel_match(
         #     image, template, subpixel=False
         # )
         max_loc, max_val = match(image, template)
-        max_loc = (max_loc[0] - xmin, max_loc[1] - ymin)
+        max_loc = (max_loc[0] - template_region.left, max_loc[1] - template_region.top)
         # print(min_loc)
         return max_loc
     else:
@@ -108,32 +117,31 @@ def motion(
         maxmax_hop = 0
         maxmax_fra = None
         for hop in range(1, dropframe + 2):
+            # subpixel_matchingする時に必要なマージン
+            fit_margins = [min(2, maxaccel[0]), min(2, maxaccel[1])]
 
-            # use delta here
-            # print(f"maxaccel: {maxaccel} delta: {delta}")
-            roix0 = xmin + delta[0] * hop - maxaccel[0]
-            roiy0 = ymin + delta[1] * hop - maxaccel[1]
-            # subpixel transformation
-            affine = np.matrix(((1.0, 0.0, -roix0), (0.0, 1.0, -roiy0)))
-            logger.debug(f"maxaccel:{maxaccel} delta:{delta}")
-            crop = cv2.warpAffine(
+            # 探査する範囲。整数にしておく。
+            roix0 = int(np.floor(template_region.left + delta[0] * hop - maxaccel[0]))
+            roiy0 = int(np.floor(template_region.top + delta[1] * hop - maxaccel[1]))
+            roix1 = int(
+                np.ceil(template_region.right + delta[0] * hop + maxaccel[0] + 1)
+            )
+            roiy1 = int(
+                np.ceil(template_region.bottom + delta[1] * hop + maxaccel[1] + 1)
+            )
+            region = Region(left=roix0, right=roix1, top=roiy0, bottom=roiy1)
+
+            result = find_subimage(
                 image,
-                affine,
-                (xmax - xmin + 2 * maxaccel[0], ymax - ymin + 2 * maxaccel[1]),
+                template,
+                region,
+                relative=False,
+                fit_margins=fit_margins,
+                subpixel=False,  # あんまり正確じゃないので、とりあえず封印する。
             )
-            gray_crop = standardize(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY))
-
-            # res = cv2.matchTemplate(gray_crop, gray_template, cv2.TM_SQDIFF_NORMED)
-            # min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-            fit_margins = [2, 2]
-            if maxaccel[0] < 2:
-                fit_margins[0] = maxaccel[0]
-            if maxaccel[1] < 2:
-                fit_margins[1] = maxaccel[1]
-
-            max_loc, fractional_shift, max_val = subpixel_match(
-                gray_crop, gray_template, fit_margins=fit_margins, subpixel=True
-            )
+            if result is None:
+                continue
+            max_loc, fractional_shift, max_val = result
             logger.debug(f"{hop=} {max_val=}")
             # max_loc, max_val = match(gray_crop, gray_template)
             if maxmax_val < max_val:
@@ -142,12 +150,9 @@ def motion(
                 maxmax_hop = hop
                 maxmax_fra = fractional_shift
 
-        roix0 = xmin + delta[0] * maxmax_hop - maxaccel[0]
-        roiy0 = ymin + delta[1] * maxmax_hop - maxaccel[1]
-
         new_delta = (
-            maxmax_loc[0] + maxmax_fra[0] + roix0 - xmin,
-            maxmax_loc[1] + maxmax_fra[1] + roiy0 - ymin,
+            maxmax_loc[0] + maxmax_fra[0] - template_region.left,
+            maxmax_loc[1] + maxmax_fra[1] - template_region.top,
         )
         # dropframeがあった場合、2倍や3倍の移動が検出される。
         # new_deltaには変位をそのまま返すが、同時に倍率も返す。
