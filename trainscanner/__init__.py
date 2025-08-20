@@ -4,6 +4,7 @@ import scipy.optimize
 from logging import getLogger
 import functools
 from dataclasses import dataclass
+import os
 
 
 @dataclass
@@ -16,6 +17,15 @@ class Region:
     right: int
     top: int
     bottom: int
+
+    def validate(self, minimal_size: tuple[int, int]):
+        if self.left >= self.right or self.top >= self.bottom:
+            raise ValueError("Invalid region")
+        if (
+            self.right - self.left < minimal_size[0]
+            or self.bottom - self.top < minimal_size[1]
+        ):
+            raise ValueError("Region is too small")
 
 
 def debug_log(func):
@@ -172,11 +182,14 @@ def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=No
         return frame1
 
 
-def trim_region(region: Region, shape: tuple[int, int]) -> Region:
+def trim_region(region: Region, image_shape: tuple[int, int]) -> Region:
+    """
+    画像の範囲を超える領域をtrimする。
+    """
     top = max(0, region.top)
-    bottom = min(shape[0], region.bottom)
+    bottom = min(image_shape[0], region.bottom)
     left = max(0, region.left)
-    right = min(shape[1], region.right)
+    right = min(image_shape[1], region.right)
     return Region(top=top, bottom=bottom, left=left, right=right)
 
 
@@ -189,11 +202,38 @@ def region_to_cvrect(region: Region) -> tuple[int, int, int, int]:
     )
 
 
-def find_pattern_in_image(image, focus, pattern, relative=False):
+def find_subimage(
+    image, subimage, region: Region, relative=True, fit_margins=[2, 2], subpixel=True
+):
     """
-    画像中のlfocusエリア内に、パターンを検出する。
-    relativeの場合はfocusの左上を基準とした座標を返し、
+    画像中のregion内に、subimageを検出する。
+    relativeの場合はregionの左上を基準とした座標を返し、
     そうでない場合はimageの左上を基準とした座標を返す。
-
     """
-    pass
+    logger = getLogger()
+    # まず、subimageの可動範囲を知る。
+    trimmed = trim_region(region, image.shape)
+    try:
+        trimmed.validate(minimal_size=(subimage.shape[1], subimage.shape[0]))
+    except ValueError:
+        logger.debug(f"Region is out of image: {region=} {image.shape=}")
+        return
+
+    logger.debug(f"{trimmed=}")
+    optimal_loc, fraction, optimal_val = subpixel_match(
+        image[
+            int(np.floor(trimmed.top)) : int(np.ceil(trimmed.bottom)),
+            int(np.floor(trimmed.left)) : int(np.ceil(trimmed.right)),
+        ],
+        subimage,
+        fit_margins,
+        subpixel,
+    )
+    if relative:
+        return optimal_loc, fraction, optimal_val
+    else:
+        return (
+            (trimmed.left + optimal_loc[0], trimmed.top + optimal_loc[1]),
+            fraction,
+            optimal_val,
+        )
