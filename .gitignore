@@ -14,3 +14,4 @@ dist/
 OLD/
 
 *.pyc
+memory_usage.csv
