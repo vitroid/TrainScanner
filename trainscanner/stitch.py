@@ -184,8 +184,8 @@ class Stitcher:
         self.firstFrame = True
         self.currentFrame = 0  # 1 is the first frame
 
-        self.R = None
-        self.M = None
+        # self.R = None
+        # self.M = None
         self.transform = trainscanner.transformation(
             self.params.rotate, self.params.perspective, self.params.crop
         )
@@ -209,6 +209,7 @@ class Stitcher:
             if len(line) > 0 and line[0] != "@":
                 cols = [float(x) for x in line.split()]
                 if len(cols) > 0:
+                    # この計算順序は正しい。まず変位を足してから、画像を置く。
                     absx += cols[1]
                     absy += cols[2]
                     canvas_dimen = extend_canvas(
@@ -250,6 +251,7 @@ class Stitcher:
         # initial seek
         while self.currentFrame + 1 < self.locations[0][0]:
             logger.debug((self.currentFrame, self.locations[0][0]))
+            # このyieldは要るのか?
             yield self.currentFrame, self.locations[0][0]
             self.currentFrame = self.vl.skip()
 
@@ -304,7 +306,7 @@ class Stitcher:
 
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     if debug:
         basicConfig(
             level=DEBUG,

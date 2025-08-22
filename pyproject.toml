@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trainscanner"
-version = "0.30.2"
+version = "0.31.2"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]
@@ -14,6 +14,7 @@ tqdm = "^4.67.1"
 pillow = "^11.2.1"
 pyqt5 = "^5.15.11"
 rasterio = "^1.4.3"
+psutil = "^5.9.0"
 
 [tool.poetry.scripts]
 # GUI
@@ -27,6 +28,8 @@ helicify            = 'trainscanner.converter.helix:main'
 rectify             = 'trainscanner.converter.rect:main'
 movify              = 'trainscanner.converter.movie:main'
 filmify             = 'trainscanner.image.film:main'
+# Memory monitoring
+memory_monitor      = 'trainscanner.memory_monitor:main'
 
 [tool.poetry.group.dev.dependencies]
 jinja2 = "^3.1.6"
