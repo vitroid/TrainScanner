@@ -123,12 +123,8 @@ def motion(
             # 探査する範囲。整数にしておく。
             roix0 = int(np.floor(template_region.left + delta[0] * hop - maxaccel[0]))
             roiy0 = int(np.floor(template_region.top + delta[1] * hop - maxaccel[1]))
-            roix1 = int(
-                np.ceil(template_region.right + delta[0] * hop + maxaccel[0] + 1)
-            )
-            roiy1 = int(
-                np.ceil(template_region.bottom + delta[1] * hop + maxaccel[1] + 1)
-            )
+            roix1 = int(np.ceil(template_region.right + delta[0] * hop + maxaccel[0]))
+            roiy1 = int(np.ceil(template_region.bottom + delta[1] * hop + maxaccel[1]))
             region = Region(left=roix0, right=roix1, top=roiy0, bottom=roiy1)
 
             result = find_subimage(
