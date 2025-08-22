@@ -157,7 +157,7 @@ def motion(
 
 
 # Automatically extensible canvas.
-def expand_canvas(canvas_dimen, image, x, y):
+def extend_canvas(canvas_dimen, w, h, x, y):
     """
     canvas_dimenで定義されるcanvasの，位置(x,y)にimageを貼りつけた場合の，拡張後のcanvasの大きさを返す．
     canvas_dimenはcanvasの左上角の絶対座標と，canvasの幅高さの4因子でできている．
@@ -719,7 +719,7 @@ class Pass1:
             logger.debug(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
             absx += hopx
             absy += hopy
-            self.canvas = expand_canvas(self.canvas, cropped, absx, absy)
+            # self.canvas = expand_canvas(self.canvas, cropped, absx, absy)
             # フレーム番号と、直前のフレームからの移動距離。
             self.tspos.append([nframe, hopx, hopy])
         # end of capture
