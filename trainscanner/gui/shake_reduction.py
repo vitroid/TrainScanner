@@ -1,5 +1,5 @@
 import cv2
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
     QLabel,
@@ -10,10 +10,9 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QRadioButton,
     QButtonGroup,
-    QShortcut,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage, QPixmap, QKeySequence
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QImage, QPixmap, QKeySequence, QShortcut
 from trainscanner.video import video_iter
 from trainscanner.shake_reduction import antishake
 from trainscanner import Region
@@ -553,7 +552,7 @@ def main():
     app = QApplication(sys.argv)
     window = ImageWindow()
     window.show()
-    app.exec()
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

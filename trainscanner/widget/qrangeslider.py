@@ -61,7 +61,7 @@ __version__ = "0.1.1+mm+qt5+v"
 import os
 import sys
 
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8

@@ -1,5 +1,5 @@
 import argparse
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QGroupBox,
     QGridLayout,
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 from trainscanner.widget.qfloatslider import QFloatSlider
 from trainscanner.widget.qvalueslider import QValueSlider
 from trainscanner.widget.qlogslider import LogSliderHandle

@@ -6,16 +6,15 @@ import time
 import cv2
 import numpy as np
 
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
-from PyQt5.QtGui import QImage, QPixmap, QKeySequence
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtGui import QImage, QPixmap, QKeySequence, QShortcut
+from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
     QLabel,
     QProgressBar,
     QPushButton,
     QVBoxLayout,
-    QShortcut,
 )
 
 from trainscanner import pass1
