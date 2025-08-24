@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Core of the GUI and image process
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -15,10 +15,9 @@ from PyQt5.QtWidgets import (
     QShortcut,
     QFileDialog,
     QProgressBar,
-    QShortcut,
 )
-from PyQt5.QtGui import QKeySequence, QPixmap
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtGui import QKeySequence, QPixmap, QShortcut
+from PyQt6.QtCore import Qt, QTimer
 import cv2
 import logging
 import importlib
@@ -284,7 +283,10 @@ class SettingsGUI(QWidget):
         module = self.converters[tab]
         if hasattr(module, "convert"):
             rimg = module.convert(img, head_right=head_right, **args)
-            cv2.imwrite(f"{file_name}.{tab}.png", rimg)
+            # Windowsでのファイルパス正規化
+            import os
+            output_path = os.path.normpath(f"{file_name}.{tab}.png")
+            cv2.imwrite(output_path, rimg)
         elif hasattr(module, "make_movie"):
             # プログレスバーを表示
             self.show_progress(True)

@@ -2,14 +2,14 @@
 
 # 実数を扱えるQSliderを作成する
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     pyqtSignal,
     QRect,
     QSize,
     QRectF,
 )
 from .qvalueslider import QValueSlider, ValueSliderHandle
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QSlider,
     QWidget,
     QVBoxLayout,

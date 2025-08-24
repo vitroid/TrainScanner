@@ -1,5 +1,5 @@
 import cv2
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
     QLabel,
@@ -10,10 +10,9 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QRadioButton,
     QButtonGroup,
-    QShortcut,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage, QPixmap, QKeySequence
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QImage, QPixmap, QKeySequence, QShortcut
 from trainscanner.video import video_iter
 from trainscanner.shake_reduction import antishake
 from trainscanner import Region
@@ -275,6 +274,7 @@ class ImageWindow(QMainWindow):
                 )
             else:
                 output_dir = f"{self.video_path}.dir"
+                import os
                 os.makedirs(output_dir, exist_ok=True)
 
             with open(f"{self.video_path}.log.txt", "w") as logfile:
@@ -296,6 +296,9 @@ class ImageWindow(QMainWindow):
                     if self.radio_images.isChecked():
                         # 画像シーケンスとして保存
                         outfilename = f"{output_dir}/{i:06d}.png"
+                        # Windowsでのファイルパス正規化
+                        import os
+                        outfilename = os.path.normpath(outfilename)
                         cv2.imwrite(outfilename, frame)
                     elif video_writer is not None:
                         # 動画として即座に書き出し
@@ -553,7 +556,7 @@ def main():
     app = QApplication(sys.argv)
     window = ImageWindow()
     window.show()
-    app.exec()
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
