@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trainscanner"
-version = "0.31.1"
+version = "0.31.2"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]
@@ -10,9 +10,9 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 TiledImage = "^0.1.1"
-opencv-python-headless = "^4.10.0.84"
 scipy = "^1.16.0"
 pyqt6 = "^6.8.0"
+opencv-python = "^4.12.0.88"
 
 [tool.poetry.scripts]
 # GUI

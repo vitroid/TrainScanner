@@ -302,6 +302,9 @@ class Stitcher:
         file_name = self.outfilename
         # It costs high when using the CachedImage.
         img = self.canvas.get_image()
+        # Windowsでのファイルパス正規化
+        import os
+        file_name = os.path.normpath(file_name)
         cv2.imwrite(file_name, img)
 
 

@@ -252,6 +252,10 @@ class StitcherUI(QDialog):
         big_image = self.stitcher.canvas.get_image()
         cropped_image = big_image[:, left_cut : -right_cut if right_cut > 0 else None]
         file_name = self.stitcher.outfilename
+        # print(f"save picture in crop_finished: {file_name}")
+        # Windowsでのファイルパス正規化
+        import os
+        file_name = os.path.normpath(file_name)
         cv2.imwrite(file_name, cropped_image)
 
         self.stopbutton_pressed()
@@ -271,6 +275,10 @@ class StitcherUI(QDialog):
         file_name = self.stitcher.outfilename
         # It costs high when using the CachedImage.
         big_image = self.stitcher.canvas.get_image()
+        # print(f"save picture in stitch_finished: {file_name} {big_image.shape}")
+        # Windowsでのファイルパス正規化
+        import os
+        file_name = os.path.normpath(file_name)
         cv2.imwrite(file_name, big_image)
         scaled_img = cv2.resize(
             big_image,

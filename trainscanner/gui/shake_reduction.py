@@ -295,6 +295,9 @@ class ImageWindow(QMainWindow):
                     if self.radio_images.isChecked():
                         # 画像シーケンスとして保存
                         outfilename = f"{output_dir}/{i:06d}.png"
+                        # Windowsでのファイルパス正規化
+                        import os
+                        outfilename = os.path.normpath(outfilename)
                         cv2.imwrite(outfilename, frame)
                     elif video_writer is not None:
                         # 動画として即座に書き出し

@@ -277,7 +277,10 @@ class SettingsGUI(QWidget):
         module = self.converters[tab]
         if hasattr(module, "convert"):
             rimg = module.convert(img, head_right=head_right, **args)
-            cv2.imwrite(f"{file_name}.{tab}.png", rimg)
+            # Windowsでのファイルパス正規化
+            import os
+            output_path = os.path.normpath(f"{file_name}.{tab}.png")
+            cv2.imwrite(output_path, rimg)
         elif hasattr(module, "make_movie"):
             # プログレスバーを表示
             self.show_progress(True)
