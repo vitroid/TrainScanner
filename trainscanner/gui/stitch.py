@@ -69,20 +69,29 @@ class Renderer(QObject):
 
 
 class ExtensibleCanvasWidget(QLabel):
-    def __init__(self, parent=None, preview_ratio=1.0):
+    def __init__(self, parent=None, preview_ratio=1.0, update_interval=0.2):
         super(ExtensibleCanvasWidget, self).__init__(parent)
         self.scaled_canvas = ScaledCanvas(scale=preview_ratio)
+        self.last_update_time = 0  # 最後の更新時刻を記録
+        self.update_interval = update_interval
 
     def updatePixmap(self, pos, image):
         self.scaled_canvas.put_image(pos, image)
-        fullimage = cv2.cvtColor(
-            self.scaled_canvas.get_image(), cv2.COLOR_BGR2RGB
-        )  # reverse order
-        h, w = fullimage.shape[:2]
-        self.resize(w, h)
-        qimage = QImage(fullimage.data, w, h, w * 3, QImage.Format.Format_RGB888)
-        self.setPixmap(QPixmap.fromImage(qimage))
-        self.update()
+
+        # 0.2秒に一回だけ画面更新を実行
+        import time
+
+        current_time = time.time()
+        if current_time - self.last_update_time >= self.update_interval:
+            fullimage = cv2.cvtColor(
+                self.scaled_canvas.get_image(), cv2.COLOR_BGR2RGB
+            )  # reverse order
+            h, w = fullimage.shape[:2]
+            self.resize(w, h)
+            qimage = QImage(fullimage.data, w, h, w * 3, QImage.Format.Format_RGB888)
+            self.setPixmap(QPixmap.fromImage(qimage))
+            self.update()
+            self.last_update_time = current_time
 
 
 class ExtensibleCroppingCanvasWidget(ExtensibleCanvasWidget):
