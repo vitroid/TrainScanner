@@ -36,7 +36,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QRubberBand,
-    QShortcut,
+    # QShortcut,
     QSlider,
     QSpinBox,
     QVBoxLayout,
