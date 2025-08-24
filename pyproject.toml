@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trainscanner"
-version = "0.31.2"
+version = "0.31.3"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]
@@ -26,6 +26,8 @@ helicify            = 'trainscanner.converter.helix:main'
 rectify             = 'trainscanner.converter.rect:main'
 movify              = 'trainscanner.converter.movie:main'
 filmify             = 'trainscanner.image.film:main'
+# Memory monitoring
+memory_monitor      = 'trainscanner.memory_monitor:main'
 
 [tool.poetry.group.dev.dependencies]
 jinja2 = "^3.1.6"

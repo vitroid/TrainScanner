@@ -16,6 +16,8 @@ from logging import DEBUG, WARN, basicConfig, getLogger, root
 from PyQt6.QtCore import (
     QLocale,
     Qt,
+    pyqtSignal,
+    QObject,
 )
 
 # Core of the GUI and image process
@@ -44,10 +46,14 @@ from trainscanner.pass1 import prepare_parser as pp1
 from trainscanner.stitch import prepare_parser as pp2
 from trainscanner.gui.preprocess import EditorGUI
 from trainscanner.i18n import tr
+from trainscanner.memory_monitor import MemoryMonitor, MemoryInfo
 
 
 # https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class SettingsGUI(QWidget):
+    # メモリー情報更新用のシグナル
+    memory_update_signal = pyqtSignal(MemoryInfo)
+
     def __init__(self, parent=None):
         super(SettingsGUI, self).__init__(parent)
         self.setAcceptDrops(True)
@@ -66,6 +72,13 @@ class SettingsGUI(QWidget):
         self.accel = 1
         self.dropframe = 0
 
+        # メモリーモニター
+        self.memory_monitor = MemoryMonitor(
+            interval=2.0, callback=self._memory_callback
+        )
+        self.memory_update_signal.connect(self._update_memory_display)
+        self.memory_monitor.start_monitoring()
+
         # private
         # layout
         layout = QHBoxLayout()
@@ -79,6 +92,11 @@ class SettingsGUI(QWidget):
         self.le = QLabel(tr("(File name appears here)"))
         # self.le = QLabel()
         left_layout.addWidget(self.le)
+
+        # メモリー使用量表示
+        self.memory_label = QLabel(tr("メモリー使用量: 測定中..."))
+        self.memory_label.setStyleSheet("QLabel { color: #666; font-size: 10px; }")
+        left_layout.addWidget(self.memory_label)
 
         # self.pbar = QProgressBar()
         # self.pbar.setValue(0)
@@ -526,6 +544,12 @@ class SettingsGUI(QWidget):
         self.dropframe = self.dropframe_slider.value()
         self.dropframe_slider_valuelabel.setText(str(self.dropframe))
 
+    def get_memory_summary(self) -> str:
+        """現在のメモリー使用量のサマリーを取得"""
+        if hasattr(self, "memory_monitor"):
+            return self.memory_monitor.get_memory_summary()
+        return "メモリー監視が利用できません"
+
     ##    def identthres_slider_on_draw(self):
     ##        self.identity = self.identthres_slider.value()
     ##        self.skipident_valuelabel.setText(str(self.identity))
@@ -616,7 +640,28 @@ class SettingsGUI(QWidget):
         stitcher.exec()
         stitcher = None
 
+    def _memory_callback(self, info: MemoryInfo):
+        """メモリー情報のコールバック（別スレッドから呼ばれる）"""
+        # シグナルを発行してメインスレッドで処理
+        self.memory_update_signal.emit(info)
+
+    def _update_memory_display(self, info: MemoryInfo):
+        """メモリー使用量表示を更新する（メインスレッドで実行）"""
+        try:
+            memory_text = (
+                f"メモリー: RSS {self.memory_monitor.format_bytes(info.rss)}, "
+                f"VMS {self.memory_monitor.format_bytes(info.vms)}, "
+                f"システム {info.percent:.1f}%"
+            )
+            self.memory_label.setText(memory_text)
+        except Exception as e:
+            logger = getLogger()
+            logger.error(f"メモリー表示の更新に失敗しました: {e}")
+
     def closeEvent(self, event):
+        # メモリー監視を停止
+        if hasattr(self, "memory_monitor"):
+            self.memory_monitor.stop_monitoring()
         if self.editor is not None:
             self.editor.close()
 
