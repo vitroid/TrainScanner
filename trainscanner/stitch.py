@@ -254,11 +254,12 @@ class Stitcher:
         else:
             # debug modeでは、ここで差分を表示したい。そのためには、canvasから重ねる部分をとってくる必要がある。
             if logger.level == DEBUG:
-                original = self.canvas.get_region(
-                    ((absx, absx + cropped.shape[1]), (absy, absy + cropped.shape[0]))
-                )
-                cv2.imshow("diff", diffImage(original, cropped, 0, 0))
-                cv2.waitKey(0)
+                # original = self.canvas.get_region(
+                #     ((absx, absx + cropped.shape[1]), (absy, absy + cropped.shape[0]))
+                # )
+                # cv2.imshow("diff", diffImage(original, cropped, 0, 0))
+                # cv2.waitKey(0)
+                pass
 
             alpha = self.mask.make_linear_alpha(int(idx))
             self.canvas.put_image((absx, absy), cropped, linear_alpha=alpha)

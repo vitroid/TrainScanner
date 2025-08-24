@@ -368,42 +368,17 @@ class SettingsGUI(QWidget):
         self.setWindowTitle("Settings")
 
     def dragEnterEvent(self, event):
-        logger = getLogger()
-        event.accept()
-        mimeData = event.mimeData()
-        logger.debug("dragEnterEvent")
-        for mimetype in mimeData.formats():
-            logger.debug(f"MIMEType: {mimetype}")
-            logger.debug(f"Data: {mimeData.data(mimetype)}")
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
 
     def dropEvent(self, event):
-        logger = getLogger()
-        event.accept()
-        mimeData = event.mimeData()
-        logger.debug("dropEvent")
-        for mimetype in mimeData.formats():
-            logger.debug(f"MIMEType: {mimetype}")
-            logger.debug(f"Data: {mimeData.data(mimetype)}")
-        # Open only when:
-        # 1. Only file is given
-        # 3. and the mimetipe is text/uri-list
-        # 2. That has the regular extension.
-        logger.debug(f"len:{len(mimeData.formats())}")
-        if len(mimeData.formats()) == 1:
-            mimetype = mimeData.formats()[0]
-            if mimetype == "text/uri-list":
-                data = mimeData.data(mimetype)
-                from urllib.parse import unquote, urlparse
-
-                for line in bytes(data).decode("utf8").splitlines():
-                    parsed = urlparse(unquote(line))
-                    logger.debug(f"Data: {parsed}")
-                    if parsed.scheme == "file":
-                        if self.editor is not None:
-                            self.editor.close()
-                        self.fileparser(parsed.path)
-                        return
-        # or just ignore
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        if files:
+            if self.editor is not None:
+                self.editor.close()
+            self.fileparser(files[0])
 
     def reset_input(self):
         self.filename = ""

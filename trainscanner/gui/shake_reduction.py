@@ -274,6 +274,7 @@ class ImageWindow(QMainWindow):
                 )
             else:
                 output_dir = f"{self.video_path}.dir"
+                import os
                 os.makedirs(output_dir, exist_ok=True)
 
             with open(f"{self.video_path}.log.txt", "w") as logfile:
