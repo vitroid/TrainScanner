@@ -7,7 +7,7 @@ from logging import DEBUG, WARN, basicConfig, getLogger, INFO
 import cv2
 import numpy as np
 
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtCore import QObject, QThread, pyqtSignal, Qt
 from PyQt6.QtGui import QImage, QPixmap, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
@@ -46,7 +46,13 @@ class Worker(QObject):
         for img in self.pass1.iter():
             if not self._isRunning:
                 break
-            self.frameRendered.emit(cv2toQImage(img))
+            # 画像が有効かチェック
+            if img is not None and img.size > 0 and len(img.shape) == 3:
+                # 画像をコピーしてメモリの連続性を保証
+                img_copy = img.copy()
+                qimage = cv2toQImage(img_copy)
+                if not qimage.isNull():
+                    self.frameRendered.emit(qimage)
 
         successful = len(self.pass1.tspos) > 0
         self.pass1.after()
@@ -96,14 +102,17 @@ class MatcherUI(QDialog):
         close_shortcut.activated.connect(self.close)
 
     def updatePixmap(self, image):
+        # 無効な画像をスキップ（これが重要な修正）
+        if image.isNull() or image.width() == 0 or image.height() == 0:
+            return
+
         # it is called only when the pixmap is really updated by the thread.
-        # resize image in advance.
-        # w,h = image.width(), image.height()
-        # scaled_image = image.scaled(int(w*self.preview_ratio), int(h*self.preview_ratio))
         pixmap = QPixmap.fromImage(image)
+        # pixmapが有効でない場合はスキップ
+        if pixmap.isNull():
+            return
+
         self.image_pane.setPixmap(pixmap)
-        # is it ok here?
-        self.update()
 
     def terminateIt(self):
         self.close()

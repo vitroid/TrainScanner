@@ -768,7 +768,7 @@ class Pass1:
 
 
 def main():
-    debug = True
+    debug = False
     if debug:
         basicConfig(
             level=DEBUG,
@@ -782,7 +782,7 @@ def main():
         pass
     for ret in pass1.iter():
         cv2.imshow("pass1", ret)
-        cv2.waitKey(0)
+        cv2.waitKey(1)
     pass1.after()
 
 
