@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QButtonGroup,
     QSplitter,
-    QShortcut,
     QFileDialog,
     QProgressBar,
 )
@@ -285,6 +284,7 @@ class SettingsGUI(QWidget):
             rimg = module.convert(img, head_right=head_right, **args)
             # Windowsでのファイルパス正規化
             import os
+
             output_path = os.path.normpath(f"{file_name}.{tab}.png")
             cv2.imwrite(output_path, rimg)
         elif hasattr(module, "make_movie"):
