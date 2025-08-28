@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trainscanner"
-version = "0.31.4"
+version = "0.33.2"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]
@@ -14,6 +14,7 @@ pyqt6 = "^6.8.0"
 psutil = "^7.0.0"
 scipy = "^1.16.0"
 rasterio = "^1.4.3"
+matplotlib = "^3.10.3"
 
 [tool.poetry.scripts]
 # GUI
@@ -22,18 +23,19 @@ trainscanner_pass1  = 'trainscanner.gui.pass1:main'
 trainscanner_stitch = 'trainscanner.gui.stitch:main'
 antishake           = 'trainscanner.gui.shake_reduction:main'
 ts_converter        = 'trainscanner.gui.converter:main'
+tspos_plotter       = 'trainscanner.gui.tspos_plotter:main'
 # CUI
 helicify            = 'trainscanner.converter.helix:main'
 rectify             = 'trainscanner.converter.rect:main'
 movify              = 'trainscanner.converter.movie:main'
 filmify             = 'trainscanner.image.film:main'
+tspos_plot          = 'trainscanner.tspos_plot:main'
 # Memory monitoring
 memory_monitor      = 'trainscanner.memory_monitor:main'
 
 [tool.poetry.group.dev.dependencies]
 jinja2 = "^3.1.6"
 toml = "^0.10.2"
-matplotlib = "^3.10.3"
 
 [build-system]
 requires = ["poetry-core"]

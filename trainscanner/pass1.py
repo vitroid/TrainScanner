@@ -447,22 +447,26 @@ class Pass1:
         Add trailing frames to tspos.
         """
 
-        if len(self.tspos) < self.params.estimate:
+        # tsposの最後は速度が安定しないので捨てる。
+        disposed_frames = self.params.estimate
+
+        if len(self.tspos) < disposed_frames:
             return
-        num_frames = self.params.trailing
+        self.tspos = self.tspos[: len(self.tspos) - disposed_frames]
+        estim_frames = self.params.trailing
 
         # 座標を抽出する
         t = [
             self.tspos[i][0]
-            for i in range(len(self.tspos) - self.params.estimate, len(self.tspos))
+            for i in range(len(self.tspos) - estim_frames, len(self.tspos))
         ]
         x = [
             self.tspos[i][1]
-            for i in range(len(self.tspos) - self.params.estimate, len(self.tspos))
+            for i in range(len(self.tspos) - estim_frames, len(self.tspos))
         ]
         y = [
             self.tspos[i][2]
-            for i in range(len(self.tspos) - self.params.estimate, len(self.tspos))
+            for i in range(len(self.tspos) - estim_frames, len(self.tspos))
         ]
 
         ax, bx = np.polyfit(t, x, 1)
@@ -470,14 +474,14 @@ class Pass1:
 
         # 外挿する
         t_extrapolated = np.linspace(
-            t[-1] + 1,
-            t[-1] + num_frames,
-            num_frames,
+            self.tspos[-1][0] + 1,
+            self.tspos[-1][0] + estim_frames,
+            estim_frames,
             dtype=int,
         )
         x_extrapolated = (ax * t_extrapolated + bx).astype(int)
         y_extrapolated = (ay * t_extrapolated + by).astype(int)
-        for i in range(num_frames):
+        for i in range(estim_frames):
             self.tspos.append([t_extrapolated[i], x_extrapolated[i], y_extrapolated[i]])
 
     def _add_leading_frames(self):
@@ -485,30 +489,31 @@ class Pass1:
         Add leading frames to tspos.
         """
 
-        if len(self.tspos) < self.params.estimate:
+        # tsposの最初は速度が安定しないので捨てる。
+        disposed_frames = self.params.estimate
+        if len(self.tspos) < disposed_frames:
             return
+        self.tspos = self.tspos[disposed_frames:]
         # 事前の速度を予測するために用いるフレーム数。
-        num_frames = self.params.trailing
-        if self.tspos[0][0] < num_frames:
-            num_frames = self.tspos[0][0]
+        estim_frames = self.params.trailing
 
-        t = [self.tspos[i][0] for i in range(num_frames)]
-        x = [self.tspos[i][1] for i in range(num_frames)]
-        y = [self.tspos[i][2] for i in range(num_frames)]
+        t = [self.tspos[i][0] for i in range(estim_frames)]
+        x = [self.tspos[i][1] for i in range(estim_frames)]
+        y = [self.tspos[i][2] for i in range(estim_frames)]
 
         ax, bx = np.polyfit(t, x, 1)
         ay, by = np.polyfit(t, y, 1)
 
         t_extrapolated = np.linspace(
-            t[0] - (num_frames - 1),
-            t[0] - 1,
-            num_frames - 1,
+            self.tspos[0][0] - (estim_frames - 1),
+            self.tspos[0][0] - 1,
+            estim_frames - 1,
             dtype=int,
         )
         x_extrapolated = (ax * t_extrapolated + bx).astype(int)
         y_extrapolated = (ay * t_extrapolated + by).astype(int)
         leading_tspos = []
-        for i in range(num_frames - 1):
+        for i in range(estim_frames - 1):
             leading_tspos.append(
                 [t_extrapolated[i], x_extrapolated[i], y_extrapolated[i]]
             )
