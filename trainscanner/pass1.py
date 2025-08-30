@@ -595,7 +595,7 @@ class Pass1:
             # It happens in the frame rate adjustment between PAL and NTSC
             diff = np.sum(diff) / np.prod(diff.shape)
             if diff < params.identity:
-                logger.debug("skip identical frame #{0}".format(diff))
+                logger.info("skip identical frame #{0}".format(diff))
                 continue
             ##### Warping the frame
             _, _, cropped = transform.process_next_image(rawframe)
