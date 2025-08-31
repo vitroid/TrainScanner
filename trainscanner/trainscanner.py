@@ -17,7 +17,7 @@ def deparse(parser, params):
             kwargs = action._get_kwargs()  # list of tuple
             kwdict = dict(kwargs)
             # print(kwdict)
-            if kwdict["dest"] is key:
+            if kwdict["dest"] == key:
                 options = kwdict["option_strings"]
                 if len(options) == 0:
                     args["__UNNAMED__"] = value
