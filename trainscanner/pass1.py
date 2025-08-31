@@ -486,17 +486,18 @@ class Pass1:
 
         # 外挿する
         t_extrapolated = np.linspace(
-            self.framepositions[-1].index + 1,
-            self.framepositions[-1].index + estim_frames,
+            t[-1] + 1,
+            t[-1] + estim_frames,
             estim_frames,
             dtype=int,
         )
         x_extrapolated = ax * t_extrapolated + bx
         y_extrapolated = ay * t_extrapolated + by
+        lastframe = self.framepositions[-1].index
         for i in range(estim_frames):
             self.framepositions.append(
                 FramePosition(
-                    index=t_extrapolated[i],
+                    index=lastframe + t_extrapolated[i] - t[-1],
                     dt=1,
                     velocity=(x_extrapolated[i], y_extrapolated[i]),
                 )
@@ -524,18 +525,19 @@ class Pass1:
         ay, by = np.polyfit(t, y, 1)
 
         t_extrapolated = np.linspace(
-            self.framepositions[0].index - (estim_frames - 1),
-            self.framepositions[0].index - 1,
+            -(estim_frames - 1),
+            -1,
             estim_frames - 1,
             dtype=int,
         )
         x_extrapolated = ax * t_extrapolated + bx
         y_extrapolated = ay * t_extrapolated + by
         leading_framepositions = []
+        firstframe = self.framepositions[0].index
         for i in range(estim_frames - 1):
             leading_framepositions.append(
                 FramePosition(
-                    index=t_extrapolated[i],
+                    index=firstframe + t_extrapolated[i],
                     dt=1,
                     velocity=(x_extrapolated[i], y_extrapolated[i]),
                 )
