@@ -190,7 +190,7 @@ class SettingsGUI(QWidget):
             QLabel(tr("Short")), rows, 2, Qt.AlignmentFlag.AlignRight
         )
         self.estimate_slider = QSlider(Qt.Orientation.Horizontal)  # スライダの向き
-        self.estimate_slider.setRange(5, 50)  # スライダの範囲
+        self.estimate_slider.setRange(3, 50)  # スライダの範囲
         self.estimate_slider.setValue(10)  # 初期値
         # スライダの目盛りを両方に出す
         self.estimate_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
