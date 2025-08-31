@@ -221,6 +221,7 @@ class StitcherUI(QDialog):
         self.terminate = terminate
         self.thread = QThread()
         self.thread.start()
+        self.thread_stopped = False  # スレッド停止状態を追跡
 
         self.worker = Renderer(stitcher=stitcher)
         # it might be too early.
@@ -300,10 +301,14 @@ class StitcherUI(QDialog):
 
     def stop_thread(self):
         logger = getLogger()
-        self.worker.stop()
-        self.thread.quit()
-        self.thread.wait()
-        logger.info("Stitch_gui thread stopped.")
+        if not self.thread_stopped:
+            self.worker.stop()
+            self.thread.quit()
+            self.thread.wait()
+            self.thread_stopped = True
+            logger.info("Stitch_gui thread stopped.")
+        else:
+            logger.debug("Stitch_gui thread already stopped.")
 
 
 def main():
