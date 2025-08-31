@@ -268,15 +268,7 @@ def prepare_parser():
     parser.add_argument(
         "-r", "--rotate", type=int, default=0, dest="rotate", help="Image rotation."
     )
-    parser.add_argument(
-        "-e",
-        "--every",
-        type=int,
-        default=1,
-        dest="every",
-        metavar="N",
-        help="Load every N frames.",
-    )
+
     parser.add_argument(
         "-i",
         "--identity",
@@ -576,14 +568,9 @@ class Pass1:
             lastframe = cropped
             lastpreview = preview
             # もしlastが設定されていて，しかもframe数がそれを越えていれば，終了．
-            if params.skip < params.last < nframe + params.every:
+            if params.skip < params.last < nframe + 1:
                 break
-            # フレームの早送り
-            for i in range(params.every - 1):
-                nframe = vl.skip()
-                if nframe == 0:
-                    logger.debug("Video ended (1).")
-                    break
+            # everyオプションは廃止されたため、フレーム早送りは行わない
             # 1フレームとりこみ
             nframe, rawframe = vl.next()
             if nframe == 0:
