@@ -54,7 +54,7 @@ class Worker(QObject):
                 if not qimage.isNull():
                     self.frameRendered.emit(qimage)
 
-        successful = len(self.pass1.tspos) > 0
+        successful = len(self.pass1.framepositions) > 0
         self.pass1.after()
         self.finished.emit(successful)
 

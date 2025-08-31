@@ -12,6 +12,14 @@ from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
 from trainscanner import trainscanner, diffImage
 from trainscanner import video, match, debug_log, Region, find_subimage
+from dataclasses import dataclass
+
+
+@dataclass
+class FramePosition:
+    index: int
+    dt: int
+    velocity: tuple[float, float]
 
 
 def draw_focus_area(f, focus: Region, delta=None, active=False):
@@ -90,6 +98,7 @@ def motion(
     # Apply template Matching
     if maxaccel is None:
         # maxaccelは指定されていない場合は、画像全体がマッチング対象になる。
+        hop = 1
         if yfixed:
             # x方向にのみずらして照合する。
             image = image[template_region.top : template_region.bottom, :, :]
@@ -102,7 +111,7 @@ def motion(
                 max_loc[0] - template_region.left,
                 max_loc[1],
             )
-            return max_loc
+            return max_loc, hop
 
         # max_loc, fractional_shift, max_val = subpixel_match(
         #     image, template, subpixel=False
@@ -110,7 +119,7 @@ def motion(
         max_loc, max_val = match(image, template)
         max_loc = (max_loc[0] - template_region.left, max_loc[1] - template_region.top)
         # print(min_loc)
-        return max_loc
+        return max_loc, hop
     else:
         maxmax_loc = None
         maxmax_val = 0
@@ -138,7 +147,6 @@ def motion(
             if result is None:
                 continue
             max_loc, fractional_shift, max_val = result
-            logger.debug(f"{hop=} {max_val=}")
             # max_loc, max_val = match(gray_crop, gray_template)
             if maxmax_val < max_val:
                 maxmax_loc = max_loc
@@ -152,7 +160,8 @@ def motion(
         )
         # dropframeがあった場合、2倍や3倍の移動が検出される。
         # new_deltaには変位をそのまま返すが、同時に倍率も返す。
-        logger.debug(f"{maxmax_fra=} {maxmax_hop=}")
+        if maxmax_hop != 1:
+            logger.info(f"Skipped frames: {maxmax_hop-1}")
         return new_delta, maxmax_hop
 
 
@@ -335,7 +344,7 @@ def prepare_parser():
 
 class Pass1:
     """
-    ムービーを前から読んで，最終的なキャンバスの大きさと，各フレームを貼りつける位置を調べて，tsposファイルに書きだす．
+    ムービーを前から読んで，最終的なキャンバスの大きさと，各フレームを貼りつける位置を調べて，framepositionsファイルに書きだす．
     実際に大きな画像を作る作業はstitch.pyにまかせる．
     """
 
@@ -436,29 +445,40 @@ class Pass1:
 
     def _add_trailing_frames(self):
         """
-        Add trailing frames to tspos.
+        Add trailing frames to framepositions.
         """
 
-        # tsposの最後は速度が安定しないので捨てる。
+        # framepositionsの最後は速度が安定しないので捨てる。
         disposed_frames = self.params.estimate
 
-        if len(self.tspos) < disposed_frames:
+        if len(self.framepositions) < disposed_frames:
             return
-        self.tspos = self.tspos[: len(self.tspos) - disposed_frames]
+        self.framepositions = self.framepositions[
+            : len(self.framepositions) - disposed_frames
+        ]
         estim_frames = self.params.trailing
 
         # 座標を抽出する
-        t = [
-            self.tspos[i][0]
-            for i in range(len(self.tspos) - estim_frames, len(self.tspos))
+        dt = [
+            self.framepositions[i].dt
+            for i in range(
+                len(self.framepositions) - estim_frames, len(self.framepositions)
+            )
         ]
+
+        t = np.cumsum(dt)
+
         x = [
-            self.tspos[i][1]
-            for i in range(len(self.tspos) - estim_frames, len(self.tspos))
+            self.framepositions[i].velocity[0]
+            for i in range(
+                len(self.framepositions) - estim_frames, len(self.framepositions)
+            )
         ]
         y = [
-            self.tspos[i][2]
-            for i in range(len(self.tspos) - estim_frames, len(self.tspos))
+            self.framepositions[i].velocity[1]
+            for i in range(
+                len(self.framepositions) - estim_frames, len(self.framepositions)
+            )
         ]
 
         ax, bx = np.polyfit(t, x, 1)
@@ -466,15 +486,21 @@ class Pass1:
 
         # 外挿する
         t_extrapolated = np.linspace(
-            self.tspos[-1][0] + 1,
-            self.tspos[-1][0] + estim_frames,
+            self.framepositions[-1].index + 1,
+            self.framepositions[-1].index + estim_frames,
             estim_frames,
             dtype=int,
         )
-        x_extrapolated = (ax * t_extrapolated + bx).astype(int)
-        y_extrapolated = (ay * t_extrapolated + by).astype(int)
+        x_extrapolated = ax * t_extrapolated + bx
+        y_extrapolated = ay * t_extrapolated + by
         for i in range(estim_frames):
-            self.tspos.append([t_extrapolated[i], x_extrapolated[i], y_extrapolated[i]])
+            self.framepositions.append(
+                FramePosition(
+                    index=t_extrapolated[i],
+                    dt=1,
+                    velocity=(x_extrapolated[i], y_extrapolated[i]),
+                )
+            )
 
     def _add_leading_frames(self):
         """
@@ -483,33 +509,38 @@ class Pass1:
 
         # tsposの最初は速度が安定しないので捨てる。
         disposed_frames = self.params.estimate
-        if len(self.tspos) < disposed_frames:
+        if len(self.framepositions) < disposed_frames:
             return
-        self.tspos = self.tspos[disposed_frames:]
+        self.framepositions = self.framepositions[disposed_frames:]
         # 事前の速度を予測するために用いるフレーム数。
         estim_frames = self.params.trailing
 
-        t = [self.tspos[i][0] for i in range(estim_frames)]
-        x = [self.tspos[i][1] for i in range(estim_frames)]
-        y = [self.tspos[i][2] for i in range(estim_frames)]
+        dt = [self.framepositions[i].dt for i in range(estim_frames)]
+        t = np.cumsum(dt)
+        x = [self.framepositions[i].velocity[0] for i in range(estim_frames)]
+        y = [self.framepositions[i].velocity[1] for i in range(estim_frames)]
 
         ax, bx = np.polyfit(t, x, 1)
         ay, by = np.polyfit(t, y, 1)
 
         t_extrapolated = np.linspace(
-            self.tspos[0][0] - (estim_frames - 1),
-            self.tspos[0][0] - 1,
+            self.framepositions[0].index - (estim_frames - 1),
+            self.framepositions[0].index - 1,
             estim_frames - 1,
             dtype=int,
         )
-        x_extrapolated = (ax * t_extrapolated + bx).astype(int)
-        y_extrapolated = (ay * t_extrapolated + by).astype(int)
-        leading_tspos = []
+        x_extrapolated = ax * t_extrapolated + bx
+        y_extrapolated = ay * t_extrapolated + by
+        leading_framepositions = []
         for i in range(estim_frames - 1):
-            leading_tspos.append(
-                [t_extrapolated[i], x_extrapolated[i], y_extrapolated[i]]
+            leading_framepositions.append(
+                FramePosition(
+                    index=t_extrapolated[i],
+                    dt=1,
+                    velocity=(x_extrapolated[i], y_extrapolated[i]),
+                )
             )
-        self.tspos = leading_tspos + self.tspos
+        self.framepositions = leading_framepositions + self.framepositions
 
     def valid_focus(self, focus: Region):
         if focus is None:
@@ -555,7 +586,7 @@ class Pass1:
         preview = trainscanner.fit_to_square(cropped, preview_size)
         preview_ratio = preview.shape[0] / cropped.shape[0]
 
-        self.tspos = []
+        self.framepositions: list[FramePosition] = []
         self.cache = []  # save only "active" frames.
         velx_history = []  # store velocities
         vely_history = []  # store velocities
@@ -611,13 +642,12 @@ class Pass1:
                         "Matching failed (probabily the motion detection window goes out of the image)."
                     )
                     break
-                hopx, hopy = delta
-                velx, vely = delta[0] / hop, delta[1] / hop
-                logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
             else:
                 # 速度不明なので、広い範囲でマッチングを行う。
-                velx, vely = motion(lastframe, cropped, focus=focus, yfixed=params.zero)
-                hopx, hopy = velx, vely
+                delta, hop = motion(lastframe, cropped, focus=focus, yfixed=params.zero)
+            hopx, hopy = delta
+            velx, vely = delta[0] / hop, delta[1] / hop
+            logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
 
             # ##### Suppress drifting.
             # if params.zero:
@@ -713,15 +743,14 @@ class Pass1:
             absy += hopy
             # self.canvas = expand_canvas(self.canvas, cropped, absx, absy)
             # フレーム番号と、直前のフレームからの移動距離。
-            self.tspos.append([nframe, hopx, hopy])
+            self.framepositions.append(
+                FramePosition(index=nframe, dt=hop, velocity=(velx, vely))
+            )
         # end of capture
 
         # 最後の、match_failフレームを削除する。
         if match_fail > 0:
-            self.tspos = self.tspos[:-match_fail]
-        # 10枚ほど余分に削る。
-        # self.tspos = self.tspos[:-10]
-        # self.tspos = self.tspos[10:]
+            self.framepositions = self.framepositions[:-match_fail]
 
         self._add_trailing_frames()
         self._add_leading_frames()
@@ -732,14 +761,14 @@ class Pass1:
         """
         logger = getLogger()
 
-        if len(self.tspos) == 0:
+        if len(self.framepositions) == 0:
             logger.error("No motion detected.")
             return
         left, top = 0, 0
         canvas = extend_canvas(None, self.frame_width, self.frame_height, left, top)
-        for t, dx, dy in self.tspos:
-            left += dx
-            top += dy
+        for frameposition in self.framepositions:
+            left += frameposition.velocity[0] * frameposition.dt
+            top += frameposition.velocity[1] * frameposition.dt
             canvas = extend_canvas(
                 canvas, self.frame_width, self.frame_height, left, top
             )
@@ -752,8 +781,11 @@ class Pass1:
         ostream.write(self.tsconf)
         if self.params.log is not None:
             ostream = open(self.params.log + ".tspos", "w")
-        for t, x, y in self.tspos:
-            ostream.write(f"{t} {x} {y}\n")
+        # tsposの内部形式は変えるが、data formatは変えない(今は)。
+        for frameposition in self.framepositions:
+            ostream.write(
+                f"{frameposition.index} {frameposition.velocity[0]*frameposition.dt} {frameposition.velocity[1]*frameposition.dt}\n"
+            )
         ostream.close()
 
         self.rawframe = None
