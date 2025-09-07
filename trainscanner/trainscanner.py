@@ -56,13 +56,14 @@ class transformation:
     def rotation_affine(self, w, h):
         a = math.cos(self.angle)
         b = math.sin(self.angle)
-        rh = max(abs(h * a), abs(w * b))
-        rw = max(abs(h * b), abs(w * a))
+        rh = abs(h * a) + abs(w * b)
+        rw = abs(h * b) + abs(w * a)
         self.rh, self.rw = int(rh), int(rw)
+        halfw, halfh = w / 2, h / 2
         self.R = np.matrix(
             (
-                (a, b, (1 - a) * w / 2 - b * h / 2 + (rw - w) / 2),
-                (-b, a, b * w / 2 + (1 - a) * h / 2 + (rh - h) / 2),
+                (a, b, -a * halfw - b * halfh + rw / 2),
+                (-b, a, b * halfw - a * halfh + rh / 2),
             )
         )
 
