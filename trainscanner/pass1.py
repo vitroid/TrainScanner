@@ -111,7 +111,7 @@ def motion(
                 max_loc[0] - template_region.left,
                 max_loc[1],
             )
-            return max_loc, hop
+            return max_loc, hop, max_val
 
         # max_loc, fractional_shift, max_val = subpixel_match(
         #     image, template, subpixel=False
@@ -119,7 +119,7 @@ def motion(
         max_loc, max_val = match(image, template)
         max_loc = (max_loc[0] - template_region.left, max_loc[1] - template_region.top)
         # print(min_loc)
-        return max_loc, hop
+        return max_loc, hop, max_val
     else:
         maxmax_loc = None
         maxmax_val = 0
@@ -162,7 +162,7 @@ def motion(
         # new_deltaには変位をそのまま返すが、同時に倍率も返す。
         if maxmax_hop != 1:
             logger.info(f"Skipped frames: {maxmax_hop-1}")
-        return new_delta, maxmax_hop
+        return new_delta, maxmax_hop, maxmax_val
 
 
 # Automatically extensible canvas.
@@ -590,6 +590,7 @@ class Pass1:
 
         self.framepositions: list[FramePosition] = []
         self.cache = []  # save only "active" frames.
+        self.motions_plot = []  # リアルタイムプロット用のデータ
         velx_history = []  # store velocities
         vely_history = []  # store velocities
 
@@ -631,7 +632,7 @@ class Pass1:
             if in_action or coldstart:
                 # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
                 logger.debug(f"velx: {velx} vely: {vely}")
-                delta, hop = motion(
+                delta, hop, value = motion(
                     lastframe,
                     cropped,
                     focus=focus,
@@ -639,6 +640,7 @@ class Pass1:
                     delta=(velx, vely),
                     dropframe=params.dropframe,
                 )
+                self.motions_plot.append([delta[0], delta[1], value])
                 if delta is None:
                     logger.error(
                         "Matching failed (probabily the motion detection window goes out of the image)."
@@ -646,7 +648,9 @@ class Pass1:
                     break
             else:
                 # 速度不明なので、広い範囲でマッチングを行う。
-                delta, hop = motion(lastframe, cropped, focus=focus, yfixed=params.zero)
+                delta, hop, value = motion(
+                    lastframe, cropped, focus=focus, yfixed=params.zero
+                )
             hopx, hopy = delta
             velx, vely = delta[0] / hop, delta[1] / hop
             logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
