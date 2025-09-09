@@ -64,7 +64,7 @@ def draw_slit_position(img, slitpos, dx):
     cv2.line(img, (x2, 0), (x2, h), (0, 255, 0), 1)
 
 
-@debug_log
+# @debug_log
 def motion(
     image,
     ref,
@@ -194,7 +194,7 @@ def extend_canvas(canvas_dimen, w, h, x, y):
     ymin = min(cymin, iymin)
     ymax = max(cymax, iymax)
     canvas_dimen = (xmax - xmin, ymax - ymin, xmin, ymin)
-    getLogger().debug(f"{canvas_dimen=}")
+    # getLogger().debug(f"{canvas_dimen=}")
     return canvas_dimen
 
 
@@ -629,6 +629,7 @@ class Pass1:
             maxaccel = [params.maxaccel, params.maxaccel]
             if params.zero:
                 maxaccel = [params.maxaccel, 0]
+
             if in_action or coldstart:
                 # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
                 logger.debug(f"velx: {velx} vely: {vely}")
@@ -798,15 +799,6 @@ class Pass1:
 
 
 def main():
-    debug = False
-    if debug:
-        basicConfig(
-            level=DEBUG,
-            # filename='log.txt',
-            format="%(asctime)s %(levelname)s %(message)s",
-        )
-    else:
-        basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(message)s")
     pass1 = Pass1(argv=sys.argv)
     for num, den in pass1.before():
         pass

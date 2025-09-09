@@ -45,6 +45,8 @@ class Worker(QObject):
         self._isRunning = True
         self.pass1 = pass1.Pass1(argv=argv)
         self.motions_plot = []  # リアルタイムプロット用のデータ
+        self.last_plot_update_time = 0  # 最後のプロット更新時刻
+        self.plot_update_interval = 0.1  # プロット更新間隔（秒）
 
     def task(self):
         if not self._isRunning:
@@ -66,11 +68,19 @@ class Worker(QObject):
                 if not qimage.isNull():
                     self.frameRendered.emit(qimage)
 
-                # motions_plotデータが更新されていればシグナルを送信
+                # motions_plotデータが更新されていればシグナルを送信（頻度制限あり）
                 if hasattr(self.pass1, "motions_plot") and self.pass1.motions_plot:
-                    # 最新のデータのみを送信（全データだと重い）
-                    current_data = self.pass1.motions_plot.copy()
-                    self.motionDataUpdated.emit(current_data)
+                    import time
+
+                    current_time = time.time()
+                    if (
+                        current_time - self.last_plot_update_time
+                        >= self.plot_update_interval
+                    ):
+                        # 最新のデータのみを送信（全データだと重い）
+                        current_data = self.pass1.motions_plot.copy()
+                        self.motionDataUpdated.emit(current_data)
+                        self.last_plot_update_time = current_time
 
         successful = len(self.pass1.framepositions) > 0
         self.pass1.after()
@@ -158,46 +168,60 @@ class MatcherUI(QDialog):
 
         # プロット用のデータ
         self.motion_data = []
+        # プロット更新の制御
+        self.plot_updating = False  # プロット更新中フラグ
 
     def update_plot(self, motions_plot_data):
         """リアルタイムでモーションプロットを更新"""
         if not self.debug_mode or not motions_plot_data:
             return
 
-        # データを更新
-        self.motion_data = motions_plot_data
+        # 前回のプロット更新が完了していない場合はスキップ
+        if self.plot_updating:
+            return
 
-        # プロットをクリア
-        self.figure.clear()
+        # プロット更新開始
+        self.plot_updating = True
 
-        # データがある場合のみプロット
-        if len(self.motion_data) > 1:
-            data = np.array(self.motion_data)
-            frames = np.arange(len(data))
+        try:
+            # データを更新
+            self.motion_data = motions_plot_data
 
-            # 2つのサブプロット作成：上下に配置
-            # 上：X, Y変位を同じパネルに
-            ax1 = self.figure.add_subplot(211)
-            ax1.plot(frames, data[:, 0], "b-", linewidth=1, label="X displacement")
-            ax1.plot(frames, data[:, 1], "r-", linewidth=1, label="Y displacement")
-            ax1.set_ylabel("Displacement (px)")
-            ax1.set_title("Motion Analysis (Real-time)")
-            ax1.grid(True, alpha=0.3)
-            ax1.legend()
+            # プロットをクリア
+            self.figure.clear()
 
-            # 下：マッチング値（value）
-            ax2 = self.figure.add_subplot(212)
-            ax2.plot(frames, data[:, 2], "g-", linewidth=1, label="Match value")
-            ax2.set_ylabel("Match value")
-            ax2.set_xlabel("Frame number")
-            ax2.grid(True, alpha=0.3)
-            ax2.legend()
+            # データがある場合のみプロット
+            if len(self.motion_data) > 1:
+                data = np.array(self.motion_data)
+                frames = np.arange(len(data))
 
-            # レイアウト調整
-            self.figure.tight_layout()
+                # 2つのサブプロット作成：上下に配置
+                # 上：X, Y変位を同じパネルに
+                ax1 = self.figure.add_subplot(211)
+                ax1.plot(frames, data[:, 0], "b-", linewidth=1, label="X displacement")
+                ax1.plot(frames, data[:, 1], "r-", linewidth=1, label="Y displacement")
+                ax1.set_ylabel("Displacement (px)")
+                ax1.set_title("Motion Analysis (Real-time)")
+                ax1.grid(True, alpha=0.3)
+                ax1.legend()
 
-        # キャンバスを更新
-        self.plot_canvas.draw()
+                # 下：マッチング値（value）
+                ax2 = self.figure.add_subplot(212)
+                ax2.plot(frames, data[:, 2], "g-", linewidth=1, label="Match value")
+                ax2.set_ylabel("Match value")
+                ax2.set_xlabel("Frame number")
+                ax2.grid(True, alpha=0.3)
+                ax2.legend()
+
+                # レイアウト調整
+                self.figure.tight_layout()
+
+            # キャンバスを更新
+            self.plot_canvas.draw()
+
+        finally:
+            # プロット更新完了
+            self.plot_updating = False
 
     def updatePixmap(self, image):
         # 無効な画像をスキップ（これが重要な修正）
