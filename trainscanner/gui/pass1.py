@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 
 from trainscanner import pass1
 from trainscanner.widget import cv2toQImage
+from trainscanner import diffview, Region, FramePosition
 
 
 class Worker(QObject):
@@ -33,26 +34,40 @@ class Worker(QObject):
         super(Worker, self).__init__()
         self._isRunning = True
         self.pass1 = pass1.Pass1(argv=argv)
+        self.v = diffview(
+            focus=Region(
+                self.pass1.params.focus[0],
+                self.pass1.params.focus[1],
+                self.pass1.params.focus[2],
+                self.pass1.params.focus[3],
+            )
+        )
+        self.motions_plot = []  # リアルタイムプロット用のデータ
+        self.last_plot_update_time = 0  # 最後のプロット更新時刻
+        self.plot_update_interval = 0.1  # プロット更新間隔（秒）
+
+    # def view(self, frameposition: pass1.FramePosition) -> None:
+    #     diff = self.v.view(frameposition)
+    #     if diff is not None:
+    #         qimage = cv2toQImage(diff)
+    #         if not qimage.isNull():
+    #             self.frameRendered.emit(qimage)
+
+    #     self.motions_plot.append(
+    #         [frameposition.velocity[0], frameposition.velocity[1], frameposition.value]
+    #     )
+    #     self.motionDataUpdated.emit(self.motions_plot)
 
     def task(self):
         if not self._isRunning:
             self._isRunning = True
 
         # self.pass1.before() is a generator.
-        for num, den in self.pass1.before():
+        for num, den in self.pass1.cue():
             if den:
                 self.progress.emit(num * 100 // den)
 
-        for img in self.pass1.iter():
-            if not self._isRunning:
-                break
-            # 画像が有効かチェック
-            if img is not None and img.size > 0 and len(img.shape) == 3:
-                # 画像をコピーしてメモリの連続性を保証
-                img_copy = img.copy()
-                qimage = cv2toQImage(img_copy)
-                if not qimage.isNull():
-                    self.frameRendered.emit(qimage)
+        self.pass1.run(hook=self.view)
 
         successful = len(self.pass1.framepositions) > 0
         self.pass1.after()
