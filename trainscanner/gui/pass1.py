@@ -246,10 +246,21 @@ class MatcherUI(QDialog):
         if not self.debug_mode:
             self.close()
         else:
-            # デバッグモードの場合はボタンテキストを変更
+            # デバッグモードの場合はボタンテキストを変更し、動作も変更
             self.btnStop.setText("Close")
+            # 古い接続を切断
+            self.btnStop.clicked.disconnect()
+            # 新しい接続を設定（正常終了として扱う）
+            self.btnStop.clicked.connect(self.close)
 
     def closeEvent(self, event):
+        # 処理が正常に完了している場合は、terminatedをFalseに設定
+        # これにより、Stitchステップに進むことができる
+        if self.success:
+            self.terminated = False
+        else:
+            # 処理が完了していない場合は中断として扱う
+            self.terminated = True
         self.stop_thread()
 
     def stop_thread(self):

@@ -580,6 +580,10 @@ class SettingsGUI(QWidget):
             pass1_options += [
                 "--stall",
             ]
+        if self.btn_debug.isChecked():
+            pass1_options += [
+                "--debug",
+            ]
         pass1_options += ["--maxaccel", f"{self.accel}"]
         pass1_options += ["--log", logfilenamebase]
         pass1_options += ["--dropframe", f"{self.dropframe}"]
