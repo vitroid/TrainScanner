@@ -57,17 +57,17 @@ class Worker(QObject):
         self.last_plot_update_time = 0  # 最後のプロット更新時刻
         self.plot_update_interval = 0.1  # プロット更新間隔（秒）
 
-    # def view(self, frameposition: pass1.FramePosition) -> None:
-    #     diff = self.v.view(frameposition)
-    #     if diff is not None:
-    #         qimage = cv2toQImage(diff)
-    #         if not qimage.isNull():
-    #             self.frameRendered.emit(qimage)
+    def view(self, frameposition: pass1.FramePosition) -> None:
+        diff = self.v.view(frameposition)
+        if diff is not None:
+            qimage = cv2toQImage(diff)
+            if not qimage.isNull():
+                self.frameRendered.emit(qimage)
 
-    #     self.motions_plot.append(
-    #         [frameposition.velocity[0], frameposition.velocity[1], frameposition.value]
-    #     )
-    #     self.motionDataUpdated.emit(self.motions_plot)
+        self.motions_plot.append(
+            [frameposition.velocity[0], frameposition.velocity[1], frameposition.value]
+        )
+        self.motionDataUpdated.emit(self.motions_plot)
 
     def task(self):
         if not self._isRunning:
@@ -79,20 +79,6 @@ class Worker(QObject):
                 self.progress.emit(num * 100 // den)
 
         self.pass1.run(hook=self.view)
-
-                # motions_plotデータが更新されていればシグナルを送信（頻度制限あり）
-                if hasattr(self.pass1, "motions_plot") and self.pass1.motions_plot:
-                    import time
-
-                    current_time = time.time()
-                    if (
-                        current_time - self.last_plot_update_time
-                        >= self.plot_update_interval
-                    ):
-                        # 最新のデータのみを送信（全データだと重い）
-                        current_data = self.pass1.motions_plot.copy()
-                        self.motionDataUpdated.emit(current_data)
-                        self.last_plot_update_time = current_time
 
         successful = len(self.pass1.framepositions) > 0
         self.pass1.after()
