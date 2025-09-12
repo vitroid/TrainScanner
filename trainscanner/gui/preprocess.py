@@ -52,7 +52,7 @@ QRangeSlider #Span {
 
 
 @dataclass
-class FrameInfo:
+class Thumbnails:
     every_n_frames: int
     frames: list[np.ndarray]
 
@@ -63,7 +63,7 @@ class AsyncImageLoader(QObject):
     to load the thumbnails for the time line
     """
 
-    frameIncreased = pyqtSignal(FrameInfo)
+    frameIncreased = pyqtSignal(Thumbnails)
     errorOccurred = pyqtSignal(str)  # エラーメッセージを送信するシグナルを追加
 
     def __init__(self, parent=None, filename="", size=0):
@@ -119,7 +119,7 @@ class AsyncImageLoader(QObject):
                 now = time.time()
                 if now - last_emit_time > 0.1:
                     self.frameIncreased.emit(
-                        FrameInfo(
+                        Thumbnails(
                             every_n_frames=self.every_n_frames,
                             frames=self.snapshots,
                         )
@@ -145,7 +145,7 @@ class AsyncImageLoader(QObject):
         time.sleep(0.1)
         if self.snapshots:  # エラーが発生していない場合のみemit
             self.frameIncreased.emit(
-                FrameInfo(
+                Thumbnails(
                     every_n_frames=self.every_n_frames,
                     frames=self.snapshots,
                 )
@@ -453,11 +453,11 @@ class EditorGUI(QWidget):
         thumb = cv2.resize(cropped, (thumbw, thumbh), interpolation=cv2.INTER_CUBIC)
         return cv2toQImage(thumb)
 
-    def updateTimeLine(self, frameinfo: FrameInfo = None):
+    def updateTimeLine(self, frameinfo: Thumbnails = None):
         # count time and limit update
         now = time.time()
-        # if now - self.lastupdatethumbs < 0.1:  # 更新頻度を0.05秒に変更
-        #     return
+        if now - self.lastupdatethumbs < 0.1:  # 更新頻度を0.05秒に変更
+            return
         # transformation filter
         self.imageselector2.imagebar.setTransformer(self.thumbtransformer)
         self.imageselector2.setThumbs(frameinfo.frames)
@@ -639,7 +639,7 @@ class EditorGUI(QWidget):
         self.angle_degree %= 360
         self.angle_label.setText(f'{self.angle_degree} {tr("degrees")}')
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
@@ -651,7 +651,7 @@ class EditorGUI(QWidget):
         self.angle_degree %= 360
         self.angle_label.setText(f'{self.angle_degree} {tr("degrees")}')
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
@@ -663,7 +663,7 @@ class EditorGUI(QWidget):
         self.angle_degree %= 360
         self.angle_label.setText(f'{self.angle_degree} {tr("degrees")}')
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
@@ -675,7 +675,7 @@ class EditorGUI(QWidget):
         self.angle_degree %= 360
         self.angle_label.setText(f'{self.angle_degree} {tr("degrees")}')
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
@@ -689,7 +689,7 @@ class EditorGUI(QWidget):
     def sliderTL_on_draw(self):
         self.perspective[0] = self.sliderL.start()
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
@@ -699,7 +699,7 @@ class EditorGUI(QWidget):
     def sliderBL_on_draw(self):
         self.perspective[2] = self.sliderL.end()
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
@@ -709,7 +709,7 @@ class EditorGUI(QWidget):
     def sliderTR_on_draw(self):
         self.perspective[1] = self.sliderR.start()
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
@@ -719,7 +719,7 @@ class EditorGUI(QWidget):
     def sliderBR_on_draw(self):
         self.perspective[3] = self.sliderR.end()
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
@@ -773,7 +773,7 @@ class EditorGUI(QWidget):
     def croptop_slider_on_draw(self):
         self.croptop = self.crop_slider.start()
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
@@ -783,7 +783,7 @@ class EditorGUI(QWidget):
     def cropbottom_slider_on_draw(self):
         self.cropbottom = self.crop_slider.end()
         self.updateTimeLine(
-            FrameInfo(
+            Thumbnails(
                 every_n_frames=0,
                 frames=self.asyncimageloader.snapshots,
             )
