@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import scipy.optimize
 from logging import getLogger
-import functools
 from dataclasses import dataclass
 import os
 
@@ -28,27 +27,20 @@ class Region:
             raise ValueError("Region is too small")
 
 
-def debug_log(func):
-    """関数の引数と戻り値をデバッグログに出力するデコレータ"""
+@dataclass
+class FramePosition:
+    index: int
+    dt: int
+    velocity: tuple[float, float]
 
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        logger = getLogger()
-        # 引数を文字列に変換
-        args_str = ", ".join(map(repr, args))
-        kwargs_str = ", ".join(f"{k}={v!r}" for k, v in kwargs.items())
-        all_args_str = (
-            f"{args_str}, {kwargs_str}"
-            if args_str and kwargs_str
-            else args_str or kwargs_str
-        )
 
-        logger.debug(f"{func.__name__} called with arguments: ({all_args_str})")
-        result = func(*args, **kwargs)
-        logger.debug(f"{func.__name__} returned: {result!r}")
-        return result
-
-    return wrapper
+@dataclass
+class MatchResult:
+    index: int
+    dt: int
+    velocity: tuple[float, float]
+    value: float
+    image: np.ndarray
 
 
 def standardize(x):
@@ -152,7 +144,7 @@ def subpixel_match(
 
 
 def match(target_area: np.ndarray, focus: np.ndarray):
-    scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF)
+    scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(scores)
     return max_loc, max_val
 
@@ -237,3 +229,42 @@ def find_subimage(
             fraction,
             optimal_val,
         )
+
+
+def draw_focus_area(f, focus: Region):
+    """
+    cv2形式の画像の中に四角を描く
+    """
+    h, w = f.shape[0:2]
+    pos = Region(
+        left=w * focus.left // 1000,
+        right=w * focus.right // 1000,
+        top=h * focus.top // 1000,
+        bottom=h * focus.bottom // 1000,
+    )
+    colors = [(0, 255, 0), (255, 255, 0)]
+    cv2.rectangle(f, (pos.left, pos.top), (pos.right, pos.bottom), colors[0], 1)
+
+
+class diffview:
+    def __init__(self, focus: Region):
+        self.focus = focus
+        self.lastimage = None
+        self.preview_size = 500
+
+    def view(self, matchresult: MatchResult):
+        preview = trainscanner.fit_to_square(matchresult.image, self.preview_size)
+        # draw focus area here
+        draw_focus_area(
+            preview,
+            self.focus,
+        )
+        preview_ratio = preview.shape[0] / matchresult.image.shape[0]
+        if self.lastimage is None:
+            self.lastimage = preview
+            return None
+        deltax = int(matchresult.velocity[0] * matchresult.dt * preview_ratio)
+        deltay = int(matchresult.velocity[1] * matchresult.dt * preview_ratio)
+        diff = diffImage(preview, self.lastimage, deltax, deltay)
+        self.lastimage = preview
+        return diff

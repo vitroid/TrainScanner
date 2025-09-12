@@ -10,43 +10,16 @@ import re
 import itertools
 from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
-from trainscanner import trainscanner, diffImage
-from trainscanner import video, match, debug_log, Region, find_subimage
+from trainscanner import (
+    trainscanner,
+    diffview,
+    draw_focus_area,
+    FramePosition,
+    MatchResult,
+)
+from trainscanner import video, match, Region, find_subimage
 from dataclasses import dataclass
-
-
-@dataclass
-class FramePosition:
-    index: int
-    dt: int
-    velocity: tuple[float, float]
-
-
-def draw_focus_area(f, focus: Region, delta=None, active=False):
-    """
-    cv2形式の画像の中に四角を描く
-    """
-    h, w = f.shape[0:2]
-    pos = Region(
-        left=w * focus.left // 1000,
-        right=w * focus.right // 1000,
-        top=h * focus.top // 1000,
-        bottom=h * focus.bottom // 1000,
-    )
-    if active:
-        colors = [(0, 255, 0), (255, 255, 0)]
-    else:
-        colors = [(0, 128, 0), (128, 128, 0)]
-    cv2.rectangle(f, (pos.left, pos.top), (pos.right, pos.bottom), colors[0], 1)
-    if delta is not None:
-        dx, dy = delta
-        pos = Region(
-            left=w * focus.left // 1000 + dx,
-            right=w * focus.right // 1000 + dx,
-            top=h * focus.top // 1000 + dy,
-            bottom=h * focus.bottom // 1000 + dy,
-        )
-        cv2.rectangle(f, (pos.left, pos.top), (pos.right, pos.bottom), colors[1], 1)
+from trainscanner.decorators import deprecated
 
 
 def draw_slit_position(img, slitpos, dx):
@@ -342,6 +315,283 @@ def prepare_parser():
     return parser
 
 
+class historyQueue:
+    def __init__(self, maxlen: int):
+        self.queue = []
+        self.maxlen = maxlen
+
+    def append(self, item):
+        self.queue.append(item)
+        if len(self.queue) > self.maxlen:
+            self.queue.pop(0)
+
+    def fluctuation(self):
+        return max(self.queue) - min(self.queue)
+
+
+def valid_focus(focus: Region):
+    if focus is None:
+        return False
+    if focus.left >= focus.right:
+        return False
+    if focus.top >= focus.bottom:
+        return False
+    return True
+
+
+def iter2(
+    videoloader,
+    focus: Region,
+    transform: trainscanner.transformation,
+    coldstart: bool = False,
+    yfixed: bool = False,
+    dropframe: int = 0,
+    maxaccel: int = 1,
+    identity: float = 1.0,
+    antishake: int = 5,
+    last: int = 0,
+    hook=None,
+):
+    logger = getLogger()
+
+    nframe, rawframe = videoloader.next()
+    # All self variables to be inherited.
+    _, _, cropped = transform.process_first_image(rawframe)
+    # あとでcanvas の計算に使うために、frameの幅と高さを保存しておく。
+    frame_width, frame_height = cropped.shape[1], cropped.shape[0]
+    # Prepare a scalable self.canvas with the origin.
+    # self.canvas = None
+
+    absx, absy = 0, 0
+    velx, vely = 0, 0
+    match_fail = 0
+    in_action = False
+    # coldstartの場合は、変化の大きさに関わらず、変位を記録する。
+    # そして、変位がantishakeを越えたあとは、通常と同じように判定する。
+
+    motions_plot = []  # リアルタイムプロット用のデータ
+    velx_history = historyQueue(5)  # store velocities
+    vely_history = historyQueue(5)  # store velocities
+
+    if not valid_focus(focus):
+        return
+
+    while True:
+        lastrawframe = rawframe
+        lastframe = cropped
+        # もしlastが設定されていて，しかもframe数がそれを越えていれば，終了．
+        if last > 0 and last < nframe + 1:
+            break
+        # 1フレームとりこみ
+        nframe, rawframe = videoloader.next()
+        if nframe == 0:
+            logger.debug("Video ended (2).")
+            break
+        ##### compare with the previous raw frame
+        diff = cv2.absdiff(rawframe, lastrawframe)
+        # When the raw frame is not changed at all, ignore the frame.
+        # It happens in the frame rate adjustment between PAL and NTSC
+        diff = np.sum(diff) / np.prod(diff.shape)
+        if diff < identity:
+            logger.info("skip identical frame #{0}".format(diff))
+            continue
+        ##### Warping the frame
+        _, _, cropped = transform.process_next_image(rawframe)
+        ##### motion detection.
+        # if maxaccel is set, motion detection area becomes very narrow
+        # assuming that the train is running at constant speed.
+        # This mode is activated after the 10th frames.
+
+        # Now I do care only magrin case.
+        if yfixed:
+            accel = [maxaccel, 0]
+        else:
+            accel = [maxaccel, maxaccel]
+
+        if in_action or coldstart:
+            # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
+            logger.debug(f"velx: {velx} vely: {vely}")
+            delta, hop, value = motion(
+                lastframe,
+                cropped,
+                focus=focus,
+                maxaccel=accel,
+                delta=(velx, vely),
+                dropframe=dropframe,
+            )
+            motions_plot.append([delta[0], delta[1], value])
+            if delta is None:
+                logger.error(
+                    "Matching failed (probabily the motion detection window goes out of the image)."
+                )
+                break
+        else:
+            # 速度不明なので、広い範囲でマッチングを行う。
+            delta, hop, value = motion(lastframe, cropped, focus=focus, yfixed=yfixed)
+        hopx, hopy = delta
+        velx, vely = delta[0] / hop, delta[1] / hop
+        logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
+
+        # ##### Suppress drifting.
+        # if params.zero:
+        #     dy = 0
+        # 直近5フレームの移動量を記録する．
+        # ここではhopの大きさ(dropframeのせいでときどき倍になる)ではなく、真の速度を記録する。
+        velx_history.append(velx)
+        vely_history.append(vely)
+        ##### Make the preview image
+
+        if coldstart:
+            if not in_action:
+                match_fail = 0
+
+            if abs(velx) >= params.antishake or abs(vely) >= params.antishake:
+                if not in_action:
+                    in_action = True
+                    coldstart = False
+
+        else:
+            if abs(velx) >= antishake or abs(vely) >= antishake:
+                if not in_action:
+                    # 過去5フレームでの移動量の変化
+                    fluctuation_x = velx_history.fluctuation()
+                    fluctuation_y = vely_history.fluctuation()
+                    # if the displacements are almost constant in the last 5 frames,
+                    if antishake <= fluctuation_x or antishake <= fluctuation_y:
+                        logger.debug(
+                            f"Wait for the camera to stabilize ({nframe=} {velx=} {vely=} {fluctuation_x=} {fluctuation_y=})"
+                        )
+                        continue
+                    else:
+                        # 速度は安定した．
+                        in_action = True
+                        # 十分変位が大きくなったらcoldstartフラグはおろす。
+                        logger.debug(
+                            f"The camera is stabilized. Now ready to start recording. {nframe=} {velx=} {vely=}"
+                        )
+                        # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
+                        # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
+                # 変位をそのまま採用する．
+                logger.debug(f"Accept the motion ({nframe} {velx} {vely})")
+                match_fail = 0
+            else:
+                if in_action:
+                    # 動きがantishake水準より小さかった場合
+                    match_fail += 1
+                    # match_failカウンターがparams.trailingに届くまではそのまま回す．
+                    if match_fail > trailing:
+                        # end of work
+                        # Add trailing frames to the log file here.
+
+                        # ここで、マッチしはじめる前の部分と、マッチしおえたあとの部分を整える。
+
+                        break
+                    logger.debug(
+                        f"Ignore a small motion ({nframe} {velx} {vely} +{match_fail}/{params.trailing})"
+                    )
+                    # believe the last velx and vely
+                else:
+                    # not guess mode, not large motion: just ignore.
+                    logger.debug(f"Still frame ({nframe} {velx} {vely})")
+                    continue
+
+        logger.debug(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
+        absx += hopx
+        absy += hopy
+
+        matchresult = MatchResult(
+            index=nframe, dt=hop, velocity=(velx, vely), value=value, image=cropped
+        )
+        if hook is not None:
+            hook(matchresult)
+
+        frameposition = FramePosition(index=nframe, dt=hop, velocity=(velx, vely))
+        yield frameposition
+    # end of capture
+
+
+def add_trailing_frames(
+    framepositions: list[FramePosition], dispose: int, estimate: int, extend: int
+):
+    """
+    Add trailing frames to framepositions.
+
+    framepositions: list[FramePosition]
+    dispose: int # 捨てるフレーム数
+    estimate: int # 事前の速度を予測するために用いるフレーム数
+    extend: int # 外挿するフレーム数
+    """
+
+    # framepositionsの最後は速度が安定しないので捨てる。
+    framepositions = framepositions[:-dispose]
+
+    # 座標を抽出する
+    dt = [fp.dt for fp in framepositions[-estimate:]]
+    t = np.cumsum(dt)
+    x = [fp.velocity[0] for fp in framepositions[-estimate:]]
+    y = [fp.velocity[1] for fp in framepositions[-estimate:]]
+
+    ax, bx = np.polyfit(t, x, 1)
+    ay, by = np.polyfit(t, y, 1)
+
+    t_extrapolated = np.linspace(
+        t[-1] + 1,
+        t[-1] + extend,
+        extend,
+        dtype=int,
+    )
+    x_extrapolated = ax * t_extrapolated + bx
+    y_extrapolated = ay * t_extrapolated + by
+    lastframe = framepositions[-1].index
+    trailing_framepositions = [
+        FramePosition(
+            index=lastframe + t_extrapolated[i] - t[-1],
+            dt=1,
+            velocity=(x_extrapolated[i], y_extrapolated[i]),
+        )
+        for i in range(extend)
+    ]
+    return framepositions + trailing_framepositions
+
+
+def add_leading_frames(
+    framepositions: list[FramePosition], dispose: int, estimate: int, extend: int
+):
+    """
+    Add leading frames to tspos.
+    """
+
+    # 最初は速度が安定しないので捨てる。
+    framepositions = framepositions[dispose:]
+
+    dt = [fp.dt for fp in framepositions[:estimate]]
+    t = np.cumsum(dt)
+    x = [fp.velocity[0] for fp in framepositions[:estimate]]
+    y = [fp.velocity[1] for fp in framepositions[:estimate]]
+
+    ax, bx = np.polyfit(t, x, 1)
+    ay, by = np.polyfit(t, y, 1)
+
+    t_extrapolated = np.linspace(
+        -extend,
+        -1,
+        extend,
+        dtype=int,
+    )
+    x_extrapolated = ax * t_extrapolated + bx
+    y_extrapolated = ay * t_extrapolated + by
+    firstframe = framepositions[0].index
+    leading_framepositions = [
+        FramePosition(
+            index=firstframe + t_extrapolated[i],
+            dt=1,
+            velocity=(x_extrapolated[i], y_extrapolated[i]),
+        )
+        for i in range(extend)
+    ]
+    return leading_framepositions + framepositions
+
+
 class Pass1:
     """
     ムービーを前から読んで，最終的なキャンバスの大きさと，各フレームを貼りつける位置を調べて，framepositionsファイルに書きだす．
@@ -370,12 +620,6 @@ class Pass1:
         self.params.filename = os.path.basename(self.params.filename)
         logger.debug("Directory candidates: {0}".format(self.dirnames))
 
-    def before(self):
-        """
-        prepare for the loop
-        note that it is a generator.
-        """
-        logger = getLogger()
         ####Determine the movie file########################
         found = None
         logger.debug("Basename {0}".format(self.params.filename))
@@ -426,9 +670,15 @@ class Pass1:
                     self.tsconf += f"{option}\n{value}\n"
         # print(self.tsconf)
         # end of the header
-
         #############Open the video file #############################
         self.vl = video.video_loader_factory(found)
+
+    def cue(self):
+        """
+        prepare for the loop
+        note that it is a generator.
+        """
+        logger = getLogger()
         # self.nframes = 0  #1 is the first frame
 
         for i in range(self.params.skip):  # skip frames
@@ -436,331 +686,36 @@ class Pass1:
             if nframe == 0:
                 break
             yield nframe, self.params.skip  # report progress
-        nframe, frame = self.vl.next()
-        if nframe == 0:
-            logger.debug("End of film.")
-            sys.exit(0)
-        self.rawframe = frame
-        self.lastnframe = nframe  # just for iter()
 
-    def _add_trailing_frames(self):
-        """
-        Add trailing frames to framepositions.
-        """
-
-        # framepositionsの最後は速度が安定しないので捨てる。
-        disposed_frames = self.params.estimate
-
-        if len(self.framepositions) < disposed_frames:
-            return
-        self.framepositions = self.framepositions[
-            : len(self.framepositions) - disposed_frames
-        ]
-        estim_frames = self.params.trailing
-
-        # 座標を抽出する
-        dt = [
-            self.framepositions[i].dt
-            for i in range(
-                len(self.framepositions) - estim_frames, len(self.framepositions)
-            )
-        ]
-
-        t = np.cumsum(dt)
-
-        x = [
-            self.framepositions[i].velocity[0]
-            for i in range(
-                len(self.framepositions) - estim_frames, len(self.framepositions)
-            )
-        ]
-        y = [
-            self.framepositions[i].velocity[1]
-            for i in range(
-                len(self.framepositions) - estim_frames, len(self.framepositions)
-            )
-        ]
-
-        ax, bx = np.polyfit(t, x, 1)
-        ay, by = np.polyfit(t, y, 1)
-
-        # 外挿する
-        t_extrapolated = np.linspace(
-            t[-1] + 1,
-            t[-1] + estim_frames,
-            estim_frames,
-            dtype=int,
-        )
-        x_extrapolated = ax * t_extrapolated + bx
-        y_extrapolated = ay * t_extrapolated + by
-        lastframe = self.framepositions[-1].index
-        for i in range(estim_frames):
-            self.framepositions.append(
-                FramePosition(
-                    index=lastframe + t_extrapolated[i] - t[-1],
-                    dt=1,
-                    velocity=(x_extrapolated[i], y_extrapolated[i]),
-                )
-            )
-
-    def _add_leading_frames(self):
-        """
-        Add leading frames to tspos.
-        """
-
-        # tsposの最初は速度が安定しないので捨てる。
-        disposed_frames = self.params.estimate
-        if len(self.framepositions) < disposed_frames:
-            return
-        self.framepositions = self.framepositions[disposed_frames:]
-        # 事前の速度を予測するために用いるフレーム数。
-        estim_frames = self.params.trailing
-
-        dt = [self.framepositions[i].dt for i in range(estim_frames)]
-        t = np.cumsum(dt)
-        x = [self.framepositions[i].velocity[0] for i in range(estim_frames)]
-        y = [self.framepositions[i].velocity[1] for i in range(estim_frames)]
-
-        ax, bx = np.polyfit(t, x, 1)
-        ay, by = np.polyfit(t, y, 1)
-
-        t_extrapolated = np.linspace(
-            -(estim_frames - 1),
-            -1,
-            estim_frames - 1,
-            dtype=int,
-        )
-        x_extrapolated = ax * t_extrapolated + bx
-        y_extrapolated = ay * t_extrapolated + by
-        leading_framepositions = []
-        firstframe = self.framepositions[0].index
-        for i in range(estim_frames - 1):
-            leading_framepositions.append(
-                FramePosition(
-                    index=firstframe + t_extrapolated[i],
-                    dt=1,
-                    velocity=(x_extrapolated[i], y_extrapolated[i]),
-                )
-            )
-        self.framepositions = leading_framepositions + self.framepositions
-
-    def valid_focus(self, focus: Region):
-        if focus is None:
-            return False
-        if focus.left >= focus.right:
-            return False
-        if focus.top >= focus.bottom:
-            return False
-        return True
-
-    def iter(self):
+    def run(self, hook=None):
+        # for the compatibility
         logger = getLogger()
-        # All self variables to be inherited.
-        rawframe = self.rawframe
-        vl = self.vl
-        params = self.params
-        nframe = self.lastnframe
         focus = Region(
-            left=params.focus[0],
-            right=params.focus[1],
-            top=params.focus[2],
-            bottom=params.focus[3],
+            left=self.params.focus[0],
+            right=self.params.focus[1],
+            top=self.params.focus[2],
+            bottom=self.params.focus[3],
         )
-
         transform = trainscanner.transformation(
-            angle=params.rotate, pers=params.perspective, crop=params.crop
+            angle=self.params.rotate,
+            pers=self.params.perspective,
+            crop=self.params.crop,
         )
-        rotated, warped, cropped = transform.process_first_image(rawframe)
-        # あとでcanvas の計算に使うために、frameの幅と高さを保存しておく。
-        self.frame_width, self.frame_height = cropped.shape[1], cropped.shape[0]
-        # Prepare a scalable self.canvas with the origin.
-        # self.canvas = None
-
-        absx, absy = 0, 0
-        velx, vely = 0, 0
-        match_fail = 0
-        in_action = False
-        # coldstartの場合は、変化の大きさに関わらず、変位を記録する。
-        # そして、変位がantishakeを越えたあとは、通常と同じように判定する。
-        coldstart = params.stall
-        precount = 0
-        preview_size = 500
-        preview = trainscanner.fit_to_square(cropped, preview_size)
-        preview_ratio = preview.shape[0] / cropped.shape[0]
-
-        self.framepositions: list[FramePosition] = []
-        self.cache = []  # save only "active" frames.
-        self.motions_plot = []  # リアルタイムプロット用のデータ
-        velx_history = []  # store velocities
-        vely_history = []  # store velocities
-
-        if not self.valid_focus(focus):
-            return
-
-        while True:
-            lastrawframe = rawframe
-            lastframe = cropped
-            lastpreview = preview
-            # もしlastが設定されていて，しかもframe数がそれを越えていれば，終了．
-            if params.skip < params.last < nframe + 1:
-                break
-            # everyオプションは廃止されたため、フレーム早送りは行わない
-            # 1フレームとりこみ
-            nframe, rawframe = vl.next()
-            if nframe == 0:
-                logger.debug("Video ended (2).")
-                break
-            ##### compare with the previous raw frame
-            diff = cv2.absdiff(rawframe, lastrawframe)
-            # When the raw frame is not changed at all, ignore the frame.
-            # It happens in the frame rate adjustment between PAL and NTSC
-            diff = np.sum(diff) / np.prod(diff.shape)
-            if diff < params.identity:
-                logger.info("skip identical frame #{0}".format(diff))
-                continue
-            ##### Warping the frame
-            _, _, cropped = transform.process_next_image(rawframe)
-            ##### motion detection.
-            # if maxaccel is set, motion detection area becomes very narrow
-            # assuming that the train is running at constant speed.
-            # This mode is activated after the 10th frames.
-
-            # Now I do care only magrin case.
-            maxaccel = [params.maxaccel, params.maxaccel]
-            if params.zero:
-                maxaccel = [params.maxaccel, 0]
-
-            if in_action or coldstart:
-                # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
-                logger.debug(f"velx: {velx} vely: {vely}")
-                delta, hop, value = motion(
-                    lastframe,
-                    cropped,
-                    focus=focus,
-                    maxaccel=maxaccel,
-                    delta=(velx, vely),
-                    dropframe=params.dropframe,
-                )
-                self.motions_plot.append([delta[0], delta[1], value])
-                if delta is None:
-                    logger.error(
-                        "Matching failed (probabily the motion detection window goes out of the image)."
-                    )
-                    break
-            else:
-                # 速度不明なので、広い範囲でマッチングを行う。
-                delta, hop, value = motion(
-                    lastframe, cropped, focus=focus, yfixed=params.zero
-                )
-            hopx, hopy = delta
-            velx, vely = delta[0] / hop, delta[1] / hop
-            logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
-
-            # ##### Suppress drifting.
-            # if params.zero:
-            #     dy = 0
-            # 直近5フレームの移動量を記録する．
-            # ここではhopの大きさ(dropframeのせいでときどき倍になる)ではなく、真の速度を記録する。
-            velx_history.append(velx)
-            vely_history.append(vely)
-            if len(velx_history) > 5:
-                velx_history.pop(0)
-                vely_history.pop(0)
-            # 最大100フレームの画像を記録する．
-            if cropped is not None and self.cache is not None:
-                self.cache.append([nframe, cropped])
-                if len(self.cache) > 100:  # always keep 100 frames in self.cache
-                    self.cache.pop(0)
-            ##### Make the preview image
-            # preview = trainscanner.fit_to_square(cropped,preview_size)
-            # diff_img = diffImage(preview,lastpreview,int(dx*preview_ratio),int(dy*preview_ratio),focus=params.focus)
-            diff_img = diffImage(cropped, lastframe, int(hopx), int(hopy))
-            diff_img = trainscanner.fit_to_square(diff_img, preview_size)
-            draw_focus_area(
-                diff_img,
-                focus,
-                delta=(int(hopx * preview_ratio), int(hopy * preview_ratio)),
-                active=in_action,
+        self.framepositions: list[FramePosition] = [
+            frameposition
+            for frameposition in iter2(
+                videoloader=self.vl,
+                focus=focus,
+                transform=transform,
+                coldstart=self.params.stall,
+                yfixed=self.params.zero,
+                dropframe=self.params.dropframe,
+                maxaccel=self.params.maxaccel,
+                identity=self.params.identity,
+                last=self.params.last,
+                hook=hook,
             )
-            # previewを表示
-            yield diff_img
-            ##### if the motion is larger than the params.antishake
-
-            if coldstart:
-                if not in_action:
-                    match_fail = 0
-
-                if abs(velx) >= params.antishake or abs(vely) >= params.antishake:
-                    if not in_action:
-                        in_action = True
-                        coldstart = False
-
-            else:
-                if abs(velx) >= params.antishake or abs(vely) >= params.antishake:
-                    if not in_action:
-                        # number of frames since the first motion is detected.
-                        precount += 1
-                        # 過去5フレームでの移動量の変化
-                        fluctuation_x = max(velx_history) - min(velx_history)
-                        fluctuation_y = max(vely_history) - min(vely_history)
-                        # if the displacements are almost constant in the last 5 frames,
-                        if (
-                            params.antishake <= fluctuation_x
-                            or params.antishake <= fluctuation_y
-                        ):
-                            logger.debug(
-                                f"Wait for the camera to stabilize ({nframe=} {velx=} {vely=} {fluctuation_x=} {fluctuation_y=})"
-                            )
-                            continue
-                        else:
-                            # 速度は安定した．
-                            in_action = True
-                            # 十分変位が大きくなったらcoldstartフラグはおろす。
-                            logger.debug(
-                                f"The camera is stabilized. {nframe=} {velx=} {vely=}"
-                            )
-                            # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
-                            # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
-                    # 変位をそのまま採用する．
-                    logger.debug(f"Accept the motion ({nframe} {velx} {vely})")
-                    match_fail = 0
-                else:
-                    if in_action:
-                        # 動きがantishake水準より小さかった場合
-                        match_fail += 1
-                        # match_failカウンターがparams.trailingに届くまではそのまま回す．
-                        if match_fail > params.trailing:
-                            # end of work
-                            # Add trailing frames to the log file here.
-
-                            # ここで、マッチしはじめる前の部分と、マッチしおえたあとの部分を整える。
-
-                            break
-                        logger.debug(
-                            f"Ignore a small motion ({nframe} {velx} {vely} +{match_fail}/{params.trailing})"
-                        )
-                        # believe the last velx and vely
-                    else:
-                        # not guess mode, not large motion: just ignore.
-                        logger.debug(f"Still frame ({nframe} {velx} {vely})")
-                        continue
-
-            logger.debug(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
-            absx += hopx
-            absy += hopy
-            # self.canvas = expand_canvas(self.canvas, cropped, absx, absy)
-            # フレーム番号と、直前のフレームからの移動距離。
-            self.framepositions.append(
-                FramePosition(index=nframe, dt=hop, velocity=(velx, vely))
-            )
-        # end of capture
-
-        # 最後の、match_failフレームを削除する。
-        if match_fail > 0:
-            self.framepositions = self.framepositions[:-match_fail]
-
-        self._add_trailing_frames()
-        self._add_leading_frames()
+        ]
 
     def after(self):
         """
@@ -771,16 +726,21 @@ class Pass1:
         if len(self.framepositions) == 0:
             logger.error("No motion detected.")
             return
-        left, top = 0, 0
-        canvas = extend_canvas(None, self.frame_width, self.frame_height, left, top)
-        for frameposition in self.framepositions:
-            left += frameposition.velocity[0] * frameposition.dt
-            top += frameposition.velocity[1] * frameposition.dt
-            canvas = extend_canvas(
-                canvas, self.frame_width, self.frame_height, left, top
-            )
 
-        self.tsconf += f"--canvas\n{canvas[0]}\n{canvas[1]}\n{canvas[2]}\n{canvas[3]}\n"
+        self.framepositions = add_trailing_frames(
+            self.framepositions,
+            self.params.estimate,
+            self.params.trailing,
+            self.params.trailing,
+        )
+        self.framepositions = add_leading_frames(
+            self.framepositions,
+            self.params.estimate,
+            self.params.trailing,
+            self.params.trailing,
+        )
+
+        # self.tsconf += f"--canvas\n{canvas[0]}\n{canvas[1]}\n{canvas[2]}\n{canvas[3]}\n"
         if self.params.log is None:
             ostream = sys.stdout
         else:
@@ -800,11 +760,24 @@ class Pass1:
 
 def main():
     pass1 = Pass1(argv=sys.argv)
-    for num, den in pass1.before():
+    v = diffview(
+        focus=Region(
+            pass1.params.focus[0],
+            pass1.params.focus[1],
+            pass1.params.focus[2],
+            pass1.params.focus[3],
+        )
+    )
+
+    def show(matchresult: MatchResult):
+        diff = v.view(matchresult)
+        if diff is not None:
+            cv2.imshow("pass1", diff)
+            cv2.waitKey(0)
+
+    for num, den in pass1.cue():
         pass
-    for ret in pass1.iter():
-        cv2.imshow("pass1", ret)
-        cv2.waitKey(1)
+    pass1.run(hook=show)
     pass1.after()
 
 
