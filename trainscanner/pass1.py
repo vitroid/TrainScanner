@@ -479,16 +479,9 @@ def iter2(
                     # 動きがantishake水準より小さかった場合
                     match_fail += 1
                     # match_failカウンターがparams.trailingに届くまではそのまま回す．
-                    if match_fail > trailing:
-                        # end of work
-                        # Add trailing frames to the log file here.
-
-                        # ここで、マッチしはじめる前の部分と、マッチしおえたあとの部分を整える。
-
-                        break
-                    logger.debug(
-                        f"Ignore a small motion ({nframe} {velx} {vely} +{match_fail}/{params.trailing})"
-                    )
+                    # if match_fail > trailing:
+                    # break
+                    logger.debug(f"Ignore a small motion ({nframe} {velx} {vely})")
                     # believe the last velx and vely
                 else:
                     # not guess mode, not large motion: just ignore.
