@@ -1,3 +1,13 @@
 {
-    "makefile.configureOnOpen": false
+    "makefile.configureOnOpen": false,
+    "git.useEditorAsCommitInput": true,
+    "git.verboseCommit": false,
+    "cursor.ai.commitMessage.enabled": true,
+    "cursor.ai.commitMessage.language": "ja",
+    "cursor.ai.commitMessage.systemPrompt": "簡潔な日本語でコミットメッセージを生成してください。テンプレートや複雑な形式は使わず、変更内容を端的に説明してください。",
+    "cursor.ai.sounds": false,
+    "cursor.ai.workingSound": false,
+    "cursor.ai.completionSound": false,
+    "cursor.sounds.enabled": false,
+    "accessibility.signals.sounds.volume": 0
 }
