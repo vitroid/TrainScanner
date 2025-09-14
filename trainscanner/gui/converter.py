@@ -16,10 +16,13 @@ from PyQt6.QtWidgets import (
     QProgressBar,
 )
 from PyQt6.QtGui import QKeySequence, QPixmap, QShortcut
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 import cv2
 import logging
 import importlib
+
+# メモリー監視機能
+from trainscanner.memory_monitor import MemoryMonitor, MemoryInfo
 
 # File handling
 import os
@@ -100,6 +103,9 @@ def get_converters():
 
 # https://www.tutorialspoint.com/pyqt/pyqt_qfiledialog_widget.htm
 class SettingsGUI(QWidget):
+    # メモリー情報更新用のシグナル
+    memory_update_signal = pyqtSignal(MemoryInfo)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
@@ -107,6 +113,12 @@ class SettingsGUI(QWidget):
         self.logger = logging.getLogger(__name__)  # クラス固有のロガーを作成
         self.movie_preview_timer = None  # 動画プレビュー用のタイマー
         self.movie_frames = None  # 動画フレームのイテレータ
+
+        # メモリー監視機能の初期化
+        self.memory_monitor = MemoryMonitor(
+            interval=2.0, callback=self._memory_callback
+        )
+        self.memory_update_signal.connect(self._update_memory_display)
 
         # メインレイアウト
         main_layout = QVBoxLayout()
@@ -217,6 +229,12 @@ class SettingsGUI(QWidget):
         self.progress_bar.setValue(0)
         finish_layout.addWidget(self.progress_bar)
 
+        # メモリー使用量表示ラベルを追加
+        self.memory_label = QLabel("メモリー: 取得中...")
+        self.memory_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.memory_label.setStyleSheet("QLabel { color: gray; font-size: 10px; }")
+        finish_layout.addWidget(self.memory_label)
+
         left_widget.setLayout(finish_layout)
 
         # 右側のプレビュー用ウィジェット
@@ -248,6 +266,9 @@ class SettingsGUI(QWidget):
         # Command-Qで終了するショートカットを追加
         quit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
         quit_shortcut.activated.connect(QApplication.quit)
+
+        # メモリー監視を開始
+        self.memory_monitor.start_monitoring()
 
         self.executor = ThreadPoolExecutor(
             max_workers=4
@@ -469,6 +490,33 @@ class SettingsGUI(QWidget):
         """プログレスバーの範囲を設定"""
         self.progress_bar.setMinimum(minimum)
         self.progress_bar.setMaximum(maximum)
+
+    def _memory_callback(self, info: MemoryInfo):
+        """メモリー情報更新のコールバック関数"""
+        # シグナルを発行してメインスレッドで処理
+        self.memory_update_signal.emit(info)
+
+    def _update_memory_display(self, info: MemoryInfo):
+        """メモリー使用量表示を更新する（メインスレッドで実行）"""
+        try:
+            memory_text = (
+                f"メモリー: RSS {self.memory_monitor.format_bytes(info.rss)}, "
+                f"VMS {self.memory_monitor.format_bytes(info.vms)}, "
+                f"システム {info.percent:.1f}%"
+            )
+            self.memory_label.setText(memory_text)
+        except Exception as e:
+            self.logger.error(f"メモリー表示の更新に失敗しました: {e}")
+
+    def closeEvent(self, event):
+        """ウィンドウが閉じられる時の処理"""
+        # メモリー監視を停止
+        if hasattr(self, "memory_monitor"):
+            self.memory_monitor.stop_monitoring()
+        # ThreadPoolExecutorをシャットダウン
+        if hasattr(self, "executor"):
+            self.executor.shutdown(wait=True)
+        super().closeEvent(event)
 
 
 # for pyinstaller
