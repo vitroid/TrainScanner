@@ -351,6 +351,7 @@ def iter2(
     antishake: int = 5,
     last: int = 0,
     hook=None,
+    stop_callback=None,
 ):
     logger = getLogger()
 
@@ -377,6 +378,11 @@ def iter2(
         return
 
     while True:
+        # 停止チェック
+        if stop_callback and stop_callback():
+            logger.info("停止が要求されました")
+            break
+
         lastrawframe = rawframe
         lastframe = cropped
         # もしlastが設定されていて，しかもframe数がそれを越えていれば，終了．
@@ -680,7 +686,7 @@ class Pass1:
                 break
             yield nframe, self.params.skip  # report progress
 
-    def run(self, hook=None):
+    def run(self, hook=None, stop_callback=None):
         # for the compatibility
         logger = getLogger()
         focus = Region(
@@ -707,6 +713,7 @@ class Pass1:
                 identity=self.params.identity,
                 last=self.params.last,
                 hook=hook,
+                stop_callback=stop_callback,
             )
         ]
 

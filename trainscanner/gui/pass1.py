@@ -75,10 +75,17 @@ class Worker(QObject):
 
         # self.pass1.before() is a generator.
         for num, den in self.pass1.cue():
+            if not self._isRunning:
+                self.finished.emit(False)
+                return
             if den:
                 self.progress.emit(num * 100 // den)
 
-        self.pass1.run(hook=self.view)
+        # 停止チェック用のコールバックを渡す
+        def stop_check():
+            return not self._isRunning
+
+        self.pass1.run(hook=self.view, stop_callback=stop_check)
 
         successful = len(self.pass1.framepositions) > 0
         self.pass1.after()
@@ -93,6 +100,9 @@ class MatcherUI(QDialog):
 
     def __init__(self, argv, terminate=False):
         super(MatcherUI, self).__init__()
+
+        # ロガーの初期化
+        self.logger = getLogger(__name__)
 
         # デバッグモードの検出
         self.debug_mode = "--debug" in argv
@@ -149,8 +159,7 @@ class MatcherUI(QDialog):
             self.worker.motionDataUpdated.connect(self.update_plot)
 
         self.terminate = terminate
-        self.btnStop.clicked.connect(lambda: self.worker.stop())
-        self.btnStop.clicked.connect(self.terminateIt)
+        self.btnStop.clicked.connect(self.stop_processing)
         self.terminated = False
         self.success = False
 
@@ -234,6 +243,18 @@ class MatcherUI(QDialog):
 
         self.image_pane.setPixmap(pixmap)
 
+    def stop_processing(self):
+        """停止ボタンが押された時の処理"""
+        # ボタンのテキストを変更して停止中であることを示す
+        self.btnStop.setText("停止中...")
+        self.btnStop.setEnabled(False)
+
+        # ワーカーに停止を指示
+        self.worker.stop()
+
+        # すぐに終了
+        self.terminateIt()
+
     def terminateIt(self):
         self.close()
         if self.terminate:
@@ -266,7 +287,13 @@ class MatcherUI(QDialog):
     def stop_thread(self):
         self.worker.stop()
         self.thread.quit()
-        self.thread.wait()
+
+        # タイムアウト付きで待機（3秒）
+        if not self.thread.wait(3000):  # 3000ms = 3秒
+            self.logger.warning("スレッドが正常に終了しませんでした。強制終了します。")
+            self.thread.terminate()
+            # 強制終了後、少し待機して確実に終了させる
+            self.thread.wait(1000)  # 1秒待機
 
 
 def main():
