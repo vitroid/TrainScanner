@@ -28,6 +28,9 @@ class VideoLoader(object):
             return 0
         return self.nframe
 
+    def total_frames(self):
+        return int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
 
 if __name__ == "__main__":
     vl = VideoLoader("../examples/sample3.mov")

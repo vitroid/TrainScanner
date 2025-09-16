@@ -25,6 +25,7 @@ from trainscanner.widget.imageselector2 import ImageSelector2
 import trainscanner.widget.qrangeslider as rs
 from trainscanner.i18n import tr, init_translations
 from trainscanner.widget import cv2toQImage
+from trainscanner.decorators import deprecated
 
 perspectiveCSS = """
 QRangeSlider > QSplitter::handle {
@@ -66,6 +67,7 @@ class AsyncImageLoader(QObject):
     frameIncreased = pyqtSignal(Thumbnails)
     errorOccurred = pyqtSignal(str)  # エラーメッセージを送信するシグナルを追加
 
+    @deprecated("Use AsyncImageLoader2 instead")
     def __init__(self, parent=None, filename="", size=0):
         super(AsyncImageLoader, self).__init__(parent)
         self.isRunning = True
@@ -152,6 +154,152 @@ class AsyncImageLoader(QObject):
             )
         self.isRunning = False
         return
+
+
+class AsyncImageLoader2(QObject):
+    """
+    全フレーム数を事前に取得して効率的にサンプリングする改良版ImageLoader
+
+    従来のAsyncImageLoaderは逐次読み込みながら間引きを行っていたが、
+    この版では事前に全フレーム数を取得し、最初から最適なサンプリング間隔を計算する。
+    """
+
+    frameIncreased = pyqtSignal(Thumbnails)
+    errorOccurred = pyqtSignal(str)
+
+    def __init__(self, parent=None, filename="", size=0):
+        super(AsyncImageLoader2, self).__init__(parent)
+        self.isRunning = True
+        self.filename = filename
+        self.size = size
+        self.max_frames = 128
+        self.snapshots = []
+        self.every_n_frames = 1
+
+        logger = getLogger()
+        logger.debug(f"Open video: {filename}")
+
+        try:
+            self.vl = video.video_loader_factory(filename)
+
+            # 全フレーム数を取得
+            self.total_frames = self.vl.total_frames()
+            logger.info(f"総フレーム数: {self.total_frames}")
+
+            # 最適なサンプリング間隔を計算
+            if self.total_frames > self.max_frames:
+                self.every_n_frames = max(1, self.total_frames // self.max_frames)
+                logger.info(
+                    f"サンプリング間隔: {self.every_n_frames} (最大{self.max_frames}フレームに制限)"
+                )
+            else:
+                self.every_n_frames = 1
+                logger.info("全フレームを読み込みます")
+
+            # 最初のフレームを読み込み
+            nframe, frame = self.vl.next()
+            if nframe == 0:
+                raise ValueError("最初のフレームを読み込めませんでした")
+
+            if self.size:
+                frame = trainscanner.fit_to_square(frame, self.size)
+            self.snapshots = [frame]
+
+        except Exception as e:
+            logger.error(f"Error opening video file: {str(e)}")
+            self.errorOccurred.emit(f"ビデオファイルを開けません: {filename}\n{str(e)}")
+            self.isRunning = False
+            self.snapshots = []
+            self.total_frames = 0
+
+    def stop(self):
+        self.isRunning = False
+        # trash images
+        self.snapshots = []
+
+    def task(self):
+        logger = getLogger()
+        if not self.isRunning or not self.snapshots:
+            return
+
+        logger.info(
+            f"フレーム読み込み開始: 総フレーム数{self.total_frames}, サンプリング間隔{self.every_n_frames}"
+        )
+
+        last_emit_time = time.time()
+        current_frame = 1  # 最初のフレームは既に読み込み済み
+        target_frames = []
+
+        # 読み込むべきフレーム番号のリストを事前に計算
+        frame_idx = self.every_n_frames + 1  # 次のフレーム（2番目のフレームから開始）
+        while frame_idx <= self.total_frames:
+            target_frames.append(frame_idx)
+            frame_idx += self.every_n_frames
+
+        logger.info(
+            f"読み込み予定フレーム数: {len(target_frames) + 1}"
+        )  # +1は最初のフレーム
+
+        try:
+            for i, target_frame in enumerate(target_frames):
+                if not self.isRunning:
+                    break
+
+                # 目標フレームまでスキップ
+                frames_to_skip = target_frame - current_frame - 1
+                for _ in range(frames_to_skip):
+                    nframe = self.vl.skip()
+                    if nframe == 0:
+                        logger.debug(f"スキップ中に動画終了: フレーム{current_frame}")
+                        break
+                    current_frame += 1
+
+                # 目標フレームを読み込み
+                nframe, frame = self.vl.next()
+                if nframe == 0:
+                    logger.debug(f"動画終了: フレーム{current_frame}")
+                    break
+
+                current_frame += 1
+
+                if self.size:
+                    frame = trainscanner.fit_to_square(frame, self.size)
+                self.snapshots.append(frame)
+
+                # 進捗をログ出力
+                if (i + 1) % 10 == 0 or (i + 1) == len(target_frames):
+                    logger.debug(f"読み込み進捗: {i + 1}/{len(target_frames)} フレーム")
+
+                # 定期的にUIを更新
+                now = time.time()
+                if now - last_emit_time > 0.1:
+                    self.frameIncreased.emit(
+                        Thumbnails(
+                            every_n_frames=self.every_n_frames,
+                            frames=self.snapshots.copy(),
+                        )
+                    )
+                    last_emit_time = now
+
+        except Exception as e:
+            logger.error(f"Error during video loading: {str(e)}")
+            self.errorOccurred.emit(
+                f"ビデオの読み込み中にエラーが発生しました: {str(e)}"
+            )
+
+        # 最終結果を送信
+        if self.snapshots:
+            logger.info(
+                f"読み込み完了: {len(self.snapshots)}フレーム (間隔: {self.every_n_frames})"
+            )
+            self.frameIncreased.emit(
+                Thumbnails(
+                    every_n_frames=self.every_n_frames,
+                    frames=self.snapshots,
+                )
+            )
+
+        self.isRunning = False
 
 
 class DeformationFixWidget(QLabel):
@@ -399,7 +547,7 @@ class EditorGUI(QWidget):
         self.thread.start()
         self.lastupdatethumbs = 0  # from epoch
 
-        self.asyncimageloader = AsyncImageLoader(
+        self.asyncimageloader = AsyncImageLoader2(
             filename=filename, size=self.preview_size
         )
         self.asyncimageloader.moveToThread(self.thread)
