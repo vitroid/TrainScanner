@@ -111,7 +111,7 @@ class AsyncImageLoader(QObject):
                 if self.size:
                     frame = trainscanner.fit_to_square(frame, self.size)
                 self.snapshots.append(frame)
-                if len(self.snapshots) == self.max_frames:
+                if len(self.snapshots) == self.max_frames + 1:
                     logger.debug("max frames reached")
                     self.every_n_frames *= 2
                     self.snapshots = self.snapshots[::2]
