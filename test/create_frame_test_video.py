@@ -135,7 +135,7 @@ def create_frame_test_video(
         # 各フレームを生成して保存
         for frame_num in range(total_frames):
             frame = create_frame_with_number(
-                frame_num + 1, width=width, height=height  # 1から開始
+                frame_num, width=width, height=height  # 1から開始
             )
 
             frame_path = os.path.join(temp_dir, f"{frame_num:06d}.png")
