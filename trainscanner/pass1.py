@@ -447,65 +447,66 @@ def iter2(
         vely_history.append(vely)
         ##### Make the preview image
 
-        if coldstart:
-            if not in_action:
-                match_fail = 0
+        # Motion detectionロジック: in_actionの状態で大きく分岐
+        motion_detected = abs(velx) >= antishake or abs(vely) >= antishake
 
-            if abs(velx) >= params.antishake or abs(vely) >= params.antishake:
-                if not in_action:
-                    in_action = True
-                    coldstart = False
-
-        else:
-            if abs(velx) >= antishake or abs(vely) >= antishake:
-                if not in_action:
-                    # 過去5フレームでの移動量の変化
-                    fluctuation_x = velx_history.fluctuation()
-                    fluctuation_y = vely_history.fluctuation()
-                    # if the displacements are almost constant in the last 5 frames,
-                    if antishake <= fluctuation_x or antishake <= fluctuation_y:
-                        logger.debug(
-                            f"Wait for the camera to stabilize ({nframe=} {velx=} {vely=} {fluctuation_x=} {fluctuation_y=})"
-                        )
-                        continue
-                    else:
-                        # 速度は安定した．
-                        in_action = True
-                        # 十分変位が大きくなったらcoldstartフラグはおろす。
-                        logger.debug(
-                            f"The camera is stabilized. Now ready to start recording. {nframe=} {velx=} {vely=}"
-                        )
-                        # この速度を信じ，過去にさかのぼってもう一度マッチングを行う．
-                        # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
-                # 変位をそのまま採用する．
+        if in_action:
+            # 既に動きを検出している状態
+            if motion_detected:
+                # 大きな動きが継続している - 変位をそのまま採用
                 logger.debug(f"Accept the motion ({nframe} {velx} {vely})")
                 match_fail = 0
             else:
-                if in_action:
-                    # 動きがantishake水準より小さかった場合
-                    match_fail += 1
-                    # match_failカウンターがparams.trailingに届くまではそのまま回す．
-                    # if match_fail > trailing:
-                    # break
-                    logger.debug(f"Ignore a small motion ({nframe} {velx} {vely})")
-                    # believe the last velx and vely
+                # 動きがantishake水準より小さくなった - 小さな動きを無視
+                match_fail += 1
+                logger.debug(f"Ignore a small motion ({nframe} {velx} {vely})")
+                # TODO: match_failカウンターがparams.trailingに届いたら停止処理
+                # if match_fail > trailing: break
+        else:
+            # まだ動きを検出していない状態
+            if motion_detected:
+                if coldstart:
+                    # コールドスタート時は即座に動作開始
+                    in_action = True
+                    coldstart = False
+                    logger.debug(f"Cold start motion detected ({nframe} {velx} {vely})")
                 else:
-                    # not guess mode, not large motion: just ignore.
-                    logger.debug(f"Still frame ({nframe} {velx} {vely})")
-                    continue
+                    # 通常時は安定性をチェック
+                    fluctuation_x = velx_history.fluctuation()
+                    fluctuation_y = vely_history.fluctuation()
+
+                    if antishake <= fluctuation_x or antishake <= fluctuation_y:
+                        # 変動が大きい - カメラが安定するまで待機
+                        logger.debug(
+                            f"Wait for the camera to stabilize ({nframe=} {velx=} {vely=} {fluctuation_x=} {fluctuation_y=})"
+                        )
+                    else:
+                        # 速度が安定した - 記録開始
+                        in_action = True
+                        logger.debug(
+                            f"The camera is stabilized. Now ready to start recording. {nframe=} {velx=} {vely=}"
+                        )
+                        # TODO: 過去にさかのぼってマッチングを行う
+                        # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
+
+            else:
+                # 動きが小さい - 静止フレームとして無視
+                logger.debug(f"Still frame ({nframe} {velx} {vely})")
+                match_fail = 0  # 動きを検出していない時はmatch_failをリセット
 
         logger.debug(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
         absx += hopx
         absy += hopy
 
-        matchresult = MatchResult(
-            index=nframe, dt=hop, velocity=(velx, vely), value=value, image=cropped
-        )
         if hook is not None:
+            matchresult = MatchResult(
+                index=nframe, dt=hop, velocity=(velx, vely), value=value, image=cropped
+            )
             hook(matchresult)
 
-        frameposition = FramePosition(index=nframe, dt=hop, velocity=(velx, vely))
-        yield frameposition
+        if in_action:
+            frameposition = FramePosition(index=nframe, dt=hop, velocity=(velx, vely))
+            yield frameposition
     # end of capture
 
 
