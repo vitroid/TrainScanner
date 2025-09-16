@@ -23,6 +23,9 @@ setup-hooks:
 	@chmod +x .git/hooks/post-commit
 	@echo "Git hooksの設定が完了しました"
 
+counter.mp4:
+	python test/create_frame_test_video.py -W 480 -H 270 -o $@
+
 ##############################
 #  PyPI
 ##############################
