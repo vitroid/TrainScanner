@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from trainscanner import Region
+from trainscanner.decorators import deprecated
 
 
 # Automatically extensible canvas.
@@ -15,8 +17,17 @@ class Canvas:
         """
         self._image = None
 
+    @deprecated("Use get_region instead")
     def get_image(self):
         return self._image
+
+    def get_region(self, subregion: Region) -> np.ndarray:
+        # はみだす場合の処理ができてない
+        x = subregion.left - self.origin[0]
+        y = subregion.top - self.origin[1]
+        width = subregion.right - subregion.left
+        height = subregion.bottom - subregion.top
+        return self._image[y : y + height, x : x + width]
 
     def put_image(self, pos, add_image, linear_alpha=None):
         if self._image is None:

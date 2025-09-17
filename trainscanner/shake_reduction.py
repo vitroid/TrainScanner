@@ -5,7 +5,8 @@ import numpy as np
 import sys
 from dataclasses import dataclass
 import logging
-from trainscanner import standardize, subpixel_match, Region, trim_region
+from trainscanner import standardize, subpixel_match
+from trainscanner.image import Region, trim_region
 
 
 @dataclass

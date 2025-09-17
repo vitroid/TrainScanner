@@ -22,9 +22,9 @@ from PyQt6.QtWidgets import (
 # from tiledimage import cachedimage as ci
 
 from trainscanner import stitch
-from trainscanner.widget.scaledcanvas import ScaledCanvas
+from trainscanner.image.scaledcanvas import ScaledCanvas
 from trainscanner.i18n import init_translations, tr
-from trainscanner.rasterio_canvas import get_image, crop_image
+import trainscanner.image.rasterio_canvas as canvas
 
 
 # It is run in the thread.
@@ -271,7 +271,7 @@ class StitcherUI(QDialog):
         right_cut = int(self.largecanvas.right_cut / self.preview_ratio)
         file_name = self.stitcher.outfilename
         cropped_file_name = file_name.replace(".tiff", "_cropped.tiff")
-        crop_image(file_name, left_cut, right_cut, cropped_file_name)
+        canvas.crop_image(file_name, left_cut, right_cut, cropped_file_name)
 
         self.stopbutton_pressed()
 
@@ -289,7 +289,7 @@ class StitcherUI(QDialog):
 
         # ここで、tiledimageを読みこみ、スケールし、canvasをさしかえる。
         # ただ、cropping枠を変形した時にどこでそれを保存するのか。
-        scaled_image = get_image(
+        scaled_image = canvas.get_image(
             self.stitcher.outfilename, dst_width=self.preview_width
         )
         self.largecanvas.setDrawComplete(scaled_image)

@@ -13,13 +13,11 @@ import argparse
 from trainscanner import (
     trainscanner,
     diffview,
-    draw_focus_area,
     FramePosition,
     MatchResult,
 )
-from trainscanner import video, match, Region, find_subimage
-from dataclasses import dataclass
-from trainscanner.decorators import deprecated
+from trainscanner import video, match, find_subimage
+from trainscanner.image import Region
 
 
 def draw_slit_position(img, slitpos, dx):

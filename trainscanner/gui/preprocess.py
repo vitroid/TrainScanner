@@ -272,7 +272,7 @@ class AsyncImageLoader2(QObject):
 
                 # 定期的にUIを更新
                 now = time.time()
-                if now - last_emit_time > 0.1:
+                if now - last_emit_time > 0.2:
                     self.frameIncreased.emit(
                         Thumbnails(
                             every_n_frames=self.every_n_frames,
@@ -603,15 +603,15 @@ class EditorGUI(QWidget):
 
     def updateTimeLine(self, frameinfo: Thumbnails = None):
         # count time and limit update
-        now = time.time()
-        if now - self.lastupdatethumbs < 0.1:  # 更新頻度を0.05秒に変更
-            return
+        # now = time.time()
+        # if now - self.lastupdatethumbs < 0.1:  # 更新頻度を0.05秒に変更
+        #     return
         # transformation filter
         self.imageselector2.imagebar.setTransformer(self.thumbtransformer)
         self.imageselector2.setThumbs(frameinfo.frames)
         if frameinfo.every_n_frames:
             self.every_n_frames = frameinfo.every_n_frames
-        self.lastupdatethumbs = time.time()
+        # self.lastupdatethumbs = time.time()
 
     def deformation_rangeslider_widget(self, top_on_draw, bottom_on_draw):
         rangeslider = rs.QRangeSlider(splitterWidth=10, vertical=True)  # スライダの向き

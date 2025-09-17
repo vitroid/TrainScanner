@@ -3,58 +3,61 @@ import numpy as np
 from logging import getLogger
 from rasterio.windows import Window
 import cv2
+from trainscanner.image import Region
 
 
 def rasterio_to_cv2(image):
-    return np.transpose(image, (1, 2, 0))[:, :, ::-1]
+    """Rasterio画像（RGB, CHW）をOpenCV形式（BGR, HWC）に変換"""
+    # CHW → HWC に変換してから RGB → BGR に変換
+    hwc_image = np.transpose(image, (1, 2, 0))  # CHW → HWC
+    return hwc_image[:, :, ::-1]  # RGB → BGR
 
 
 def cv2_to_rasterio(image):
-    return np.transpose(image, (2, 0, 1))[::-1, :, :]
+    """OpenCV画像（BGR, HWC）をRasterio形式（RGB, CHW）に変換"""
+    # BGR → RGB に変換してから HWC → CHW に変換
+    rgb_image = image[:, :, ::-1]  # BGR → RGB
+    return np.transpose(rgb_image, (2, 0, 1))  # HWC → CHW
 
 
 class RasterioCanvas:
     def __init__(
-        self, mode: str, size, lefttop, tiff_filename: str, scale: float = 1.0
+        self,
+        mode: str,
+        region: Region,
+        tiff_filename: str,
+        scale: float = 1.0,
     ):
         self.mode = mode
         self.hook = None
         self.tilesize = 256
         self.scale = scale
-        self.width, self.height = size[0], size[1]
-        left, top = lefttop[0], lefttop[1]
-        self.topleft = left, top
+        self.region = region
+        width, height = region.right - region.left, region.bottom - region.top
+
+        # Preview互換モード: 地理空間情報を除外
         self.transform = rasterio.Affine(
             1 / scale,
             0,
-            left,
+            region.left,
             0,
             -1 / scale,
-            -top + self.height,
+            region.bottom,
         )
-        # logger = getLogger()
-        # logger.info(f"{self.width=}, {self.height=}, {self.scale=}")
+
         self.dataset = rasterio.open(
             tiff_filename,
             "w",
             driver="GTiff",
-            width=self.width * scale,
-            height=self.height * scale,
+            width=int(width * scale),
+            height=int(height * scale),
             count=3,  # RGB
             dtype=np.uint8,
-            tiled=True,
-            blockxsize=self.tilesize,
-            blockysize=self.tilesize,
+            tiled=False,  # タイル化を無効にしてより互換性を向上
             compress="lzw",
-            transform=self.transform,
+            photometric="RGB",
+            # transformを指定しない（GeoTIFFタグを回避）
         )
-        # canvas全体を黒く塗る。
-        # self.put_image(
-        #     (left, top),
-        #     np.zeros(
-        #         (int(self.height * scale), int(self.width * scale), 3), dtype=np.uint8
-        #     ),
-        # )
         self.dataset.close()
         # 再度読み書き用にひらく。
         self.dataset = rasterio.open(
@@ -65,12 +68,38 @@ class RasterioCanvas:
 
     def put_image(self, xy, image, linear_alpha=None):
         logger = getLogger()
-        x, y = xy
-        xmin, ymin = x, y
-        xmax, ymax = x + image.shape[1], y + image.shape[0]
+        # x, y = xy
+
+        # left, top = self.region.left, self.region.top
+        # width, height = (
+        #     self.region.right - self.region.left,
+        #     self.region.bottom - self.region.top,
+        # )
+        # # ワールド座標からピクセル座標への変換
+        # pixel_x = int((x - left) * self.scale)
+        # pixel_y = int((y - top) * self.scale)
+
+        # # キャンバス範囲内でクリッピング
+        # x_start = max(0, pixel_x)
+        # y_start = max(0, pixel_y)
+        # x_end = min(int(width * self.scale), pixel_x + image.shape[1])
+        # y_end = min(int(height * self.scale), pixel_y + image.shape[0])
+
+        # if x_end <= x_start or y_end <= y_start:
+        #     return  # 画像が範囲外
+
+        x_start = xy[0]
+        y_start = xy[1]
+        x_end = x_start + image.shape[1]
+        y_end = y_start + image.shape[0]
+
+        # window = rasterio.windows.Window(
+        #     x_start, y_start, x_end - x_start, y_end - y_start
+        # )
         window = rasterio.windows.from_bounds(
-            xmin, ymin, xmax, ymax, transform=self.transform
+            x_start, y_start, x_end, y_end, transform=self.transform
         )
+        print(window)
         # windowの幅は実数で、それをつかって切りだしたoriginalの大きさは予測不能。
         # logger.info(f"{window=}, {window.height=}, {image.shape=}")
         if linear_alpha is not None:
@@ -105,10 +134,15 @@ class RasterioCanvas:
         if self.hook:
             self.hook((xy[0] * self.scale, xy[1] * self.scale), mixed_image)
 
-    def get_region(self, xy, size):
-        x, y = xy
+    def get_region(self, subregion: Region):
+        x, y = subregion.left, subregion.top
+        width = subregion.right - subregion.left
+        height = subregion.bottom - subregion.top
         xmin, ymin = x, y
-        xmax, ymax = x + size[0], y + size[1]
+        xmax, ymax = (
+            xmin + width,
+            ymin + height,
+        )
         window = rasterio.windows.from_bounds(
             xmin, ymin, xmax, ymax, transform=self.transform
         )
@@ -168,18 +202,39 @@ def crop_image(tiff_filename, leftcut, rightcut, out_filename):
 
 
 def main():
-    canvas = RasterioCanvas("new", (1024, 1024), (-10, 20), "test.tiff")
+    # Preview互換モードでTIFFファイルを作成
+    canvas = RasterioCanvas(
+        "new",
+        Region(left=-100, right=-100 + 500, top=-200, bottom=-200 + 500),
+        "test.tiff",
+        scale=2.0,
+    )
     black = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    # 赤色の矩形（BGR順序で青色成分に値を設定）
     red = black.copy()
-    red[:, :, 0] = 255
-    canvas.put_image((15, 25), red)
+    red[:, :, 2] = 255  # BGRの赤色成分
+    canvas.put_image((-100, -200), red)
+
+    # 緑色の矩形
     green = black.copy()
-    green[:, :, 1] = 255
-    canvas.put_image((25, 35), green)
+    green[:, :, 1] = 255  # BGRの緑色成分
+    canvas.put_image((-50, -150), green)
+
+    # 青色の矩形
     blue = black.copy()
-    blue[:, :, 2] = 255
-    canvas.put_image((35, 45), blue)
-    canvas.put_image((45, 55), black)
+    blue[:, :, 0] = 255  # BGRの青色成分
+    canvas.put_image((50, -50), blue)
+
+    # 黒色の矩形
+    gray = black.copy()
+    gray[:, :, :] = 128
+    canvas.put_image((200, 200), gray)
+
+    cropped = canvas.get_region(Region(left=-100, right=100, top=-200, bottom=0))
+    print(cropped.shape)
+    cv2.imwrite("cropped.png", cropped)
+
     canvas.close()
 
 

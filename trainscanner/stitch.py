@@ -15,8 +15,9 @@ from logging import getLogger, basicConfig, WARN, DEBUG, INFO
 from trainscanner import trainscanner
 from trainscanner import video
 from trainscanner.i18n import init_translations, tr
-from trainscanner.rasterio_canvas import RasterioCanvas
+from trainscanner.image.rasterio_canvas import RasterioCanvas
 from trainscanner.pass1 import extend_canvas
+from trainscanner.image import Region
 
 #  単体で実行する方法
 # poetry run python -m trainscanner.stitch --file examples/sample2.mov.94839.tsconf  examples/sample2.mov
@@ -235,8 +236,14 @@ class Stitcher:
         self.hook = hook
         self.canvas = RasterioCanvas(
             "new",
-            size=canvas_dimen[:2],
-            lefttop=canvas_dimen[2:],
+            region=Region(
+                left=canvas_dimen[2],
+                right=canvas_dimen[0],
+                top=canvas_dimen[3],
+                bottom=canvas_dimen[1],
+            ),
+            # size=canvas_dimen[:2],
+            # lefttop=canvas_dimen[2:],
             tiff_filename=self.outfilename,
             scale=scale,
         )
