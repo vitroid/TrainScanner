@@ -256,11 +256,13 @@ class Stitcher:
         if len(self.locations) == 0:
             return
         # initial seek
-        while self.currentFrame + 1 < self.locations[0][0]:
-            logger.debug((self.currentFrame, self.locations[0][0]))
-            # このyieldは要るのか?
-            yield self.currentFrame, self.locations[0][0]
-            self.currentFrame = self.vl.skip()
+
+        self.currentFrame = self.vl.seek(self.locations[0][0] - 1)
+        # while self.currentFrame + 1 < self.locations[0][0]:
+        #     logger.debug((self.currentFrame, self.locations[0][0]))
+        #     # このyieldは要るのか?
+        #     yield self.currentFrame, self.locations[0][0]
+        #     self.currentFrame = self.vl.skip()
 
     def getProgress(self):
         den = self.total_frames
@@ -272,7 +274,7 @@ class Stitcher:
         if self.firstFrame:
             self.canvas.put_image((absx, absy), cropped)
             self.firstFrame = False
-        else:
+        elif idx != 0:
             width = cropped.shape[1]
             alpha = linear_alpha(
                 img_width=width,
@@ -285,8 +287,9 @@ class Stitcher:
 
     def stitch(self):
         logger = getLogger()
-        for num, den in self.before():
-            pass
+        self.before()
+        # for num, den in self.before():
+        #     pass
         for num, den in self.loop():
             pass
         self.canvas.close()

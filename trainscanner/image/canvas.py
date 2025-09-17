@@ -17,7 +17,7 @@ class Canvas:
         """
         self._image = None
 
-    @deprecated("Use get_region instead")
+    # @deprecated("Use get_region instead")
     def get_image(self):
         return self._image
 

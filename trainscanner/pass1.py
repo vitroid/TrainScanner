@@ -679,11 +679,12 @@ class Pass1:
         logger = getLogger()
         # self.nframes = 0  #1 is the first frame
 
-        for i in range(self.params.skip):  # skip frames
-            nframe = self.vl.skip()
-            if nframe == 0:
-                break
-            yield nframe, self.params.skip  # report progress
+        self.vl.seek(self.params.skip)
+        # for i in range(self.params.skip):  # skip frames
+        #     nframe = self.vl.skip()
+        #     if nframe == 0:
+        #         break
+        #     yield nframe, self.params.skip  # report progress
 
     def run(self, hook=None, stop_callback=None):
         # for the compatibility
@@ -727,16 +728,16 @@ class Pass1:
             return
 
         self.framepositions = add_trailing_frames(
-            self.framepositions,
-            self.params.estimate,
-            self.params.trailing,
-            self.params.trailing,
+            framepositions=self.framepositions,
+            estimate=self.params.estimate,
+            dispose=self.params.estimate,
+            extend=self.params.trailing,
         )
         self.framepositions = add_leading_frames(
-            self.framepositions,
-            self.params.estimate,
-            self.params.trailing,
-            self.params.trailing,
+            framepositions=self.framepositions,
+            estimate=self.params.estimate,
+            dispose=self.params.estimate,
+            extend=self.params.trailing,
         )
 
         # self.tsconf += f"--canvas\n{canvas[0]}\n{canvas[1]}\n{canvas[2]}\n{canvas[3]}\n"
@@ -774,8 +775,9 @@ def main():
             cv2.imshow("pass1", diff)
             cv2.waitKey(0)
 
-    for num, den in pass1.cue():
-        pass
+    # for num, den in pass1.cue():
+    #     pass
+    pass1.cue()
     pass1.run(hook=show)
     pass1.after()
 

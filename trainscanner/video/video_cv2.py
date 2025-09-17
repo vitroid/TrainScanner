@@ -31,6 +31,13 @@ class VideoLoader(object):
     def total_frames(self):
         return int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+    def seek(self, frame):
+        ret = self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame)
+        if ret == False:
+            return 0
+        self.nframe = frame
+        return self.nframe
+
 
 if __name__ == "__main__":
     vl = VideoLoader("../examples/sample3.mov")

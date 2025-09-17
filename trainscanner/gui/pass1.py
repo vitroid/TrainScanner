@@ -73,13 +73,14 @@ class Worker(QObject):
         if not self._isRunning:
             self._isRunning = True
 
+        self.pass1.cue()
         # self.pass1.before() is a generator.
-        for num, den in self.pass1.cue():
-            if not self._isRunning:
-                self.finished.emit(False)
-                return
-            if den:
-                self.progress.emit(num * 100 // den)
+        # for num, den in self.pass1.cue():
+        #     if not self._isRunning:
+        #         self.finished.emit(False)
+        #         return
+        #     if den:
+        #         self.progress.emit(num * 100 // den)
 
         # 停止チェック用のコールバックを渡す
         def stop_check():
