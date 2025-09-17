@@ -289,9 +289,10 @@ class StitcherUI(QDialog):
 
         # ここで、tiledimageを読みこみ、スケールし、canvasをさしかえる。
         # ただ、cropping枠を変形した時にどこでそれを保存するのか。
-        scaled_image = canvas.get_image(
-            self.stitcher.outfilename, dst_width=self.preview_width
-        )
+        scaled_image = canvas.RasterioCanvas(
+            "r",
+            self.stitcher.outfilename,
+        ).get_image(dst_width=self.preview_width)
         self.largecanvas.setDrawComplete(scaled_image)
 
         self.stop_thread()

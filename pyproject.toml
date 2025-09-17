@@ -25,7 +25,7 @@ antishake           = 'trainscanner.gui.shake_reduction:main'
 ts_converter        = 'trainscanner.gui.converter:main'
 tspos_plotter       = 'trainscanner.gui.tspos_plotter:main'
 # CUI
-helicify            = 'trainscanner.converter.helix:main'
+# helicify            = 'trainscanner.converter.helix:main'
 rectify             = 'trainscanner.converter.rect:main'
 movify              = 'trainscanner.converter.movie:main'
 filmify             = 'trainscanner.image.film:main'

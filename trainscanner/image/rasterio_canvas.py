@@ -23,48 +23,69 @@ def cv2_to_rasterio(image):
 class RasterioCanvas:
     def __init__(
         self,
-        mode: str,
-        region: Region,
+        mode: str,  # "new" or otherwise
         tiff_filename: str,
+        region: Region = None,
         scale: float = 1.0,
     ):
-        self.mode = mode
         self.hook = None
         self.tilesize = 256
-        self.scale = scale
-        self.region = region
-        width, height = region.right - region.left, region.bottom - region.top
+        if mode == "new":
+            assert region is not None
+            self.scale = scale
+            self.region = region
+            width, height = region.right - region.left, region.bottom - region.top
 
-        # Preview互換モード: 地理空間情報を除外
-        self.transform = rasterio.Affine(
-            1 / scale,
-            0,
-            region.left,
-            0,
-            -1 / scale,
-            region.bottom,
-        )
+            # Preview互換モード: 地理空間情報を除外
+            self.transform = rasterio.Affine(
+                1 / scale,
+                0,
+                region.left,
+                0,
+                -1 / scale,
+                region.bottom,
+            )
 
-        self.dataset = rasterio.open(
-            tiff_filename,
-            "w",
-            driver="GTiff",
-            width=int(width * scale),
-            height=int(height * scale),
-            count=3,  # RGB
-            dtype=np.uint8,
-            tiled=False,  # タイル化を無効にしてより互換性を向上
-            compress="lzw",
-            photometric="RGB",
-            # transformを指定しない（GeoTIFFタグを回避）
-        )
-        self.dataset.close()
-        # 再度読み書き用にひらく。
-        self.dataset = rasterio.open(
-            tiff_filename,
-            "r+",
-            transform=self.transform,
-        )
+            self.dataset = rasterio.open(
+                tiff_filename,
+                "w",
+                driver="GTiff",
+                width=int(width * scale),
+                height=int(height * scale),
+                count=3,  # RGB
+                dtype=np.uint8,
+                tiled=False,  # タイル化を無効にしてより互換性を向上
+                compress="lzw",
+                photometric="RGB",
+                # transformを指定しない（GeoTIFFタグを回避）
+            )
+            self.dataset.close()
+
+            # 再度読み書き用にひらく。
+            self.dataset = rasterio.open(
+                tiff_filename,
+                "r+",
+                transform=self.transform,
+            )
+
+        else:
+            assert scale == 1.0 and region is None
+            # 読み書き用にひらく。
+            self.dataset = rasterio.open(
+                tiff_filename,
+                "r+",
+            )
+            width, height = self.dataset.width, self.dataset.height
+            self.region = Region(left=0, right=width, top=0, bottom=height)
+            self.scale = 1.0
+            self.transform = rasterio.Affine(
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                -1.0,
+                height,
+            )
 
     def put_image(self, xy, image, linear_alpha=None):
         logger = getLogger()
@@ -99,7 +120,6 @@ class RasterioCanvas:
         window = rasterio.windows.from_bounds(
             x_start, y_start, x_end, y_end, transform=self.transform
         )
-        print(window)
         # windowの幅は実数で、それをつかって切りだしたoriginalの大きさは予測不能。
         # logger.info(f"{window=}, {window.height=}, {image.shape=}")
         if linear_alpha is not None:
@@ -146,9 +166,7 @@ class RasterioCanvas:
         window = rasterio.windows.from_bounds(
             xmin, ymin, xmax, ymax, transform=self.transform
         )
-        image = self.dataset.read(window=window)
-        image = np.transpose(image, (1, 2, 0))
-        return image.astype(np.uint8)
+        return rasterio_to_cv2(self.dataset.read(window=window))
 
     def close(self):
         self.dataset.close()
@@ -156,24 +174,40 @@ class RasterioCanvas:
     def set_hook(self, hook):
         self.hook = hook
 
-
-# scale on the disk
-def get_image(tiff_filename, dst_width=None):
-    if dst_width:
-        with rasterio.open(tiff_filename) as dataset:
+    # scale on the disk
+    def get_image(self, dst_width=None):
+        dataset = self.dataset
+        if dst_width:
             width, height = dataset.width, dataset.height
             scale = dst_width / width
             # transform = dataset.transform * rasterio.Affine(scale, 0, 0, 0, scale, 0)
-            with rasterio.open(tiff_filename, "r") as dataset:
-                image = dataset.read(
-                    out_shape=(3, int(height * scale), int(width * scale)),
-                    resampling=rasterio.enums.Resampling.bilinear,
-                )
-    else:
-        with rasterio.open(tiff_filename) as dataset:
+            image = dataset.read(
+                out_shape=(3, int(height * scale), int(width * scale)),
+                resampling=rasterio.enums.Resampling.bilinear,
+            )
+        else:
             width, height = dataset.width, dataset.height
             image = dataset.read(out_shape=(3, height, width))
-    return image.astype(np.uint8).transpose(1, 2, 0)[:, :, ::-1]
+        return rasterio_to_cv2(image)
+
+
+# # scale on the disk
+# def get_image(tiff_filename, dst_width=None):
+#     if dst_width:
+#         with rasterio.open(tiff_filename) as dataset:
+#             width, height = dataset.width, dataset.height
+#             scale = dst_width / width
+#             # transform = dataset.transform * rasterio.Affine(scale, 0, 0, 0, scale, 0)
+#             with rasterio.open(tiff_filename, "r") as dataset:
+#                 image = dataset.read(
+#                     out_shape=(3, int(height * scale), int(width * scale)),
+#                     resampling=rasterio.enums.Resampling.bilinear,
+#                 )
+#     else:
+#         with rasterio.open(tiff_filename) as dataset:
+#             width, height = dataset.width, dataset.height
+#             image = dataset.read(out_shape=(3, height, width))
+#     return rasterio_to_cv2(image.astype(np.uint8))
 
 
 # crop on the disk
