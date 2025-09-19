@@ -4,9 +4,7 @@ import scipy.optimize
 from logging import getLogger
 from dataclasses import dataclass
 import os
-
-
-from trainscanner.image import Region, trim_region
+from tiledimage import Rect, Range
 
 
 @dataclass
@@ -157,7 +155,7 @@ def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=No
 
 
 def find_subimage(
-    image, subimage, region: Region, relative=True, fit_margins=[2, 2], subpixel=True
+    image, subimage, rect: Rect, relative=True, fit_margins=[2, 2], subpixel=True
 ):
     """
     画像中のregion内に、subimageを検出する。
@@ -166,9 +164,9 @@ def find_subimage(
     """
     logger = getLogger()
     # まず、subimageの可動範囲を知る。
-    trimmed = trim_region(region, image.shape)
+    trimmed = rect.trim(image.shape)
     try:
-        trimmed.validate(minimal_size=(subimage.shape[1], subimage.shape[0]))
+        trimmed.validate(min_size=(subimage.shape[1], subimage.shape[0]))
     except ValueError:
         logger.debug(f"Region is out of image: {region=} {image.shape=}")
         return
@@ -193,23 +191,27 @@ def find_subimage(
         )
 
 
-def draw_focus_area(f, focus: Region):
+def draw_focus_area(f, focus: Rect):
     """
     cv2形式の画像の中に四角を描く
     """
     h, w = f.shape[0:2]
-    pos = Region(
-        left=w * focus.left // 1000,
-        right=w * focus.right // 1000,
-        top=h * focus.top // 1000,
-        bottom=h * focus.bottom // 1000,
+    pos = Rect(
+        x_range=Range(
+            min_val=w * focus.x_range.min_val // 1000,
+            max_val=w * focus.x_range.max_val // 1000,
+        ),
+        y_range=Range(
+            min_val=h * focus.y_range.min_val // 1000,
+            max_val=h * focus.y_range.max_val // 1000,
+        ),
     )
     colors = [(0, 255, 0), (255, 255, 0)]
     cv2.rectangle(f, (pos.left, pos.top), (pos.right, pos.bottom), colors[0], 1)
 
 
 class diffview:
-    def __init__(self, focus: Region):
+    def __init__(self, focus: Rect):
         self.focus = focus
         self.lastimage = None
         self.preview_size = 500

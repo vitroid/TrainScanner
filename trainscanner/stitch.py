@@ -15,9 +15,10 @@ from logging import getLogger, basicConfig, WARN, DEBUG, INFO
 from trainscanner import trainscanner
 from trainscanner import video
 from trainscanner.i18n import init_translations, tr
+
 from trainscanner.image.rasterio_canvas import RasterioCanvas
-from trainscanner.pass1 import extend_canvas
-from trainscanner.image import Region
+from tiledimage import Rect, Range
+
 
 #  単体で実行する方法
 # poetry run python -m trainscanner.stitch --file examples/sample2.mov.94839.tsconf  examples/sample2.mov
@@ -204,7 +205,10 @@ class Stitcher:
         locations = []
         absx = 0
         absy = 0
-        canvas_dimen = extend_canvas(None, width, height, 0, 0)
+        canvas_rect = Rect(
+            x_range=Range(min_val=0, max_val=width),
+            y_range=Range(min_val=0, max_val=height),
+        )
         tspos = open(self.tsposfile)
         for line in tspos.readlines():
             if len(line) > 0 and line[0] != "@":
@@ -213,8 +217,9 @@ class Stitcher:
                     # この計算順序は正しい。まず変位を足してから、画像を置く。
                     absx += cols[1]
                     absy += cols[2]
-                    canvas_dimen = extend_canvas(
-                        canvas_dimen, width, height, absx, absy
+                    canvas_rect |= Rect(
+                        x_range=Range(min_val=absx, max_val=absx + width),
+                        y_range=Range(min_val=absy, max_val=absy + height),
                     )
                     cols = [cols[0], absx, absy] + cols[1:]
                     cols[1:] = [float(x * self.params.scale) for x in cols[1:]]
@@ -228,19 +233,17 @@ class Stitcher:
         if self.params.length > 0:
             # product length is specified.
             # scale is overridden
-            scale = self.params.length / canvas_dimen[0]
+            scale = self.params.length / canvas_rect[0]
             if scale > 1:
                 scale = 1  # do not allow stretching
             # for GUI
-        self.dimen = canvas_dimen
+        self.dimen = canvas_rect
         self.hook = hook
         self.canvas = RasterioCanvas(
             "new",
-            region=Region(
-                left=canvas_dimen[2],
-                right=canvas_dimen[0],
-                top=canvas_dimen[3],
-                bottom=canvas_dimen[1],
+            rect=Rect(
+                x_range=Range(min_val=canvas_rect.left, max_val=canvas_rect.right),
+                y_range=Range(min_val=canvas_rect.top, max_val=canvas_rect.bottom),
             ),
             # size=canvas_dimen[:2],
             # lefttop=canvas_dimen[2:],
@@ -272,6 +275,8 @@ class Stitcher:
     def add_image(self, frame, absx, absy, idx, idy):
         _, _, cropped = self.transform.process_image(frame)
         if self.firstFrame:
+            print(f"{self.canvas.rect=}")
+            print(f"add_image: {absx}, {absy} {cropped.shape=}")
             self.canvas.put_image((absx, absy), cropped)
             self.firstFrame = False
         elif idx != 0:

@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from trainscanner import Region
+from tiledimage import Rect
 from trainscanner.decorators import deprecated
 
 
@@ -21,12 +21,12 @@ class Canvas:
     def get_image(self):
         return self._image
 
-    def get_region(self, subregion: Region) -> np.ndarray:
+    def get_region(self, subregion: Rect) -> np.ndarray:
         # はみだす場合の処理ができてない
         x = subregion.left - self.origin[0]
         y = subregion.top - self.origin[1]
-        width = subregion.right - subregion.left
-        height = subregion.bottom - subregion.top
+        width = subregion.width
+        height = subregion.height
         return self._image[y : y + height, x : x + width]
 
     def put_image(self, pos, add_image, linear_alpha=None):

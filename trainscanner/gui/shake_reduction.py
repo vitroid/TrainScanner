@@ -15,8 +15,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap, QKeySequence, QShortcut
 from trainscanner.video import video_iter
 from trainscanner.shake_reduction import antishake
-from trainscanner import Region
 from trainscanner.i18n import tr
+from tiledimage import Rect, Range
 import sys
 import os
 import subprocess
@@ -256,13 +256,15 @@ class ImageWindow(QMainWindow):
         QApplication.processEvents()
 
     def start_processing(self):
+        print(f"start processing {self.video_path=} {self.rectangles=}")
         if self.video_path and self.rectangles:
             self.processing = True  # 処理開始フラグを設定
 
             # ビデオをまきもどす
             video_frames = video_iter(self.video_path)
             rects = self.get_rectangles()
-            regions = qt_to_region(rects)
+            print(f"rects = {rects}")
+            rects = qt_to_rect(rects)
 
             video_writer = None
             if self.radio_video.isChecked():
@@ -275,6 +277,7 @@ class ImageWindow(QMainWindow):
             else:
                 output_dir = f"{self.video_path}.dir"
                 import os
+
                 os.makedirs(output_dir, exist_ok=True)
 
             with open(f"{self.video_path}.log.txt", "w") as logfile:
@@ -283,7 +286,7 @@ class ImageWindow(QMainWindow):
                 for i, frame in enumerate(
                     antishake(
                         video_frames,
-                        regions,
+                        rects,
                         logfile=logfile,
                         show_snapshot=self.show_snapshot,
                         max_shift=10,
@@ -298,6 +301,7 @@ class ImageWindow(QMainWindow):
                         outfilename = f"{output_dir}/{i:06d}.png"
                         # Windowsでのファイルパス正規化
                         import os
+
                         outfilename = os.path.normpath(outfilename)
                         cv2.imwrite(outfilename, frame)
                     elif video_writer is not None:
@@ -528,15 +532,21 @@ class ImageWindow(QMainWindow):
             self.process_video(files[0])
 
 
-def qt_to_region(rects):
-    regions = []
+def qt_to_rect(rects):
+    rects_ = []
     for rect in rects:
         left = min(rect[0][0], rect[1][0])
         right = max(rect[0][0], rect[1][0])
         top = min(rect[0][1], rect[1][1])
         bottom = max(rect[0][1], rect[1][1])
-        regions.append(Region(left=left, top=top, right=right, bottom=bottom))
-    return regions
+        rects_.append(
+            Rect(
+                x_range=Range(min_val=left, max_val=right),
+                y_range=Range(min_val=top, max_val=bottom),
+            )
+        )
+        print(f"{rects_=}")
+    return rects_
 
 
 def main():

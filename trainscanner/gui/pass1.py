@@ -31,7 +31,8 @@ from matplotlib.figure import Figure
 
 from trainscanner import pass1
 from trainscanner.widget import cv2toQImage
-from trainscanner import diffview, Region, FramePosition
+from trainscanner import diffview
+from tiledimage import Rect, Range
 
 
 class Worker(QObject):
@@ -46,11 +47,15 @@ class Worker(QObject):
         self._isRunning = True
         self.pass1 = pass1.Pass1(argv=argv)
         self.v = diffview(
-            focus=Region(
-                self.pass1.params.focus[0],
-                self.pass1.params.focus[1],
-                self.pass1.params.focus[2],
-                self.pass1.params.focus[3],
+            focus=Rect(
+                x_range=Range(
+                    min_val=self.pass1.params.focus[0],
+                    max_val=self.pass1.params.focus[1],
+                ),
+                y_range=Range(
+                    min_val=self.pass1.params.focus[2],
+                    max_val=self.pass1.params.focus[3],
+                ),
             )
         )
         self.motions_plot = []  # リアルタイムプロット用のデータ

@@ -17,7 +17,7 @@ from trainscanner import (
     MatchResult,
 )
 from trainscanner import video, match, find_subimage
-from trainscanner.image import Region
+from tiledimage import Rect, Range
 
 
 def draw_slit_position(img, slitpos, dx):
@@ -39,7 +39,9 @@ def draw_slit_position(img, slitpos, dx):
 def motion(
     image,
     ref,
-    focus: Region = Region(left=333, right=666, top=333, bottom=666),
+    focus: Rect = Rect(
+        x_range=Range(min_val=333, max_val=666), y_range=Range(min_val=333, max_val=666)
+    ),
     maxaccel=None,
     delta=(0, 0),
     yfixed=False,
@@ -52,15 +54,19 @@ def motion(
     """
     logger = getLogger()
     hi, wi = ref.shape[0:2]
-    template_region = Region(
-        left=wi * focus.left // 1000,
-        right=wi * focus.right // 1000,
-        top=hi * focus.top // 1000,
-        bottom=hi * focus.bottom // 1000,
+    template_rect = Rect(
+        x_range=Range(
+            min_val=wi * focus.left // 1000,
+            max_val=wi * focus.right // 1000,
+        ),
+        y_range=Range(
+            min_val=hi * focus.top // 1000,
+            max_val=hi * focus.bottom // 1000,
+        ),
     )
     template = ref[
-        template_region.top : template_region.bottom,
-        template_region.left : template_region.right,
+        template_rect.top : template_rect.bottom,
+        template_rect.left : template_rect.right,
         :,
     ]
     # gray_template = standardize(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY))
@@ -72,14 +78,16 @@ def motion(
         hop = 1
         if yfixed:
             # x方向にのみずらして照合する。
-            image = image[template_region.top : template_region.bottom, :, :]
+            image = image[
+                template_rect.y_range.min_val : template_rect.y_range.max_val, :, :
+            ]
             # max_loc, fractional_shift, max_val = subpixel_match(
             #     image, template, subpixel=False
             # )
             max_loc, max_val = match(image, template)
             # max_locはtemplateの左上角を原点とした相対座標なので、xminを引く。
             max_loc = (
-                max_loc[0] - template_region.left,
+                max_loc[0] - template_rect.left,
                 max_loc[1],
             )
             return max_loc, hop, max_val
@@ -88,7 +96,10 @@ def motion(
         #     image, template, subpixel=False
         # )
         max_loc, max_val = match(image, template)
-        max_loc = (max_loc[0] - template_region.left, max_loc[1] - template_region.top)
+        max_loc = (
+            max_loc[0] - template_rect.left,
+            max_loc[1] - template_rect.top,
+        )
         # print(min_loc)
         return max_loc, hop, max_val
     else:
@@ -101,16 +112,19 @@ def motion(
             fit_margins = [min(2, maxaccel[0]), min(2, maxaccel[1])]
 
             # 探査する範囲。整数にしておく。
-            roix0 = int(np.floor(template_region.left + delta[0] * hop - maxaccel[0]))
-            roiy0 = int(np.floor(template_region.top + delta[1] * hop - maxaccel[1]))
-            roix1 = int(np.ceil(template_region.right + delta[0] * hop + maxaccel[0]))
-            roiy1 = int(np.ceil(template_region.bottom + delta[1] * hop + maxaccel[1]))
-            region = Region(left=roix0, right=roix1, top=roiy0, bottom=roiy1)
+            roix0 = int(np.floor(template_rect.left + delta[0] * hop - maxaccel[0]))
+            roiy0 = int(np.floor(template_rect.top + delta[1] * hop - maxaccel[1]))
+            roix1 = int(np.ceil(template_rect.right + delta[0] * hop + maxaccel[0]))
+            roiy1 = int(np.ceil(template_rect.bottom + delta[1] * hop + maxaccel[1]))
+            rect = Rect(
+                x_range=Range(min_val=roix0, max_val=roix1),
+                y_range=Range(min_val=roiy0, max_val=roiy1),
+            )
 
             result = find_subimage(
                 image,
                 template,
-                region,
+                rect,
                 relative=False,
                 fit_margins=fit_margins,
                 subpixel=False,  # あんまり正確じゃないので、とりあえず封印する。
@@ -126,47 +140,14 @@ def motion(
                 maxmax_fra = fractional_shift
 
         new_delta = (
-            maxmax_loc[0] + maxmax_fra[0] - template_region.left,
-            maxmax_loc[1] + maxmax_fra[1] - template_region.top,
+            maxmax_loc[0] + maxmax_fra[0] - template_rect.left,
+            maxmax_loc[1] + maxmax_fra[1] - template_rect.top,
         )
         # dropframeがあった場合、2倍や3倍の移動が検出される。
         # new_deltaには変位をそのまま返すが、同時に倍率も返す。
         if maxmax_hop != 1:
             logger.info(f"Skipped frames: {maxmax_hop-1}")
         return new_delta, maxmax_hop, maxmax_val
-
-
-# Automatically extensible canvas.
-def extend_canvas(canvas_dimen, w, h, x, y):
-    """
-    canvas_dimenで定義されるcanvasの，位置(x,y)にimageを貼りつけた場合の，拡張後のcanvasの大きさを返す．
-    canvas_dimenはcanvasの左上角の絶対座標と，canvasの幅高さの4因子でできている．
-    """
-    # x = int(x)
-    # y = int(y)
-    # h, w = image.shape[:2]
-    if canvas_dimen is None:
-        return w, h, x, y
-    canvas_width, canvas_height, origin_x, origin_y = (
-        canvas_dimen  # absolute coordinate of the top left of the canvas
-    )
-    cxmin = origin_x
-    cymin = origin_y
-    cxmax = canvas_width + origin_x
-    cymax = canvas_height + origin_y
-    ixmin = x
-    iymin = y
-    # よくわからないが、幅をひろめにしておかないと、stitchで足りなくなるので。
-    ixmax = w * 2 + x
-    iymax = h + y
-
-    xmin = min(cxmin, ixmin)
-    xmax = max(cxmax, ixmax)
-    ymin = min(cymin, iymin)
-    ymax = max(cymax, iymax)
-    canvas_dimen = (xmax - xmin, ymax - ymin, xmin, ymin)
-    # getLogger().debug(f"{canvas_dimen=}")
-    return canvas_dimen
 
 
 def prepare_parser():
@@ -327,19 +308,17 @@ class historyQueue:
         return max(self.queue) - min(self.queue)
 
 
-def valid_focus(focus: Region):
-    if focus is None:
+def valid_focus(focus: Rect):
+    try:
+        focus.validate()
+        return True
+    except ValueError:
         return False
-    if focus.left >= focus.right:
-        return False
-    if focus.top >= focus.bottom:
-        return False
-    return True
 
 
 def iter2(
     videoloader,
-    focus: Region,
+    focus: Rect,
     transform: trainscanner.transformation,
     coldstart: bool = False,
     yfixed: bool = False,
@@ -689,11 +668,9 @@ class Pass1:
     def run(self, hook=None, stop_callback=None):
         # for the compatibility
         logger = getLogger()
-        focus = Region(
-            left=self.params.focus[0],
-            right=self.params.focus[1],
-            top=self.params.focus[2],
-            bottom=self.params.focus[3],
+        focus = Rect(
+            x_range=Range(min_val=self.params.focus[0], max_val=self.params.focus[1]),
+            y_range=Range(min_val=self.params.focus[2], max_val=self.params.focus[3]),
         )
         transform = trainscanner.transformation(
             angle=self.params.rotate,
@@ -761,11 +738,15 @@ class Pass1:
 def main():
     pass1 = Pass1(argv=sys.argv)
     v = diffview(
-        focus=Region(
-            pass1.params.focus[0],
-            pass1.params.focus[1],
-            pass1.params.focus[2],
-            pass1.params.focus[3],
+        focus=Rect(
+            x_range=Range(
+                min_val=pass1.params.focus[0],
+                max_val=pass1.params.focus[1],
+            ),
+            y_range=Range(
+                min_val=pass1.params.focus[2],
+                max_val=pass1.params.focus[3],
+            ),
         )
     )
 

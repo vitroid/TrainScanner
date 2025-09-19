@@ -3,7 +3,7 @@ import numpy as np
 from logging import getLogger
 from rasterio.windows import Window
 import cv2
-from trainscanner.image import Region
+from tiledimage import Rect
 
 
 def rasterio_to_cv2(image):
@@ -25,25 +25,25 @@ class RasterioCanvas:
         self,
         mode: str,  # "new" or otherwise
         tiff_filename: str,
-        region: Region = None,
+        rect: Rect = None,
         scale: float = 1.0,
     ):
         self.hook = None
         self.tilesize = 256
         if mode == "new":
-            assert region is not None
+            assert rect is not None
             self.scale = scale
-            self.region = region
-            width, height = region.right - region.left, region.bottom - region.top
+            self.rect = rect
+            width, height = rect.width, rect.height
 
             # Preview互換モード: 地理空間情報を除外
             self.transform = rasterio.Affine(
                 1 / scale,
                 0,
-                region.left,
+                rect.left,
                 0,
                 -1 / scale,
-                region.bottom,
+                rect.bottom,
             )
 
             self.dataset = rasterio.open(
@@ -69,14 +69,17 @@ class RasterioCanvas:
             )
 
         else:
-            assert scale == 1.0 and region is None
+            assert scale == 1.0 and rect is None
             # 読み書き用にひらく。
             self.dataset = rasterio.open(
                 tiff_filename,
                 "r+",
             )
             width, height = self.dataset.width, self.dataset.height
-            self.region = Region(left=0, right=width, top=0, bottom=height)
+            self.rect = Rect(
+                x_range=Range(min_val=0, max_val=width),
+                y_range=Range(min_val=0, max_val=height),
+            )
             self.scale = 1.0
             self.transform = rasterio.Affine(
                 1.0,
@@ -109,16 +112,17 @@ class RasterioCanvas:
         # if x_end <= x_start or y_end <= y_start:
         #     return  # 画像が範囲外
 
-        x_start = xy[0]
-        y_start = xy[1]
-        x_end = x_start + image.shape[1]
-        y_end = y_start + image.shape[0]
+        left = xy[0]
+        top = xy[1]
+        right = left + image.shape[1]
+        bottom = top + image.shape[0]
 
         # window = rasterio.windows.Window(
         #     x_start, y_start, x_end - x_start, y_end - y_start
         # )
+        print(f"{left=}, {top=}, {right=}, {bottom=}, {self.transform=}")
         window = rasterio.windows.from_bounds(
-            x_start, y_start, x_end, y_end, transform=self.transform
+            left, top, right, bottom, transform=self.transform
         )
         # windowの幅は実数で、それをつかって切りだしたoriginalの大きさは予測不能。
         # logger.info(f"{window=}, {window.height=}, {image.shape=}")
@@ -154,10 +158,10 @@ class RasterioCanvas:
         if self.hook:
             self.hook((xy[0] * self.scale, xy[1] * self.scale), mixed_image)
 
-    def get_region(self, subregion: Region):
+    def get_region(self, subregion: Rect):
         x, y = subregion.left, subregion.top
-        width = subregion.right - subregion.left
-        height = subregion.bottom - subregion.top
+        width = subregion.width
+        height = subregion.height
         xmin, ymin = x, y
         xmax, ymax = (
             xmin + width,

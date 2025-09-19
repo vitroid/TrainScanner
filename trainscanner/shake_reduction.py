@@ -6,19 +6,19 @@ import sys
 from dataclasses import dataclass
 import logging
 from trainscanner import standardize, subpixel_match
-from trainscanner.image import Region, trim_region
+from tiledimage import Rect, Range
 
 
 @dataclass
 class Focus:
-    region: Region
+    rect: Rect
     shift: tuple[int, int]
     subpixel_shift: tuple[float, float]
     match_area: np.ndarray
 
 
 def antishake(
-    video_iter, foci: list[Region], max_shift=10, logfile=None, show_snapshot=None
+    video_iter, foci: list[Rect], max_shift=10, logfile=None, show_snapshot=None
 ):
     """最初のフレームの、指定された領域内の画像が動かないように、各フレームを平行移動する。
 
@@ -36,9 +36,7 @@ def antishake(
     foci_ = []
     for f in foci:
         crop = standardize(gray0[f.top : f.bottom, f.left : f.right].astype(float))
-        focus = Focus(
-            region=f, shift=(0, 0), match_area=crop, subpixel_shift=(0.0, 0.0)
-        )
+        focus = Focus(rect=f, shift=(0, 0), match_area=crop, subpixel_shift=(0.0, 0.0))
         foci_.append(focus)
 
     foci = foci_
@@ -47,18 +45,16 @@ def antishake(
     if logfile is not None:
         logfile.write(f"{len(foci)}\n")
     for focus in foci:
-        region = focus.region
+        rect = focus.rect
         cv2.rectangle(
             frame0,
-            (region.left, region.top),
-            (region.right, region.bottom),
+            (rect.left, rect.top),
+            (rect.right, rect.bottom),
             (0, 0, 255),
             2,
         )
         if logfile is not None:
-            logfile.write(
-                f"{region.left} {region.top} {region.right} {region.bottom}\n"
-            )
+            logfile.write(f"{rect.left} {rect.top} {rect.right} {rect.bottom}\n")
     # cv2.imshow("match_areas", frame0)
 
     for frame2 in video_iter:
@@ -66,37 +62,35 @@ def antishake(
 
         for fi, focus in enumerate(foci):
             # 基準画像のfocusの位置。
-            region = Region(
-                left=focus.region.left,
-                top=focus.region.top,
-                right=focus.region.right,
-                bottom=focus.region.bottom,
+            rect = Rect(
+                x_range=Range(min_val=focus.rect.left, max_val=focus.rect.right),
+                y_range=Range(min_val=focus.rect.top, max_val=focus.rect.bottom),
             )
-            logger.info(f"{region=}")
+            logger.info(f"{rect=}")
             # 直前のフレームで、focusの位置を移動した。
-            region.left += focus.shift[0] - max_shift
-            region.top += focus.shift[1] - max_shift
-            region.right += focus.shift[0] + max_shift
-            region.bottom += focus.shift[1] + max_shift
-            logger.info(f"{region=} {gray2.shape=}")
+            rect.x_range.min_val += focus.shift[0] - max_shift
+            rect.y_range.min_val += focus.shift[1] - max_shift
+            rect.x_range.max_val += focus.shift[0] + max_shift
+            rect.y_range.max_val += focus.shift[1] + max_shift
+            logger.info(f"{rect=} {gray2.shape=}")
             # 照合したい画像のうち、マッチングに使う領域を切り取るための枠。
             # 初期値0は平均値を意味する。
             target_area = np.zeros(
-                [region.bottom - region.top, region.right - region.left],
+                [rect.height, rect.width],
                 dtype=np.float32,
             )
             # 画面外に出てしまわない範囲を計算する。
-            trimmed_region = trim_region(region, gray2.shape)
-            logger.info(f"{trimmed_region=}")
+            trimmed_rect = rect.trim(gray2.shape)
+            logger.info(f"{trimmed_rect=}")
             # 照合したい画像のうち、マッチングに使う領域を切り取る。
             # 画面外の領域は0になる。
             target_area[
-                trimmed_region.top - region.top : trimmed_region.bottom - region.top,
-                trimmed_region.left - region.left : trimmed_region.right - region.left,
+                trimmed_rect.top - rect.top : trimmed_rect.bottom - rect.top,
+                trimmed_rect.left - rect.left : trimmed_rect.right - rect.left,
             ] = standardize(
                 gray2[
-                    trimmed_region.top : trimmed_region.bottom,
-                    trimmed_region.left : trimmed_region.right,
+                    trimmed_rect.top : trimmed_rect.bottom,
+                    trimmed_rect.left : trimmed_rect.right,
                 ].astype(float)
             )
 
@@ -124,11 +118,11 @@ def antishake(
             if show_snapshot is not None:
                 annotated = frame2_shifted.copy()
                 for focus in foci:
-                    region = focus.region
+                    rect = focus.rect
                     cv2.rectangle(
                         annotated,
-                        (region.left, region.top),
-                        (region.right, region.bottom),
+                        (rect.left, rect.top),
+                        (rect.right, rect.bottom),
                         (0, 0, 255),
                         2,
                     )
@@ -141,8 +135,8 @@ def antishake(
         center0 = (
             np.array(
                 [
-                    foci[0].region.top + foci[0].region.bottom,
-                    foci[0].region.left + foci[0].region.right,
+                    foci[0].rect.top + foci[0].rect.bottom,
+                    foci[0].rect.left + foci[0].rect.right,
                 ]
             )
             / 2
@@ -150,8 +144,8 @@ def antishake(
         center1 = (
             np.array(
                 [
-                    foci[1].region.top + foci[1].region.bottom,
-                    foci[1].region.left + foci[1].region.right,
+                    foci[1].rect.top + foci[1].rect.bottom,
+                    foci[1].rect.left + foci[1].rect.right,
                 ]
             )
             / 2
@@ -204,11 +198,11 @@ def antishake(
         if show_snapshot is not None:
             annotated = frame2_rotated.copy()
             for focus in foci:
-                region = focus.region
+                rect = focus.rect
                 cv2.rectangle(
                     annotated,
-                    (region.left, region.top),
-                    (region.right, region.bottom),
+                    (rect.left, rect.top),
+                    (rect.right, rect.bottom),
                     (0, 0, 255),
                     2,
                 )
@@ -233,8 +227,14 @@ def main(
             viter,
             # foci=[(1520, 430, 150, 80), (100, 465, 100, 50)],  # for Untitled.mp4
             foci=[
-                Region(left=1520, right=1670, top=430, bottom=510),
-                Region(left=100, right=200, top=465, bottom=515),
+                Rect(
+                    x_range=Range(min_val=1520, max_val=1670),
+                    y_range=Range(min_val=430, max_val=510),
+                ),
+                Rect(
+                    x_range=Range(min_val=100, max_val=200),
+                    y_range=Range(min_val=465, max_val=515),
+                ),
             ],  # for Untitled.mp4
             # foci=[
             #     (1520, 430, 150, 80),
