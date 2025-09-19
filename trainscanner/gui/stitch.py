@@ -207,10 +207,10 @@ class StitcherUI(QDialog):
         # )
         self.stitcher = stitcher
         # stitcherの幅
-        width = stitcher.dimen[0]
+        width = stitcher.dimen.width
         # このwidthは原寸の幅。
         # stitchが幅を-Wで指定している場合はそちらの幅を使う
-        if 0 < stitcher.params.length < stitcher.dimen[0]:
+        if 0 < stitcher.params.length < stitcher.dimen.width:
             width = stitcher.params.length
 
         # determine the shrink ratio to avoid too huge preview

@@ -3,7 +3,7 @@ import numpy as np
 from logging import getLogger
 from rasterio.windows import Window
 import cv2
-from tiledimage import Rect
+from tiledimage import Rect, Range
 
 
 def rasterio_to_cv2(image):
