@@ -7,7 +7,7 @@ import math
 import sys
 import os
 import argparse
-from logging import getLogger, basicConfig, WARN, DEBUG, INFO
+from logging import getLogger, basicConfig, WARN, DEBUG, INFO, WARNING
 
 # from canvas import Canvas    #On-memory canvas
 # from canvas2 import Canvas   #Cached canvas
@@ -16,9 +16,10 @@ from trainscanner import trainscanner
 from trainscanner import video
 from trainscanner.i18n import init_translations, tr
 
-from trainscanner.image.rasterio_canvas import RasterioCanvas
-from tiledimage import Rect, Range
+# from trainscanner.image.rasterio_canvas import RasterioCanvas
+from rasterio_tiff import Rect, Range
 
+from rasterio_tiff.tiffeditor import TiffEditor, ScalableTiffEditor
 
 #  単体で実行する方法
 # poetry run python -m trainscanner.stitch --file examples/sample2.mov.94839.tsconf  examples/sample2.mov
@@ -92,7 +93,7 @@ def prepare_parser(parser=None):
         default=1.0,
         dest="scale",
         metavar="x",
-        help="Scaling ratio for the final image.",
+        help="Scaling ratio for the final image (ignored).",
     )
     parser.add_argument(
         "-w",
@@ -133,9 +134,38 @@ def prepare_parser(parser=None):
         default=None,
         help="TrainScanner settings (.tsconf) file name.",
     )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        dest="debug",
+        help="Debug mode.",
+    )
     parser.add_argument("filename", type=str, help="Movie file name.")
 
     return parser
+
+
+def overlay(image, origin, subimage, linear_alpha=None):
+    origin_x, origin_y = origin
+    if linear_alpha is None:
+        image[
+            origin_y : origin_y + subimage.shape[0],
+            origin_x : origin_x + subimage.shape[1],
+        ] = subimage
+    else:
+        alpha = linear_alpha[np.newaxis, :, np.newaxis]
+        if linear_alpha.shape[0] > subimage.shape[1]:
+            alpha = linear_alpha[np.newaxis, : subimage.shape[1], np.newaxis]
+
+        original = image[
+            origin_y : origin_y + subimage.shape[0],
+            origin_x : origin_x + subimage.shape[1],
+        ]
+        image[
+            origin_y : origin_y + subimage.shape[0],
+            origin_x : origin_x + subimage.shape[1],
+        ] = (original * (1 - alpha) + subimage * alpha).astype(np.uint8)
 
 
 class Stitcher:
@@ -144,7 +174,8 @@ class Stitcher:
     """
 
     def __init__(self, argv, hook=None):
-        logger = getLogger()
+        # ロガーをインスタンス変数として初期化
+        self.logger = getLogger(__name__)
 
         init_translations()
 
@@ -163,8 +194,26 @@ class Stitcher:
         # 昔のpass1が計算したcanvasサイズは信用ならないので、自前で再計算する。
         del self.params.canvas
 
+        # ログ設定をコマンドライン引数に基づいて行う
+        import logging
+
+        if self.params.debug:
+            basicConfig(
+                level=DEBUG,
+                format="%(asctime)s %(levelname)s %(message)s",
+            )
+            logging.getLogger().setLevel(DEBUG)
+            self.logger.info("Debug mode enabled")
+        else:
+            basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(message)s")
+            logging.getLogger().setLevel(INFO)
+            # サードパーティライブラリのDEBUGメッセージを抑制
+            logging.getLogger("rasterio").setLevel(WARNING)
+
         # Decide the paths
         moviepath = self.params.filename
+        import os
+
         moviedir = os.path.dirname(moviepath)
         moviebase = os.path.basename(moviepath)
         self.tsposfile = ""
@@ -179,9 +228,9 @@ class Stitcher:
         self.outfilename = tsconfdir + "/" + tsconfbase + ".tiff"
         if not os.path.exists(moviefile):
             moviefile = moviepath
-        logger.info("TSPos  {0}".format(self.tsposfile))
-        logger.info("Movie  {0}".format(moviefile))
-        logger.info("Output {0}".format(self.outfilename))
+        self.logger.info("TSPos  {0}".format(self.tsposfile))
+        self.logger.info("Movie  {0}".format(moviefile))
+        self.logger.info("Output {0}".format(self.outfilename))
 
         self.firstFrame = True
         self.currentFrame = 0  # 1 is the first frame
@@ -205,10 +254,7 @@ class Stitcher:
         locations = []
         absx = 0
         absy = 0
-        canvas_rect = Rect(
-            x_range=Range(min_val=0, max_val=width),
-            y_range=Range(min_val=0, max_val=height),
-        )
+        canvas_rect = Rect.from_bounds(0, width, 0, height)
         tspos = open(self.tsposfile)
         for line in tspos.readlines():
             if len(line) > 0 and line[0] != "@":
@@ -217,9 +263,8 @@ class Stitcher:
                     # この計算順序は正しい。まず変位を足してから、画像を置く。
                     absx += cols[1]
                     absy += cols[2]
-                    canvas_rect |= Rect(
-                        x_range=Range(min_val=absx, max_val=absx + width),
-                        y_range=Range(min_val=absy, max_val=absy + height),
+                    canvas_rect |= Rect.from_bounds(
+                        int(absx), int(absx + width), int(absy), int(absy + height)
                     )
                     cols = [cols[0], absx, absy] + cols[1:]
                     cols[1:] = [float(x * self.params.scale) for x in cols[1:]]
@@ -233,36 +278,44 @@ class Stitcher:
         if self.params.length > 0:
             # product length is specified.
             # scale is overridden
-            scale = self.params.length / canvas_rect[0]
+            scale = self.params.length / canvas_rect.width
             if scale > 1:
                 scale = 1  # do not allow stretching
             # for GUI
         self.dimen = canvas_rect
         self.hook = hook
-        self.canvas = RasterioCanvas(
-            "new",
-            rect=Rect(
-                x_range=Range(min_val=canvas_rect.left, max_val=canvas_rect.right),
-                y_range=Range(min_val=canvas_rect.top, max_val=canvas_rect.bottom),
-            ),
-            # size=canvas_dimen[:2],
-            # lefttop=canvas_dimen[2:],
-            tiff_filename=self.outfilename,
-            scale=scale,
-        )
+        self.lefttop = (canvas_rect.left, canvas_rect.top)
+        # the canvas behaves like an image
+        if scale == 1:
+            self.canvas = TiffEditor(
+                filepath=self.outfilename,
+                mode="w",
+                shape=(canvas_rect.height, canvas_rect.width, 3),
+                dtype=np.uint8,
+            )
+        else:
+            self.canvas = ScalableTiffEditor(
+                filepath=self.outfilename,
+                mode="w",
+                virtual_shape=(canvas_rect.height, canvas_rect.width, 3),
+                dtype=np.uint8,
+                scale_factor=scale,
+            )
+        # 新規ファイル作成時のバグ対応：ハンドルが開かれていない場合は明示的に開く
+        if self.canvas._rasterio_handle is None and self.canvas._tiff_handle is None:
+            self.canvas._open_file()
 
     def before(self):
         """
         is a generator.
         """
-        logger = getLogger()
         if len(self.locations) == 0:
             return
         # initial seek
 
         self.currentFrame = self.vl.seek(self.locations[0][0] - 1)
         # while self.currentFrame + 1 < self.locations[0][0]:
-        #     logger.debug((self.currentFrame, self.locations[0][0]))
+        #     self.logger.debug((self.currentFrame, self.locations[0][0]))
         #     # このyieldは要るのか?
         #     yield self.currentFrame, self.locations[0][0]
         #     self.currentFrame = self.vl.skip()
@@ -272,15 +325,20 @@ class Stitcher:
         num = den - len(self.locations)
         return (num, den)
 
+    def set_hook(self, hook):
+        self.hook = hook
+
     def add_image(self, frame, absx, absy, idx, idy):
         _, _, cropped = self.transform.process_image(frame)
+        origin_x = int(absx - self.lefttop[0])
+        origin_y = int(absy - self.lefttop[1])
+        height, width = cropped.shape[:2]
         if self.firstFrame:
-            print(f"{self.canvas.rect=}")
-            print(f"add_image: {absx}, {absy} {cropped.shape=}")
-            self.canvas.put_image((absx, absy), cropped)
+            self.canvas[origin_y : origin_y + height, origin_x : origin_x + width] = (
+                cropped
+            )
             self.firstFrame = False
         elif idx != 0:
-            width = cropped.shape[1]
             alpha = linear_alpha(
                 img_width=width,
                 mixing_width=self.params.slitwidth,
@@ -288,10 +346,19 @@ class Stitcher:
                 slit_pos=self.params.slitpos,
                 head_right=idx < 0,
             )
-            self.canvas.put_image((absx, absy), cropped, linear_alpha=alpha)
+            # canvasの左上を(0、0)とした場合の、cropped画像を貼る座標を計算
+            origin_x = int(absx - self.lefttop[0])
+            origin_y = int(absy - self.lefttop[1])
+            overlay(self.canvas, (origin_x, origin_y), cropped, linear_alpha=alpha)
+            # self.canvas.put_image((absx, absy), cropped, linear_alpha=alpha)
+        # this sends a signal to the observers
+        if self.hook:
+            self.hook(
+                (origin_x, origin_y),
+                self.canvas[origin_y : origin_y + height, origin_x : origin_x + width],
+            )
 
     def stitch(self):
-        logger = getLogger()
         self.before()
         # for num, den in self.before():
         #     pass
@@ -321,15 +388,6 @@ class Stitcher:
 
 
 if __name__ == "__main__":
-    debug = True
-    if debug:
-        basicConfig(
-            level=DEBUG,
-            # filename='log.txt',
-            format="%(asctime)s %(levelname)s %(message)s",
-        )
-    else:
-        basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(message)s")
     st = Stitcher(argv=sys.argv)
 
     st.stitch()

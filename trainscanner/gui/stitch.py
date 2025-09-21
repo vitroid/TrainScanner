@@ -22,9 +22,41 @@ from PyQt6.QtWidgets import (
 # from tiledimage import cachedimage as ci
 
 from trainscanner import stitch
+
 from trainscanner.image.scaledcanvas import ScaledCanvas
 from trainscanner.i18n import init_translations, tr
-import trainscanner.image.rasterio_canvas as canvas
+from rasterio_tiff.tiffeditor import TiffEditor
+
+
+# import trainscanner.image.rasterio_canvas as canvas
+
+
+# crop on the disk
+def crop_image(tiff_filename, leftcut, rightcut, out_filename):
+    import rasterio
+    from rasterio.windows import Window
+
+    logger = getLogger()
+    # logger.info(f"{left=}, {right=}, {out_filename=}")
+    with rasterio.open(tiff_filename) as dataset:
+        width, height = dataset.width, dataset.height
+        logger.info(f"{width=} {height=} {leftcut=} {rightcut=}")
+        width -= leftcut + rightcut
+        window = Window(leftcut, 0, width, height)
+        transform_cropped = dataset.window_transform(window)
+        profile = dataset.profile
+        profile.update(
+            transform=transform_cropped,
+            width=width,
+            height=height,
+            compress="lzw",
+            tiled=True,
+            blockxsize=256,
+            blockysize=256,
+        )
+        with rasterio.open(out_filename, "w", **profile) as dst:
+            src = dataset.read(window=window)
+            dst.write(src)
 
 
 # It is run in the thread.
@@ -39,7 +71,7 @@ class Renderer(QObject):
         self.stitcher = stitcher
         self._isRunning = True
         # Dirty signal handler
-        self.stitcher.canvas.set_hook(self.signal_sender)
+        self.stitcher.set_hook(self.signal_sender)
 
     def signal_sender(self, pos, image):
         self.tileRendered.emit(pos, image)
@@ -272,7 +304,7 @@ class StitcherUI(QDialog):
         right_cut = int(self.largecanvas.right_cut / self.preview_ratio)
         file_name = self.stitcher.outfilename
         cropped_file_name = file_name.replace(".tiff", "_cropped.tiff")
-        canvas.crop_image(file_name, left_cut, right_cut, cropped_file_name)
+        crop_image(file_name, left_cut, right_cut, cropped_file_name)
 
         self.stopbutton_pressed()
 
@@ -290,10 +322,13 @@ class StitcherUI(QDialog):
 
         # ここで、tiledimageを読みこみ、スケールし、canvasをさしかえる。
         # ただ、cropping枠を変形した時にどこでそれを保存するのか。
-        scaled_image = canvas.RasterioCanvas(
-            "r",
-            self.stitcher.outfilename,
-        ).get_image(dst_width=self.preview_width)
+        scaled_image = TiffEditor(
+            filepath=self.stitcher.outfilename,
+            mode="r",
+        ).get_scaled_image(
+            # scale_factor=1
+            target_width=self.preview_width
+        )
         self.largecanvas.setDrawComplete(scaled_image)
 
         self.stop_thread()

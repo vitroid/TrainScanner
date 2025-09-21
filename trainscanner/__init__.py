@@ -4,7 +4,7 @@ import scipy.optimize
 from logging import getLogger
 from dataclasses import dataclass
 import os
-from tiledimage import Rect, Range
+from rasterio_tiff import Rect, Range
 
 
 @dataclass
