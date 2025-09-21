@@ -7,14 +7,13 @@ import argparse
 from trainscanner.i18n import tr, init_translations
 import logging
 import os
-from trainscanner.image import Region
-from trainscanner.image.rasterio_canvas import RasterioCanvas
-import rasterio
+from rasterio_tiff import Rect, Range
+from rasterio_tiff.tiffeditor import TiffEditor
 
 
 def convert(
     src_canvas,
-    dst_filename,
+    dst_filename: str = None,
     head_right: bool = True,
     rows: int = 4,
     overlap: int = 10,
@@ -27,55 +26,76 @@ def convert(
     """
     logger = logging.getLogger()
     logger.debug(f"Ignored options: {kwargs}")
-    src_width = src_canvas.region.right - src_canvas.region.left
-    src_height = src_canvas.region.bottom - src_canvas.region.top
+    src_height, src_width = src_canvas.shape[:2]
 
     body_height = src_height * rows
-    body_width = int(src_width / (rows + overlap / 50))
+    body_width = int(src_width / (rows + overlap / 100))
 
     extra_width = body_width * overlap // 100
 
-    total_width = body_width + 2 * extra_width
-    scale = width / total_width
+    unscaled_width = body_width + extra_width
+
+    if width:
+        scale = width / unscaled_width
+        # srcをあらかじめスケールして、あとの処理は同じにする。
+        if isinstance(src_canvas, TiffEditor):
+            src_canvas = src_canvas.get_scaled_image(scale)
+        else:
+            src_canvas = cv2.resize(
+                src_canvas, (int(src_width * scale), int(src_height * scale))
+            )
+
+        src_height, src_width = src_canvas.shape[:2]
+
+        body_height = src_height * rows
+        body_width = int(src_width / (rows + overlap / 100))
+
+        extra_width = body_width * overlap // 100
+
+    else:
+        width = unscaled_width
+
     if thumbnail:
-        thumb = src_canvas.get_image(total_width)
+        thumb_scale = width / src_width
+        if isinstance(src_canvas, TiffEditor):
+            thumb = src_canvas.get_scaled_image(thumb_scale)
+        else:
+            thumb = cv2.resize(src_canvas, (width, int(src_height * thumb_scale)))
         # cv2.imshow("thumb", thumb)
         # cv2.waitKey(0)
         thumb_height = thumb.shape[0]
-        dst_canvas = RasterioCanvas(
-            "new",
-            dst_filename,
-            region=Region(
-                left=0, right=total_width, top=0, bottom=body_height + thumb_height
-            ),
-            scale=scale,
-        )
-        dst_canvas.put_image((0, body_height), thumb)
     else:
         thumb_height = 0
-        dst_canvas = RasterioCanvas(
-            "new",
-            dst_filename,
-            region=Region(left=0, right=total_width, top=0, bottom=body_height),
-            scale=scale,
+
+    dst_height = body_height + thumb_height
+    if dst_filename is None:
+        dst_canvas = np.zeros([dst_height, width, 3], dtype=np.uint8)
+    else:
+        dst_canvas = TiffEditor(
+            filepath=dst_filename,
+            mode="w",
+            shape=(dst_height, width, 3),
+            dtype=np.uint8,
         )
+    if thumbnail:
+        dst_canvas[0 : thumb.shape[0], : thumb.shape[1]] = thumb
 
     # srcの各列の左端
-    X = [extra_width + i * (body_width + extra_width) for i in range(0, rows)]
-    X[0] = 0
-    for i in range(0, rows):
-        cut = src_canvas.get_region(
-            Region(
-                left=X[i],
-                right=X[i] + (body_width + extra_width),
-                top=0,
-                bottom=src_height,
-            )
-        )
+    X = [i * body_width for i in range(rows)]
+    for i in range(rows):
+        cut = src_canvas[0:src_height, X[i] : X[i] + width]
         if head_right:
-            dst_canvas.put_image((0, src_height * i), cut)
+            dst_canvas[
+                src_height * (rows - i - 1)
+                + thumb_height : src_height * (rows - i)
+                + thumb_height,
+                :,
+            ] = cut
         else:
-            dst_canvas.put_image((0, src_height * (rows - i - 1)), cut)
+            dst_canvas[
+                src_height * i + thumb_height : src_height * (i + 1) + thumb_height,
+                :,
+            ] = cut
 
     # head_right
     # scale
@@ -139,9 +159,9 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
-    src_canvas = RasterioCanvas(
-        "r+",
-        tiff_filename=args.image_path,
+    src_canvas = TiffEditor(
+        filepath=args.image_path,
+        mode="r+",
     )
     convert(
         src_canvas,

@@ -302,12 +302,12 @@ class SettingsGUI(QWidget):
     def process_image(self, tab, img, file_name, head_right, args):
         module = self.converters[tab]
         if hasattr(module, "convert"):
-            rimg = module.convert(img, head_right=head_right, **args)
-            # Windowsでのファイルパス正規化
-            import os
-
-            output_path = os.path.normpath(f"{file_name}.{tab}.png")
-            cv2.imwrite(output_path, rimg)
+            module.convert(
+                img,
+                dst_filename=f"{file_name}.{tab}.tiff",
+                head_right=head_right,
+                **args,
+            )
         elif hasattr(module, "make_movie"):
             # プログレスバーを表示
             self.show_progress(True)
@@ -430,6 +430,7 @@ class SettingsGUI(QWidget):
             # image converter
             args["head_right"] = head_right
             args["width"] = 300
+            args["dst_filename"] = None
             rimg = module.convert(img, **args)
             self.preview_label.setPixmap(QPixmap.fromImage(cv2toQImage(rimg)))
         elif hasattr(module, "make_movie"):
