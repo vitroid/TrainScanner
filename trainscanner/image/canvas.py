@@ -1,7 +1,5 @@
-import cv2
 import numpy as np
-from tiledimage import Rect
-from trainscanner.decorators import deprecated
+from rasterio_tiff import Rect
 
 
 # Automatically extensible canvas.

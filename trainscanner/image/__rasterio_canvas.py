@@ -3,7 +3,7 @@ import numpy as np
 from logging import getLogger
 from rasterio.windows import Window
 import cv2
-from tiledimage import Rect, Range
+from rasterio_tiff import Rect, Range
 
 
 def rasterio_to_cv2(image):
@@ -214,36 +214,11 @@ class RasterioCanvas:
 #     return rasterio_to_cv2(image.astype(np.uint8))
 
 
-# crop on the disk
-def crop_image(tiff_filename, leftcut, rightcut, out_filename):
-    logger = getLogger()
-    # logger.info(f"{left=}, {right=}, {out_filename=}")
-    with rasterio.open(tiff_filename) as dataset:
-        width, height = dataset.width, dataset.height
-        logger.info(f"{width=} {height=} {leftcut=} {rightcut=}")
-        width -= leftcut + rightcut
-        window = Window(leftcut, 0, width, height)
-        transform_cropped = dataset.window_transform(window)
-        profile = dataset.profile
-        profile.update(
-            transform=transform_cropped,
-            width=width,
-            height=height,
-            compress="lzw",
-            tiled=True,
-            blockxsize=256,
-            blockysize=256,
-        )
-        with rasterio.open(out_filename, "w", **profile) as dst:
-            src = dataset.read(window=window)
-            dst.write(src)
-
-
 def main():
     # Preview互換モードでTIFFファイルを作成
     canvas = RasterioCanvas(
         "new",
-        Region(left=-100, right=-100 + 500, top=-200, bottom=-200 + 500),
+        Rect.from_bounds(left=-100, right=-100 + 500, top=-200, bottom=-200 + 500),
         "test.tiff",
         scale=2.0,
     )
