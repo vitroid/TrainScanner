@@ -7,8 +7,7 @@ import argparse
 from trainscanner.i18n import tr, init_translations
 import logging
 import os
-from rasterio_tiff import Rect, Range
-from rasterio_tiff.tiffeditor import TiffEditor
+from tiffeditor import Rect, Range, TiffEditor
 
 
 def convert(

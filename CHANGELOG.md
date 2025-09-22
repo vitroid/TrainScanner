@@ -1,3 +1,13 @@
+## [0.35.9] - 2025-09-22
+
+### 変更
+
+- f6b4a3a Update .gitignore to include additional image file patterns
+
+### 追加
+
+### 修正
+
 ## [] - 2025-07-30
 
 ### 変更

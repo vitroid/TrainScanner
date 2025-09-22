@@ -4,7 +4,7 @@ import scipy.optimize
 from logging import getLogger
 from dataclasses import dataclass
 import os
-from rasterio_tiff import Rect, Range
+from tiffeditor import Rect, Range
 
 
 @dataclass

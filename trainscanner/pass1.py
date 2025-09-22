@@ -17,7 +17,7 @@ from trainscanner import (
     MatchResult,
 )
 from trainscanner import video, match, find_subimage
-from rasterio_tiff import Rect, Range
+from tiffeditor import Rect, Range
 
 
 def draw_slit_position(img, slitpos, dx):

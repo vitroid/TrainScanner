@@ -32,7 +32,7 @@ from matplotlib.figure import Figure
 from trainscanner import pass1
 from trainscanner.widget import cv2toQImage
 from trainscanner import diffview
-from rasterio_tiff import Rect, Range
+from tiffeditor import Rect, Range
 
 
 class Worker(QObject):

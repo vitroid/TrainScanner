@@ -25,7 +25,7 @@ from trainscanner import stitch
 
 from trainscanner.image.scaledcanvas import ScaledCanvas
 from trainscanner.i18n import init_translations, tr
-from rasterio_tiff.tiffeditor import TiffEditor
+from tiffeditor import TiffEditor
 
 
 # import trainscanner.image.rasterio_canvas as canvas
@@ -44,16 +44,22 @@ def crop_image(tiff_filename, leftcut, rightcut, out_filename):
         width -= leftcut + rightcut
         window = Window(leftcut, 0, width, height)
         transform_cropped = dataset.window_transform(window)
-        profile = dataset.profile
+        profile = dataset.profile.copy()
         profile.update(
-            transform=transform_cropped,
             width=width,
             height=height,
             compress="lzw",
-            tiled=True,
+            tiled=True,  # 巨大ファイル対応のためタイル形式を維持
             blockxsize=256,
             blockysize=256,
+            photometric="RGB",  # 明示的にRGBを指定
         )
+        # 地理空間メタデータを削除してPreview互換にする
+        profile.pop("transform", None)
+        profile.pop("crs", None)
+        # GeoTIFF固有のタグも削除
+        for key in ["geotiff_1_1", "geotiff_1_0", "geotiff"]:
+            profile.pop(key, None)
         with rasterio.open(out_filename, "w", **profile) as dst:
             src = dataset.read(window=window)
             dst.write(src)

@@ -1,5 +1,5 @@
 import numpy as np
-from rasterio_tiff import Rect
+from tiffeditor import Rect
 
 
 # Automatically extensible canvas.
