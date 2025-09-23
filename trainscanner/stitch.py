@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from dataclasses import dataclass
 import cv2
 import numpy as np
 import math
@@ -166,6 +167,17 @@ def overlay(image, origin, subimage, linear_alpha=None):
         ] = (original * (1 - alpha) + subimage * alpha).astype(np.uint8)
 
 
+@dataclass
+class Position:
+    frame_index: int
+    # frame を置く場所のtopleft
+    x: float
+    y: float
+    # 直前のフレームからの変位。
+    dx: float
+    dy: float
+
+
 class Stitcher:
     """
     exclude video handling
@@ -245,8 +257,6 @@ class Stitcher:
         _, _, cropped = self.transform.process_image(frame)
         height, width = cropped.shape[:2]
 
-        self.vl.seek(0)
-
         # ファイルから位置を読み込む。
         # canvasを正確に再定義する。
         locations = []
@@ -264,9 +274,15 @@ class Stitcher:
                     canvas_rect |= Rect.from_bounds(
                         int(absx), int(absx + width), int(absy), int(absy + height)
                     )
-                    cols = [cols[0], absx, absy] + cols[1:]
-                    cols[1:] = [float(x * self.params.scale) for x in cols[1:]]
-                    locations.append(cols)
+                    locations.append(
+                        Position(
+                            frame_index=int(cols[0]),
+                            x=absx * self.params.scale,
+                            y=absy * self.params.scale,
+                            dx=cols[1] * self.params.scale,
+                            dy=cols[2] * self.params.scale,
+                        )
+                    )
         self.locations = locations
         self.total_frames = len(locations)
 
@@ -303,6 +319,8 @@ class Stitcher:
         if self.canvas._rasterio_handle is None and self.canvas._tiff_handle is None:
             self.canvas._open_file()
 
+        self.vl = video.video_loader_factory(moviefile)
+
     def before(self):
         """
         is a generator.
@@ -311,7 +329,7 @@ class Stitcher:
             return
         # initial seek
 
-        self.vl.seek(self.locations[0][0])
+        # self.vl.seek(self.locations[0][0])
         # while self.currentFrame + 1 < self.locations[0][0]:
         #     self.logger.debug((self.currentFrame, self.locations[0][0]))
         #     # このyieldは要るのか?
@@ -360,17 +378,18 @@ class Stitcher:
         self.canvas.close()
 
     def loop(self):
-        while len(self.locations) > 0:
-            if self.vl.head != self.locations[0][0]:
-                self.vl.seek(self.locations[0][0])
+        den = len(self.locations)
+        for num, location in enumerate(self.locations):
+            if self.vl.head != location.frame_index:
+                self.vl.seek(location.frame_index)
             frame = self.vl.next()
+            print(location)
+            print(self.vl.head)
+            # assert False
             if frame is None:
                 return False
-            self.add_image(frame, *self.locations[0][1:])
-            self.locations.pop(0)
+            self.add_image(frame, location.x, location.y, location.dx, location.dy)
 
-            den = self.total_frames
-            num = den - len(self.locations)
             yield (num, den)
 
 

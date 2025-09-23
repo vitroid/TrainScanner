@@ -329,13 +329,8 @@ def iter2(
 ):
     logger = getLogger()
 
-    rawframe = videoloader.next()
-    # All self variables to be inherited.
-    _, _, cropped = transform.process_first_image(rawframe)
-    # あとでcanvas の計算に使うために、frameの幅と高さを保存しておく。
-    frame_width, frame_height = cropped.shape[1], cropped.shape[0]
-    # Prepare a scalable self.canvas with the origin.
-    # self.canvas = None
+    rawframe = None
+    cropped = None
 
     absx, absy = 0, 0
     velx, vely = 0, 0
@@ -368,6 +363,10 @@ def iter2(
             logger.debug("Video ended (2).")
             break
         ##### compare with the previous raw frame
+        if lastrawframe is None:
+            _, _, cropped = transform.process_first_image(rawframe)
+            continue
+
         diff = cv2.absdiff(rawframe, lastrawframe)
         # When the raw frame is not changed at all, ignore the frame.
         # It happens in the frame rate adjustment between PAL and NTSC
@@ -377,6 +376,7 @@ def iter2(
             continue
         ##### Warping the frame
         _, _, cropped = transform.process_next_image(rawframe)
+
         ##### motion detection.
         # if maxaccel is set, motion detection area becomes very narrow
         # assuming that the train is running at constant speed.

@@ -168,7 +168,7 @@ def find_subimage(
     try:
         trimmed.validate(min_size=(subimage.shape[1], subimage.shape[0]))
     except ValueError:
-        logger.debug(f"Region is out of image: {region=} {image.shape=}")
+        logger.debug(f"Rect is out of image: {rect=} {image.shape=}")
         return
 
     logger.debug(f"{trimmed=}")
