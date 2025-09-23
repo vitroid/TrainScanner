@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "trainscanner"
-version = "0.35.10"
+version = "0.35.11"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]

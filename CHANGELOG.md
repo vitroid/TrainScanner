@@ -1,3 +1,13 @@
+## [0.35.10] - 2025-09-22
+
+### 変更
+
+- bb57e72 Update CHANGELOG and refactor imports to use tiffeditor
+
+### 追加
+
+### 修正
+
 ## [0.35.9] - 2025-09-22
 
 ### 変更

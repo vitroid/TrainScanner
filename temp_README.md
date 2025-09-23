@@ -16,7 +16,7 @@ trainscanner
 開発中の版を試してみたい場合はこちら。
 
 ```
-pip install git+https://github.com/vitroid/TrainScanner.git
+pip install 'git+https://github.com/vitroid/TrainScanner.git#beta'
 ```
 
 ## ドキュメント
@@ -49,7 +49,7 @@ pynojector をインストールすると、ts_converter に機能が追加さ�
 pip install https://github.com/vitroid/pynojector.git
 ```
 
-## コマンドラインからの利用
+<!-- ## コマンドラインからの利用
 
 ### `helicify`: 長い画像をらせんにするツール
 
@@ -61,7 +61,7 @@ helicify longimage.png
 
 ```
 {{ usage_helicify }}
-```
+``` -->
 
 ### `rectify`: 長い画像を何段かに切りわけるツール
 

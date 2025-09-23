@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import os
+import subprocess
 
 # from genice2.tool import line_replacer
 # import distutils.core
@@ -34,6 +35,15 @@ project |= {
     "usage_rectify": get_usage("rect", "rectify"),
     "usage_movify": get_usage("movie", "movify"),
 }
+
+branch = subprocess.run(
+    ["git", "branch", "--show-current"], capture_output=True, text=True
+).stdout.strip()
+if branch == "main":
+    branch = ""
+else:
+    branch = f"#{branch}"
+project["branch"] = branch
 
 # テンプレートの内容を標準入力から読み込む
 template_content = sys.stdin.read()
