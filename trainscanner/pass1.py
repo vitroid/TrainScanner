@@ -157,12 +157,9 @@ def prepare_parser():
     parser = argparse.ArgumentParser(
         description="TrainScanner matcher",
     )
-    parser.add_argument(
-        "--debug", action="store_true", dest="debug", help="Show debug info."
-    )
-    parser.add_argument(
-        "-z", "--zero", action="store_true", dest="zero", help="Suppress drift."
-    )
+    parser.add_argument("--debug", action="store_true", help="Show debug info.")
+    parser.add_argument("--develop", action="store_true", help="Developer mode.")
+    parser.add_argument("-z", "--zero", action="store_true", help="Suppress drift.")
     parser.add_argument(
         "-S",
         "--skip",
@@ -332,7 +329,7 @@ def iter2(
 ):
     logger = getLogger()
 
-    nframe, rawframe = videoloader.next()
+    rawframe = videoloader.next()
     # All self variables to be inherited.
     _, _, cropped = transform.process_first_image(rawframe)
     # あとでcanvas の計算に使うために、frameの幅と高さを保存しておく。
@@ -363,11 +360,11 @@ def iter2(
         lastrawframe = rawframe
         lastframe = cropped
         # もしlastが設定されていて，しかもframe数がそれを越えていれば，終了．
-        if last > 0 and last < nframe + 1:
+        if 0 < last < videoloader.head:
             break
         # 1フレームとりこみ
-        nframe, rawframe = videoloader.next()
-        if nframe == 0:
+        rawframe = videoloader.next()
+        if rawframe is None:
             logger.debug("Video ended (2).")
             break
         ##### compare with the previous raw frame
@@ -431,12 +428,14 @@ def iter2(
             # 既に動きを検出している状態
             if motion_detected:
                 # 大きな動きが継続している - 変位をそのまま採用
-                logger.debug(f"Accept the motion ({nframe} {velx} {vely})")
+                logger.debug(f"Accept the motion ({videoloader.head-1} {velx} {vely})")
                 match_fail = 0
             else:
                 # 動きがantishake水準より小さくなった - 小さな動きを無視
                 match_fail += 1
-                logger.debug(f"Ignore a small motion ({nframe} {velx} {vely})")
+                logger.debug(
+                    f"Ignore a small motion ({videoloader.head-1} {velx} {vely})"
+                )
                 # TODO: match_failカウンターがparams.trailingに届いたら停止処理
                 # if match_fail > trailing: break
         else:
@@ -446,7 +445,9 @@ def iter2(
                     # コールドスタート時は即座に動作開始
                     in_action = True
                     coldstart = False
-                    logger.debug(f"Cold start motion detected ({nframe} {velx} {vely})")
+                    logger.debug(
+                        f"Cold start motion detected ({videoloader.head-1} {velx} {vely})"
+                    )
                 else:
                     # 通常時は安定性をチェック
                     fluctuation_x = velx_history.fluctuation()
@@ -455,34 +456,40 @@ def iter2(
                     if antishake <= fluctuation_x or antishake <= fluctuation_y:
                         # 変動が大きい - カメラが安定するまで待機
                         logger.debug(
-                            f"Wait for the camera to stabilize ({nframe=} {velx=} {vely=} {fluctuation_x=} {fluctuation_y=})"
+                            f"Wait for the camera to stabilize ({videoloader.head-1=} {velx=} {vely=} {fluctuation_x=} {fluctuation_y=})"
                         )
                     else:
                         # 速度が安定した - 記録開始
                         in_action = True
                         logger.debug(
-                            f"The camera is stabilized. Now ready to start recording. {nframe=} {velx=} {vely=}"
+                            f"The camera is stabilized. Now ready to start recording. {videoloader.head-1=} {velx=} {vely=}"
                         )
                         # TODO: 過去にさかのぼってマッチングを行う
                         # self.tspos = self._backward_match(absx, absy, dx, dy, precount)
 
             else:
                 # 動きが小さい - 静止フレームとして無視
-                logger.debug(f"Still frame ({nframe} {velx} {vely})")
+                logger.debug(f"Still frame ({videoloader.head-1} {velx} {vely})")
                 match_fail = 0  # 動きを検出していない時はmatch_failをリセット
 
-        logger.debug(f"Capture {nframe=} {velx=} {vely=} #{in_action=}")
+        logger.debug(f"Capture {videoloader.head-1=} {velx=} {vely=} #{in_action=}")
         absx += hopx
         absy += hopy
 
         if hook is not None:
             matchresult = MatchResult(
-                index=nframe, dt=hop, velocity=(velx, vely), value=value, image=cropped
+                index=videoloader.head - 1,
+                dt=hop,
+                velocity=(velx, vely),
+                value=value,
+                image=cropped,
             )
             hook(matchresult)
 
         if in_action:
-            frameposition = FramePosition(index=nframe, dt=hop, velocity=(velx, vely))
+            frameposition = FramePosition(
+                index=videoloader.head - 1, dt=hop, velocity=(velx, vely)
+            )
             yield frameposition
     # end of capture
 
@@ -656,14 +663,7 @@ class Pass1:
         note that it is a generator.
         """
         logger = getLogger()
-        # self.nframes = 0  #1 is the first frame
-
         self.vl.seek(self.params.skip)
-        # for i in range(self.params.skip):  # skip frames
-        #     nframe = self.vl.skip()
-        #     if nframe == 0:
-        #         break
-        #     yield nframe, self.params.skip  # report progress
 
     def run(self, hook=None, stop_callback=None):
         # for the compatibility

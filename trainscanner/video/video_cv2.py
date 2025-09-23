@@ -10,23 +10,26 @@ import cv2
 
 
 class VideoLoader(object):
+    # In TrainScanner, the video frame starts from 0
     def __init__(self, filename):
         self.cap = cv2.VideoCapture(filename)
-        self.nframe = 0
+        self.head = 0
+        # 1 is the first frame
 
     def next(self):
         ret, frame = self.cap.read()
-        self.nframe += 1
         if ret == False:
-            return 0, frame
-        return self.nframe, frame
+            return None
+        framenumber = self.head
+        self.head += 1
+        return frame
 
     def skip(self):
         ret = self.cap.grab()
-        self.nframe += 1
+        self.head += 1
         if ret == False:
-            return 0
-        return self.nframe
+            return None
+        return self.head
 
     def total_frames(self):
         return int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -34,9 +37,9 @@ class VideoLoader(object):
     def seek(self, frame):
         ret = self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame)
         if ret == False:
-            return 0
-        self.nframe = frame
-        return self.nframe
+            return None
+        self.head = frame
+        return self.head
 
 
 if __name__ == "__main__":

@@ -241,11 +241,11 @@ class Stitcher:
 
         # 1フレームだけ読んで、キャンバスの大きさを決定する。
         self.vl = video.video_loader_factory(moviefile)
-        _, frame = self.vl.next()
+        frame = self.vl.next()
         _, _, cropped = self.transform.process_image(frame)
         height, width = cropped.shape[:2]
 
-        self.vl = video.video_loader_factory(moviefile)
+        self.vl.seek(0)
 
         # ファイルから位置を読み込む。
         # canvasを正確に再定義する。
@@ -311,17 +311,12 @@ class Stitcher:
             return
         # initial seek
 
-        self.currentFrame = self.vl.seek(self.locations[0][0] - 1)
+        self.vl.seek(self.locations[0][0])
         # while self.currentFrame + 1 < self.locations[0][0]:
         #     self.logger.debug((self.currentFrame, self.locations[0][0]))
         #     # このyieldは要るのか?
         #     yield self.currentFrame, self.locations[0][0]
         #     self.currentFrame = self.vl.skip()
-
-    def getProgress(self):
-        den = self.total_frames
-        num = den - len(self.locations)
-        return (num, den)
 
     def set_hook(self, hook):
         self.hook = hook
@@ -365,24 +360,18 @@ class Stitcher:
         self.canvas.close()
 
     def loop(self):
-        while self._onestep():
-            yield self.getProgress()
-
-    def _onestep(self):
-        if len(self.locations) == 0:
-            return False
-        while self.currentFrame + 1 < self.locations[0][0]:
-            self.currentFrame = self.vl.skip()
-            if self.currentFrame == 0:
+        while len(self.locations) > 0:
+            if self.vl.head != self.locations[0][0]:
+                self.vl.seek(self.locations[0][0])
+            frame = self.vl.next()
+            if frame is None:
                 return False
-        self.currentFrame, frame = self.vl.next()
-        if self.currentFrame == 0:
-            return False
-        self.add_image(frame, *self.locations[0][1:])
-        self.locations.pop(0)
-        if len(self.locations) == 0:
-            return False
-        return True  # not end
+            self.add_image(frame, *self.locations[0][1:])
+            self.locations.pop(0)
+
+            den = self.total_frames
+            num = den - len(self.locations)
+            yield (num, den)
 
 
 if __name__ == "__main__":

@@ -36,6 +36,8 @@ class ImageBar(QLabel):
         for slit in range(division):
             point = QPoint(slit * destwidth // division, 0)
             thumb = self.transformer(self.thumbs[slit * len(self.thumbs) // division])
+            if thumb is None:
+                continue
 
             if thumb.width() > slit_width:
                 # 画像がスリット幅より大きい場合は中央を切り出し

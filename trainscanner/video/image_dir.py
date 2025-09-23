@@ -12,7 +12,7 @@ import os
 class VideoLoader(object):
     def __init__(self, filename):
         self.dirname = filename
-        self.nframe = 0
+        self.head = 0
         # ディレクトリ内のファイルをソートしておく
         self.filenames = sorted(
             [
@@ -23,13 +23,19 @@ class VideoLoader(object):
         )
 
     def next(self):
-        if self.nframe >= len(self.filenames):
-            return 0, None
-        filename = self.filenames[self.nframe]
-        frame = cv2.imread(filename)
-        self.nframe += 1
-        return self.nframe, frame
+        if self.head >= len(self.filenames):
+            return None
+        filename = self.filenames[self.head]
+        self.head += 1
+        return cv2.imread(filename)
 
     def skip(self):
-        self.nframe += 1
-        return self.nframe
+        self.head += 1
+        return self.head
+
+    def total_frames(self):
+        return len(self.filenames)
+
+    def seek(self, frame):
+        self.head = frame
+        return self.head

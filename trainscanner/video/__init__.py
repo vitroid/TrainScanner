@@ -29,8 +29,8 @@ def video_loader_factory(filename: str):
 def video_iter(filename: str):
     video_loader = video_loader_factory(filename)
     while True:
-        frame_index, frame = video_loader.next()
-        if frame_index == 0:
+        frame = video_loader.next()
+        if frame is None:
             break
         yield frame
 
