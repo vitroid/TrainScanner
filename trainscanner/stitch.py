@@ -383,8 +383,6 @@ class Stitcher:
             if self.vl.head != location.frame_index:
                 self.vl.seek(location.frame_index)
             frame = self.vl.next()
-            print(location)
-            print(self.vl.head)
             # assert False
             if frame is None:
                 return False

@@ -404,10 +404,11 @@ def iterations(
             maxmax_val = 0
             maxmax_loc = None
             maxmax_hop = 0
+            print(match_scores.keys())
             for hop in match_scores:
                 scores = match_scores[hop].value
                 _, maxval, _, maxloc = cv2.minMaxLoc(scores)
-                if maxmax_val < maxval:
+                if maxmax_val <= maxval:
                     maxmax_val = maxval
                     maxmax_hop = hop
                     maxmax_loc = maxloc
@@ -599,7 +600,7 @@ def add_leading_frames(
     # prematchesの最後のフレームは、最初のvx, vyを予測したものに一致するはず。
     assert reversed[0].frame_index == frame_index
     # vx, vy周辺でのピークをさがす。
-    print(reversed[0].value.shape)
+    # print(reversed[0].value.shape)
     reversed.pop(0)
 
     leading_frames = []
@@ -620,18 +621,18 @@ def add_leading_frames(
             dy_min = int(vy * hop - dy[0] - yaccel)
             dy_max = int(vy * hop - dy[0] + yaccel + 1)
 
-            print(scores.shape)
-            print(dx_min, dx_max, dy_min, dy_max)
+            # print(scores.shape)
+            # print(dx_min, dx_max, dy_min, dy_max)
             minval, maxval, minloc, maxloc = cv2.minMaxLoc(
                 scores[dy_min:dy_max, dx_min:dx_max]
             )
-            print(minval, maxval, minloc, maxloc)
+            # print(minval, maxval, minloc, maxloc)
             if maxmax_val < maxval:
                 maxmax_hop = hop
                 maxmax_loc = maxloc
                 maxmax_val = maxval
         delta = (maxmax_loc[0] - xaccel, maxmax_loc[1] - yaccel)
-        print(f"{delta=}")
+        # print(f"{delta=}")
         vx += delta[0]
         vy += delta[1]
 

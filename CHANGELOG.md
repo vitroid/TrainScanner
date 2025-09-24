@@ -1,3 +1,13 @@
+## [0.36.2] - 2025-09-24
+
+### 変更
+
+- 38ae12b Update CHANGELOG for version 0.36.1 and modify dependencies
+
+### 追加
+
+### 修正
+
 ## [0.36.1] - 2025-09-24
 
 ### 変更
