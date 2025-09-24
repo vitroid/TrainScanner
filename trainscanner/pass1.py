@@ -101,10 +101,6 @@ def displacements(
     match_area = Rect.from_bounds(0, new_width, 0, new_height)
 
     # Apply template Matching
-    ## develop
-    # if logger.isEnabledFor(DEVELOP_LEVEL):
-    #     maxaccel = None
-    #     yfixed = True
     if maxaccel is None:
         # maxaccelは指定されていない場合は、画像全体がマッチング対象になる。
         hop = 1
@@ -662,10 +658,6 @@ class Pass1:
                 # filename='log.txt',
                 format="%(asctime)s %(levelname)s %(message)s",
             )
-        elif self.params.develop:
-            basicConfig(
-                level=DEVELOP_LEVEL, format="%(asctime)s %(levelname)s %(message)s"
-            )
         else:
             basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(message)s")
         # Assume the video is in the same dir.
@@ -721,6 +713,7 @@ class Pass1:
                 elif option in (
                     "--zero",
                     "--stall",
+                    "--debug",
                 ):
                     if value is True:
                         self.tsconf += option + "\n"

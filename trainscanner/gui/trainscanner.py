@@ -450,6 +450,7 @@ class SettingsGUI(QWidget):
             self.slitwidth_slider.setValue(int(p1["slitwidth"] * 100))
             self.antishake_slider.setValue(p1["antishake"])
             self.estimate_slider.setValue(p1["estimate"])
+            self.dropframe_slider.setValue(p1["dropframe"])
             if p1["zero"]:
                 self.btn_zerodrift.setCheckState(Qt.CheckState.Checked)
             else:
