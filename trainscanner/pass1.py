@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from dataclasses import dataclass
 import cv2
 import numpy as np
 import math
@@ -16,7 +17,7 @@ from trainscanner import (
     FramePosition,
     MatchResult,
 )
-from trainscanner import video, match, find_subimage
+from trainscanner import video
 from tiffeditor import Rect, Range
 
 
@@ -35,10 +36,38 @@ def draw_slit_position(img, slitpos, dx):
     cv2.line(img, (x2, 0), (x2, h), (0, 255, 0), 1)
 
 
-# @debug_log
-def motion(
-    image,
-    ref,
+@dataclass
+class MatchScore:
+    dx: np.ndarray
+    dy: np.ndarray
+    value: np.ndarray
+
+
+@dataclass
+class PreMatchScore(MatchScore):
+    frame_index: int
+
+
+def match2(target_area, target_rect, focus, focus_rect):
+    scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF_NORMED)
+    # scoresに座標を指示する。
+    dx = range(
+        target_rect.left - focus_rect.left,
+        target_rect.right - focus_rect.right + 1,
+    )
+    dy = range(
+        target_rect.top - focus_rect.top,
+        target_rect.bottom - focus_rect.bottom + 1,
+    )
+    # dx, dy = np.meshgrid(dx, dy)
+    # assert dx.shape == scores.shape
+    # 変位ベクトルとスコアをセットで返す。
+    return MatchScore(dx, dy, scores)
+
+
+def displacements(
+    new_image,
+    old_image,
     focus: Rect = Rect(
         x_range=Range(min_val=333, max_val=666), y_range=Range(min_val=333, max_val=666)
     ),
@@ -53,60 +82,50 @@ def motion(
     dropfameが0でない場合、N+1倍の移動がありうる。
     """
     logger = getLogger()
-    hi, wi = ref.shape[0:2]
+    old_height, old_width = old_image.shape[0:2]
     template_rect = Rect(
         x_range=Range(
-            min_val=wi * focus.left // 1000,
-            max_val=wi * focus.right // 1000,
+            min_val=old_width * focus.left // 1000,
+            max_val=old_width * focus.right // 1000,
         ),
         y_range=Range(
-            min_val=hi * focus.top // 1000,
-            max_val=hi * focus.bottom // 1000,
+            min_val=old_height * focus.top // 1000,
+            max_val=old_height * focus.bottom // 1000,
         ),
     )
-    template = ref[
+    template = old_image[
         template_rect.top : template_rect.bottom,
         template_rect.left : template_rect.right,
-        :,
     ]
-    # gray_template = standardize(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY))
-    h, w = template.shape[0:2]
+    new_height, new_width = new_image.shape[0:2]
+    match_area = Rect.from_bounds(0, new_width, 0, new_height)
 
     # Apply template Matching
+    ## develop
+    # if logger.isEnabledFor(DEVELOP_LEVEL):
+    #     maxaccel = None
+    #     yfixed = True
     if maxaccel is None:
         # maxaccelは指定されていない場合は、画像全体がマッチング対象になる。
         hop = 1
         if yfixed:
             # x方向にのみずらして照合する。
-            image = image[
-                template_rect.y_range.min_val : template_rect.y_range.max_val, :, :
-            ]
-            # max_loc, fractional_shift, max_val = subpixel_match(
-            #     image, template, subpixel=False
-            # )
-            max_loc, max_val = match(image, template)
-            # max_locはtemplateの左上角を原点とした相対座標なので、xminを引く。
-            max_loc = (
-                max_loc[0] - template_rect.left,
-                max_loc[1],
+            match_area = Rect.from_bounds(
+                0, new_width, template_rect.top, template_rect.bottom
             )
-            return max_loc, hop, max_val
+        subimage = new_image[
+            match_area.top : match_area.bottom, match_area.left : match_area.right
+        ]
 
-        # max_loc, fractional_shift, max_val = subpixel_match(
-        #     image, template, subpixel=False
-        # )
-        max_loc, max_val = match(image, template)
-        max_loc = (
-            max_loc[0] - template_rect.left,
-            max_loc[1] - template_rect.top,
-        )
-        # print(min_loc)
-        return max_loc, hop, max_val
+        # match2は座標換算つき照合
+        return match2(subimage, match_area, template, template_rect)
+
     else:
-        maxmax_loc = None
-        maxmax_val = 0
-        maxmax_hop = 0
-        maxmax_fra = None
+        match_scores = {}
+        # maxmax_loc = None
+        # maxmax_val = 0
+        # maxmax_hop = 0
+        # maxmax_fra = None
         for hop in range(1, dropframe + 2):
             # subpixel_matchingする時に必要なマージン
             fit_margins = [min(2, maxaccel[0]), min(2, maxaccel[1])]
@@ -116,38 +135,17 @@ def motion(
             roiy0 = int(np.floor(template_rect.top + delta[1] * hop - maxaccel[1]))
             roix1 = int(np.ceil(template_rect.right + delta[0] * hop + maxaccel[0]))
             roiy1 = int(np.ceil(template_rect.bottom + delta[1] * hop + maxaccel[1]))
-            rect = Rect(
+            match_area = Rect(
                 x_range=Range(min_val=roix0, max_val=roix1),
                 y_range=Range(min_val=roiy0, max_val=roiy1),
             )
 
-            result = find_subimage(
-                image,
-                template,
-                rect,
-                relative=False,
-                fit_margins=fit_margins,
-                subpixel=False,  # あんまり正確じゃないので、とりあえず封印する。
-            )
-            if result is None:
-                continue
-            max_loc, fractional_shift, max_val = result
-            # max_loc, max_val = match(gray_crop, gray_template)
-            if maxmax_val < max_val:
-                maxmax_loc = max_loc
-                maxmax_val = max_val
-                maxmax_hop = hop
-                maxmax_fra = fractional_shift
-
-        new_delta = (
-            maxmax_loc[0] + maxmax_fra[0] - template_rect.left,
-            maxmax_loc[1] + maxmax_fra[1] - template_rect.top,
-        )
-        # dropframeがあった場合、2倍や3倍の移動が検出される。
-        # new_deltaには変位をそのまま返すが、同時に倍率も返す。
-        if maxmax_hop != 1:
-            logger.info(f"Skipped frames: {maxmax_hop-1}")
-        return new_delta, maxmax_hop, maxmax_val
+            subimage = new_image[
+                match_area.top : match_area.bottom, match_area.left : match_area.right
+            ]
+            match_score = match2(subimage, match_area, template, template_rect)
+            match_scores[hop] = match_score
+        return match_scores
 
 
 def prepare_parser():
@@ -158,7 +156,6 @@ def prepare_parser():
         description="TrainScanner matcher",
     )
     parser.add_argument("--debug", action="store_true", help="Show debug info.")
-    parser.add_argument("--develop", action="store_true", help="Developer mode.")
     parser.add_argument("-z", "--zero", action="store_true", help="Suppress drift.")
     parser.add_argument(
         "-S",
@@ -304,6 +301,10 @@ class historyQueue:
     def fluctuation(self):
         return max(self.queue) - min(self.queue)
 
+    @property
+    def length(self):
+        return len(self.queue)
+
 
 def valid_focus(focus: Rect):
     try:
@@ -313,7 +314,7 @@ def valid_focus(focus: Rect):
         return False
 
 
-def iter2(
+def iterations(
     videoloader,
     focus: Rect,
     transform: trainscanner.transformation,
@@ -323,6 +324,7 @@ def iter2(
     maxaccel: int = 1,
     identity: float = 1.0,
     antishake: int = 5,
+    estimate: int = 10,
     last: int = 0,
     hook=None,
     stop_callback=None,
@@ -340,11 +342,14 @@ def iter2(
     # そして、変位がantishakeを越えたあとは、通常と同じように判定する。
 
     motions_plot = []  # リアルタイムプロット用のデータ
-    velx_history = historyQueue(5)  # store velocities
-    vely_history = historyQueue(5)  # store velocities
+    velx_history = historyQueue(estimate)  # store velocities
+    vely_history = historyQueue(estimate)  # store velocities
 
     if not valid_focus(focus):
         return
+
+    framepositions = []
+    prematches = []
 
     while True:
         # 停止チェック
@@ -391,7 +396,7 @@ def iter2(
         if in_action or coldstart:
             # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
             logger.debug(f"velx: {velx} vely: {vely}")
-            delta, hop, value = motion(
+            match_scores = displacements(
                 lastframe,
                 cropped,
                 focus=focus,
@@ -399,6 +404,23 @@ def iter2(
                 delta=(velx, vely),
                 dropframe=dropframe,
             )
+            # dropframeの数だけscoresが帰ってくるので、その中の最大のものをさがしたいのだが、もっと簡単にしたいなあ。
+            maxmax_val = 0
+            maxmax_loc = None
+            maxmax_hop = 0
+            for hop in match_scores:
+                scores = match_scores[hop].value
+                _, maxval, _, maxloc = cv2.minMaxLoc(scores)
+                if maxmax_val < maxval:
+                    maxmax_val = maxval
+                    maxmax_hop = hop
+                    maxmax_loc = maxloc
+            delta = (
+                match_scores[maxmax_hop].dx[maxmax_loc[0]],
+                match_scores[maxmax_hop].dy[maxmax_loc[1]],
+            )
+            hop = maxmax_hop
+            value = maxmax_val
             motions_plot.append([delta[0], delta[1], value])
             if delta is None:
                 logger.error(
@@ -407,7 +429,21 @@ def iter2(
                 break
         else:
             # 速度不明なので、広い範囲でマッチングを行う。
-            delta, hop, value = motion(lastframe, cropped, focus=focus, yfixed=yfixed)
+            match_score = displacements(lastframe, cropped, focus=focus, yfixed=yfixed)
+            # あとで、focus突入時の速度予測に使う。
+            prematches.append(
+                PreMatchScore(
+                    frame_index=videoloader.head - 1,
+                    dx=match_score.dx,
+                    dy=match_score.dy,
+                    value=match_score.value,
+                )
+            )
+            _, maxval, _, maxloc = cv2.minMaxLoc(match_score.value)
+            # print(dx.shape, dy.shape, scores.shape, maxloc)
+            delta = (match_score.dx[maxloc[0]], match_score.dy[maxloc[1]])
+            hop = 1
+            value = maxval
         hopx, hopy = delta
         velx, vely = delta[0] / hop, delta[1] / hop
         logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
@@ -453,7 +489,11 @@ def iter2(
                     fluctuation_x = velx_history.fluctuation()
                     fluctuation_y = vely_history.fluctuation()
 
-                    if antishake <= fluctuation_x or antishake <= fluctuation_y:
+                    if (
+                        antishake <= fluctuation_x
+                        or antishake <= fluctuation_y
+                        or velx_history.length < estimate
+                    ):
                         # 変動が大きい - カメラが安定するまで待機
                         logger.debug(
                             f"Wait for the camera to stabilize ({videoloader.head-1=} {velx=} {vely=} {fluctuation_x=} {fluctuation_y=})"
@@ -490,7 +530,8 @@ def iter2(
             frameposition = FramePosition(
                 index=videoloader.head - 1, dt=hop, velocity=(velx, vely)
             )
-            yield frameposition
+            framepositions.append(frameposition)
+    return framepositions, prematches
     # end of capture
 
 
@@ -539,41 +580,70 @@ def add_trailing_frames(
 
 
 def add_leading_frames(
-    framepositions: list[FramePosition], dispose: int, estimate: int, extend: int
+    framepositions: list[FramePosition],
+    prepatches: list[PreMatchScore],
+    accel: int = 1,
+    yfixed: bool = False,
+    dropframe: int = 0,
 ):
     """
     Add leading frames to tspos.
+
+    外挿ではなく、prepatchesを使って、速度を予測する。
     """
+    reversed = prepatches[::-1]
+    xaccel = accel
+    yaccel = accel
+    if yfixed:
+        yaccel = 0
 
-    # 最初は速度が安定しないので捨てる。
-    framepositions = framepositions[dispose:]
+    vx, vy = framepositions[0].velocity
+    frame_index = framepositions[0].index
+    # まず、1フレームだけ予測を書いてみる。
+    # prematchesの最後のフレームは、最初のvx, vyを予測したものに一致するはず。
+    assert reversed[0].frame_index == frame_index
+    # vx, vy周辺でのピークをさがす。
+    print(reversed[0].value.shape)
+    reversed.pop(0)
 
-    dt = [fp.dt for fp in framepositions[:estimate]]
-    t = np.cumsum(dt)
-    x = [fp.velocity[0] for fp in framepositions[:estimate]]
-    y = [fp.velocity[1] for fp in framepositions[:estimate]]
+    leading_frames = []
 
-    ax, bx = np.polyfit(t, x, 1)
-    ay, by = np.polyfit(t, y, 1)
+    for prematchscore in reversed:
+        frame_index = prematchscore.frame_index
+        # dx, dyはscoresの目盛り、等間隔
+        dx = prematchscore.dx
+        dy = prematchscore.dy
+        scores = prematchscore.value
 
-    t_extrapolated = np.linspace(
-        -extend,
-        -1,
-        extend,
-        dtype=int,
-    )
-    x_extrapolated = ax * t_extrapolated + bx
-    y_extrapolated = ay * t_extrapolated + by
-    firstframe = framepositions[0].index
-    leading_framepositions = [
-        FramePosition(
-            index=firstframe + t_extrapolated[i],
-            dt=1,
-            velocity=(x_extrapolated[i], y_extrapolated[i]),
+        maxmax_hop = 0
+        maxmax_val = 0
+        maxmax_loc = None
+        for hop in range(1, dropframe + 2):
+            dx_min = int(vx * hop - dx[0] - xaccel)
+            dx_max = int(vx * hop - dx[0] + xaccel + 1)
+            dy_min = int(vy * hop - dy[0] - yaccel)
+            dy_max = int(vy * hop - dy[0] + yaccel + 1)
+
+            print(scores.shape)
+            print(dx_min, dx_max, dy_min, dy_max)
+            minval, maxval, minloc, maxloc = cv2.minMaxLoc(
+                scores[dy_min:dy_max, dx_min:dx_max]
+            )
+            print(minval, maxval, minloc, maxloc)
+            if maxmax_val < maxval:
+                maxmax_hop = hop
+                maxmax_loc = maxloc
+                maxmax_val = maxval
+        delta = (maxmax_loc[0] - xaccel, maxmax_loc[1] - yaccel)
+        print(f"{delta=}")
+        vx += delta[0]
+        vy += delta[1]
+
+        leading_frames.append(
+            FramePosition(index=frame_index, dt=maxmax_hop, velocity=(vx, vy))
         )
-        for i in range(extend)
-    ]
-    return leading_framepositions + framepositions
+
+    return leading_frames[::-1] + framepositions
 
 
 class Pass1:
@@ -591,6 +661,10 @@ class Pass1:
                 level=DEBUG,
                 # filename='log.txt',
                 format="%(asctime)s %(levelname)s %(message)s",
+            )
+        elif self.params.develop:
+            basicConfig(
+                level=DEVELOP_LEVEL, format="%(asctime)s %(levelname)s %(message)s"
             )
         else:
             basicConfig(level=INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -677,22 +751,20 @@ class Pass1:
             pers=self.params.perspective,
             crop=self.params.crop,
         )
-        self.framepositions: list[FramePosition] = [
-            frameposition
-            for frameposition in iter2(
-                videoloader=self.vl,
-                focus=focus,
-                transform=transform,
-                coldstart=self.params.stall,
-                yfixed=self.params.zero,
-                dropframe=self.params.dropframe,
-                maxaccel=self.params.maxaccel,
-                identity=self.params.identity,
-                last=self.params.last,
-                hook=hook,
-                stop_callback=stop_callback,
-            )
-        ]
+        self.framepositions, self.prematches = iterations(
+            videoloader=self.vl,
+            focus=focus,
+            transform=transform,
+            coldstart=self.params.stall,
+            yfixed=self.params.zero,
+            dropframe=self.params.dropframe,
+            maxaccel=self.params.maxaccel,
+            identity=self.params.identity,
+            estimate=self.params.estimate,
+            last=self.params.last,
+            hook=hook,
+            stop_callback=stop_callback,
+        )
 
     def after(self):
         """
@@ -712,9 +784,10 @@ class Pass1:
         )
         self.framepositions = add_leading_frames(
             framepositions=self.framepositions,
-            estimate=self.params.estimate,
-            dispose=self.params.estimate,
-            extend=self.params.trailing,
+            prepatches=self.prematches,
+            accel=self.params.maxaccel,
+            yfixed=self.params.zero,
+            dropframe=self.params.dropframe,
         )
 
         # self.tsconf += f"--canvas\n{canvas[0]}\n{canvas[1]}\n{canvas[2]}\n{canvas[3]}\n"
@@ -747,7 +820,7 @@ def main():
                 min_val=pass1.params.focus[2],
                 max_val=pass1.params.focus[3],
             ),
-        )
+        ),
     )
 
     def show(matchresult: MatchResult):

@@ -1,3 +1,33 @@
+## [0.35.13] - 2025-09-23
+
+### 変更
+
+- 573e0b3 Refactor logging and frame handling in TrainScanner modules
+
+### 追加
+
+### 修正
+
+## [0.35.12] - 2025-09-23
+
+### 変更
+
+- 2c639bb Refactor video frame handling and improve logging in Pass1 and Stitcher classes
+
+### 追加
+
+### 修正
+
+## [0.35.11] - 2025-09-23
+
+### 変更
+
+- 50f1579 Update CHANGELOG and README for version 0.35.10
+
+### 追加
+
+### 修正
+
 ## [0.35.10] - 2025-09-22
 
 ### 変更
