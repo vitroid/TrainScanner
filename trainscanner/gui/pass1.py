@@ -2,13 +2,14 @@
 
 import math
 import sys
+import time
 from logging import DEBUG, WARN, basicConfig, getLogger, INFO
 
 import cv2
 import numpy as np
 import os
 
-from PyQt6.QtCore import QObject, QThread, pyqtSignal, Qt
+from PyQt6.QtCore import QObject, QThread, pyqtSignal, Qt, QTimer
 from PyQt6.QtGui import QImage, QPixmap, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
@@ -61,18 +62,20 @@ class Worker(QObject):
         self.motions_plot = []  # リアルタイムプロット用のデータ
         self.last_plot_update_time = 0  # 最後のプロット更新時刻
         self.plot_update_interval = 0.1  # プロット更新間隔（秒）
+        self.pending_frameposition = None  # 待機中のフレーム位置
 
     def view(self, frameposition: pass1.FramePosition) -> None:
-        diff = self.v.view(frameposition)
-        if diff is not None:
-            qimage = cv2toQImage(diff)
-            if not qimage.isNull():
-                self.frameRendered.emit(qimage)
-
-        self.motions_plot.append(
-            [frameposition.velocity[0], frameposition.velocity[1], frameposition.value]
-        )
-        self.motionDataUpdated.emit(self.motions_plot)
+        # 最新のフレーム位置を保存（QTimerで制御）
+        self.pending_frameposition = frameposition
+        
+        # プロット更新（頻度制限付き）
+        current_time = time.time()
+        if current_time - self.last_plot_update_time >= self.plot_update_interval:
+            self.last_plot_update_time = current_time
+            self.motions_plot.append(
+                [frameposition.velocity[0], frameposition.velocity[1], frameposition.value]
+            )
+            self.motionDataUpdated.emit(self.motions_plot)
 
     def task(self):
         if not self._isRunning:
@@ -92,6 +95,7 @@ class Worker(QObject):
             return not self._isRunning
 
         self.pass1.run(hook=self.view, stop_callback=stop_check)
+        # self.pass1.run(hook=None, stop_callback=stop_check)
 
         successful = len(self.pass1.framepositions) > 0
         self.pass1.after()
@@ -148,6 +152,12 @@ class MatcherUI(QDialog):
             self.layout.addWidget(self.image_pane)
             self.setLayout(self.layout)
 
+        # フレーム更新の制御（QTimer使用）
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.update_frame_display)
+        self.update_timer.start(100)  # 100ms間隔で更新（10FPS）
+
+        # 非同期処理を復活：QThreadを使用
         self.thread = QThread()
         self.thread.start()
 
@@ -183,6 +193,10 @@ class MatcherUI(QDialog):
         self.motion_data = []
         # プロット更新の制御
         self.plot_updating = False  # プロット更新中フラグ
+        
+        # フレーム更新の制御
+        self.last_pixmap_update_time = 0  # 最後のピクスマップ更新時刻
+        self.pixmap_update_interval = 0.1  # ピクスマップ更新間隔（秒）
 
     def update_plot(self, motions_plot_data):
         """リアルタイムでモーションプロットを更新"""
@@ -237,17 +251,23 @@ class MatcherUI(QDialog):
             self.plot_updating = False
 
     def updatePixmap(self, image):
-        # 無効な画像をスキップ（これが重要な修正）
-        if image.isNull() or image.width() == 0 or image.height() == 0:
-            return
+        # このメソッドは使用しない（QTimerで制御）
+        pass
 
-        # it is called only when the pixmap is really updated by the thread.
-        pixmap = QPixmap.fromImage(image)
-        # pixmapが有効でない場合はスキップ
-        if pixmap.isNull():
-            return
-
-        self.image_pane.setPixmap(pixmap)
+    def update_frame_display(self):
+        """QTimerで定期的にフレーム表示を更新"""
+        if hasattr(self.worker, 'pending_frameposition') and self.worker.pending_frameposition is not None:
+            try:
+                # 最新のフレーム位置から画像を生成
+                diff = self.worker.v.view(self.worker.pending_frameposition)
+                if diff is not None:
+                    qimage = cv2toQImage(diff)
+                    if not qimage.isNull():
+                        pixmap = QPixmap.fromImage(qimage)
+                        if not pixmap.isNull():
+                            self.image_pane.setPixmap(pixmap)
+            except Exception as e:
+                print(f"フレーム表示更新でエラーが発生しました: {e}")
 
     def stop_processing(self):
         """停止ボタンが押された時の処理"""
@@ -275,8 +295,11 @@ class MatcherUI(QDialog):
         else:
             # デバッグモードの場合はボタンテキストを変更し、動作も変更
             self.btnStop.setText("Close")
-            # 古い接続を切断
-            self.btnStop.clicked.disconnect()
+            # 古い接続を切断（安全に）
+            try:
+                self.btnStop.clicked.disconnect()
+            except TypeError:
+                pass  # 接続がない場合は無視
             # 新しい接続を設定（正常終了として扱う）
             self.btnStop.clicked.connect(self.close)
 

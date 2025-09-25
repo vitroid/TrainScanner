@@ -404,7 +404,6 @@ def iterations(
             maxmax_val = 0
             maxmax_loc = None
             maxmax_hop = 0
-            print(match_scores.keys())
             for hop in match_scores:
                 scores = match_scores[hop].value
                 _, maxval, _, maxloc = cv2.minMaxLoc(scores)
@@ -788,10 +787,10 @@ class Pass1:
         if self.params.log is None:
             ostream = sys.stdout
         else:
-            ostream = open(self.params.log + ".tsconf", "w")
+            ostream = open(self.params.log + ".tsconf", "w", encoding='utf-8')
         ostream.write(self.tsconf)
         if self.params.log is not None:
-            ostream = open(self.params.log + ".tspos", "w")
+            ostream = open(self.params.log + ".tspos", "w", encoding='utf-8')
         # tsposの内部形式は変えるが、data formatは変えない(今は)。
         for frameposition in self.framepositions:
             ostream.write(

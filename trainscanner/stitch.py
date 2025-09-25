@@ -197,7 +197,7 @@ class Stitcher:
                 tsconf = argv[i + 1]
                 del argv[i]
                 del argv[i]
-                with open(tsconf) as f:
+                with open(tsconf, encoding='utf-8') as f:
                     argv += f.read().splitlines()
                 break
         self.params, unknown = parser.parse_known_args(argv[1:])

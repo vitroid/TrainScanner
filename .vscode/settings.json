@@ -9,5 +9,5 @@
     "cursor.ai.workingSound": false,
     "cursor.ai.completionSound": false,
     "cursor.sounds.enabled": false,
-    "accessibility.signals.sounds.volume": 0
+    "accessibility.signalOptions.volume": 0
 }
