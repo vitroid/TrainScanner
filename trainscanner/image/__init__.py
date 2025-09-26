@@ -1,8 +1,21 @@
 import cv2
 import numpy as np
 from tiffeditor import Rect, Range
-from trainscanner import MatchResult
 import math
+from dataclasses import dataclass
+from trainscanner import MatchResult
+
+
+@dataclass
+class MatchScore:
+    dx: np.ndarray
+    dy: np.ndarray
+    value: np.ndarray
+
+
+@dataclass
+class PreMatchScore(MatchScore):
+    frame_index: int
 
 
 # fit image in a square
@@ -221,3 +234,22 @@ class Transformation:
             ws.append(warped)
             cs.append(cropped)
         return rs, ws, cs
+
+
+def match(
+    target_area: np.ndarray, target_rect: Rect, focus: np.ndarray, focus_rect: Rect
+) -> MatchScore:
+    # 大きな画像の一部(座標範囲はtarget_rect)であるtarget_areaの中に、同じく大きな画像(座標範囲はfocus_rect)の一部であるfocusがある。
+    # その場所をさがし、変位ベクトルとスコアを返す。
+    scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF_NORMED)
+    # scoresに座標を指示する。
+    dx = range(
+        target_rect.left - focus_rect.left,
+        target_rect.right - focus_rect.right + 1,
+    )
+    dy = range(
+        target_rect.top - focus_rect.top,
+        target_rect.bottom - focus_rect.bottom + 1,
+    )
+    # 変位ベクトルとスコアをセットで返す。
+    return MatchScore(dx, dy, scores)

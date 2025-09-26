@@ -16,8 +16,11 @@ from trainscanner.image import (
     deparse,
     diffview,
     standardize,
-    MatchResult,
     Transformation,
+    match,
+    MatchScore,
+    PreMatchScore,
+    MatchResult,
 )
 from trainscanner import video
 from tiffeditor import Rect, Range
@@ -36,35 +39,6 @@ def draw_slit_position(img, slitpos, dx):
         x2 = x1 - dx
     cv2.line(img, (x1, 0), (x1, h), (0, 255, 0), 1)
     cv2.line(img, (x2, 0), (x2, h), (0, 255, 0), 1)
-
-
-@dataclass
-class MatchScore:
-    dx: np.ndarray
-    dy: np.ndarray
-    value: np.ndarray
-
-
-@dataclass
-class PreMatchScore(MatchScore):
-    frame_index: int
-
-
-def match2(target_area, target_rect, focus, focus_rect):
-    scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF_NORMED)
-    # scoresに座標を指示する。
-    dx = range(
-        target_rect.left - focus_rect.left,
-        target_rect.right - focus_rect.right + 1,
-    )
-    dy = range(
-        target_rect.top - focus_rect.top,
-        target_rect.bottom - focus_rect.bottom + 1,
-    )
-    # dx, dy = np.meshgrid(dx, dy)
-    # assert dx.shape == scores.shape
-    # 変位ベクトルとスコアをセットで返す。
-    return MatchScore(dx, dy, scores)
 
 
 def displacements(
@@ -115,8 +89,8 @@ def displacements(
             match_area.top : match_area.bottom, match_area.left : match_area.right
         ]
 
-        # match2は座標換算つき照合
-        return match2(subimage, match_area, template, template_rect)
+        # matchは座標換算つき照合
+        return match(subimage, match_area, template, template_rect)
 
     else:
         match_scores = {}
@@ -141,7 +115,7 @@ def displacements(
             subimage = new_image[
                 match_area.top : match_area.bottom, match_area.left : match_area.right
             ]
-            match_score = match2(subimage, match_area, template, template_rect)
+            match_score = match(subimage, match_area, template, template_rect)
             match_scores[hop] = match_score
         return match_scores
 
