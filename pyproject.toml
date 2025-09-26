@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "trainscanner"
 # 0.36では、移動距離の
-version = "0.36.3"
+version = "0.36.4"
 homepage = "https://github.com/vitroid/trainscanner"
 description = ""
 authors = ["vitroid <vitroid@gmail.com>"]

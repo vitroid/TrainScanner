@@ -20,12 +20,13 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QPixmap, QPainter, QKeySequence, QShortcut
 
-from trainscanner import trainscanner, video
+from trainscanner import video
 from trainscanner.widget.imageselector2 import ImageSelector2
 import trainscanner.widget.qrangeslider as rs
 from trainscanner.i18n import tr, init_translations
 from trainscanner.widget import cv2toQImage
 from trainscanner.decorators import deprecated
+from trainscanner.image import fit_to_square, Transformation
 
 perspectiveCSS = """
 QRangeSlider > QSplitter::handle {
@@ -80,7 +81,7 @@ class AsyncImageLoader(QObject):
             self.vl = video.video_loader_factory(filename)
             nframe, frame = self.vl.next()
             if self.size:
-                frame = trainscanner.fit_to_square(frame, self.size)
+                frame = fit_to_square(frame, self.size)
             self.snapshots = [frame]
             self.every_n_frames = 1
             self.max_frames = 128
@@ -111,7 +112,7 @@ class AsyncImageLoader(QObject):
                     logger.debug("End of video reached")
                     break
                 if self.size:
-                    frame = trainscanner.fit_to_square(frame, self.size)
+                    frame = fit_to_square(frame, self.size)
                 self.snapshots.append(frame)
                 if len(self.snapshots) == self.max_frames + 1:
                     logger.debug("max frames reached")
@@ -247,7 +248,7 @@ class AsyncImageLoader2(QObject):
                     break
 
                 if self.size:
-                    frame = trainscanner.fit_to_square(frame, self.size)
+                    frame = fit_to_square(frame, self.size)
                 self.snapshots.append(frame)
 
                 # 定期的にUIを更新
@@ -870,7 +871,7 @@ class EditorGUI(QWidget):
                 # no frame loaded
                 return
         image = self.asyncimageloader.snapshots[self.frame]
-        self.transform = trainscanner.transformation(
+        self.transform = Transformation(
             self.angle_degree, self.perspective, [self.croptop, self.cropbottom]
         )
         rotated, warped, cropped = self.transform.process_first_image(image)

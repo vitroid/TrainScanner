@@ -11,11 +11,13 @@ import re
 import itertools
 from logging import getLogger, basicConfig, DEBUG, WARN, INFO
 import argparse
-from trainscanner import (
-    trainscanner,
+from trainscanner import FramePosition
+from trainscanner.image import (
+    deparse,
     diffview,
-    FramePosition,
+    standardize,
     MatchResult,
+    Transformation,
 )
 from trainscanner import video
 from tiffeditor import Rect, Range
@@ -313,7 +315,7 @@ def valid_focus(focus: Rect):
 def iterations(
     videoloader,
     focus: Rect,
-    transform: trainscanner.transformation,
+    transform: Transformation,
     coldstart: bool = False,
     yfixed: bool = False,
     dropframe: int = 0,
@@ -687,7 +689,7 @@ class Pass1:
         logger.debug("Found filename {0}".format(found))
         ####prepare tsconf file#############################
         self.tsconf = ""
-        args = trainscanner.deparse(self.parser, self.params)
+        args = deparse(self.parser, self.params)
         self.tsconf += "{0}\n".format(args["__UNNAMED__"])
         for option in args:
             value = args[option]
@@ -739,7 +741,7 @@ class Pass1:
             x_range=Range(min_val=self.params.focus[0], max_val=self.params.focus[1]),
             y_range=Range(min_val=self.params.focus[2], max_val=self.params.focus[3]),
         )
-        transform = trainscanner.transformation(
+        transform = Transformation(
             angle=self.params.rotate,
             pers=self.params.perspective,
             crop=self.params.crop,
@@ -787,10 +789,10 @@ class Pass1:
         if self.params.log is None:
             ostream = sys.stdout
         else:
-            ostream = open(self.params.log + ".tsconf", "w", encoding='utf-8')
+            ostream = open(self.params.log + ".tsconf", "w", encoding="utf-8")
         ostream.write(self.tsconf)
         if self.params.log is not None:
-            ostream = open(self.params.log + ".tspos", "w", encoding='utf-8')
+            ostream = open(self.params.log + ".tspos", "w", encoding="utf-8")
         # tsposの内部形式は変えるが、data formatは変えない(今は)。
         for frameposition in self.framepositions:
             ostream.write(

@@ -13,7 +13,7 @@ from logging import getLogger, basicConfig, WARN, DEBUG, INFO, WARNING
 # from canvas import Canvas    #On-memory canvas
 # from canvas2 import Canvas   #Cached canvas
 # from tiledimage import cachedimage as ci
-from trainscanner import trainscanner
+from trainscanner.image import Transformation
 from trainscanner import video
 from trainscanner.i18n import init_translations, tr
 
@@ -197,7 +197,7 @@ class Stitcher:
                 tsconf = argv[i + 1]
                 del argv[i]
                 del argv[i]
-                with open(tsconf, encoding='utf-8') as f:
+                with open(tsconf, encoding="utf-8") as f:
                     argv += f.read().splitlines()
                 break
         self.params, unknown = parser.parse_known_args(argv[1:])
@@ -247,7 +247,7 @@ class Stitcher:
 
         # self.R = None
         # self.M = None
-        self.transform = trainscanner.transformation(
+        self.transform = Transformation(
             self.params.rotate, self.params.perspective, self.params.crop
         )
 

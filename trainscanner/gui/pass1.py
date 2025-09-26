@@ -32,7 +32,7 @@ from matplotlib.figure import Figure
 
 from trainscanner import pass1
 from trainscanner.widget import cv2toQImage
-from trainscanner import diffview
+from trainscanner.image import diffview
 from tiffeditor import Rect, Range
 
 
@@ -67,13 +67,17 @@ class Worker(QObject):
     def view(self, frameposition: pass1.FramePosition) -> None:
         # 最新のフレーム位置を保存（QTimerで制御）
         self.pending_frameposition = frameposition
-        
+
         # プロット更新（頻度制限付き）
         current_time = time.time()
         if current_time - self.last_plot_update_time >= self.plot_update_interval:
             self.last_plot_update_time = current_time
             self.motions_plot.append(
-                [frameposition.velocity[0], frameposition.velocity[1], frameposition.value]
+                [
+                    frameposition.velocity[0],
+                    frameposition.velocity[1],
+                    frameposition.value,
+                ]
             )
             self.motionDataUpdated.emit(self.motions_plot)
 
@@ -193,7 +197,7 @@ class MatcherUI(QDialog):
         self.motion_data = []
         # プロット更新の制御
         self.plot_updating = False  # プロット更新中フラグ
-        
+
         # フレーム更新の制御
         self.last_pixmap_update_time = 0  # 最後のピクスマップ更新時刻
         self.pixmap_update_interval = 0.1  # ピクスマップ更新間隔（秒）
@@ -256,7 +260,10 @@ class MatcherUI(QDialog):
 
     def update_frame_display(self):
         """QTimerで定期的にフレーム表示を更新"""
-        if hasattr(self.worker, 'pending_frameposition') and self.worker.pending_frameposition is not None:
+        if (
+            hasattr(self.worker, "pending_frameposition")
+            and self.worker.pending_frameposition is not None
+        ):
             try:
                 # 最新のフレーム位置から画像を生成
                 diff = self.worker.v.view(self.worker.pending_frameposition)

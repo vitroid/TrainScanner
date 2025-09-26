@@ -5,7 +5,7 @@ import numpy as np
 import sys
 from dataclasses import dataclass
 import logging
-from trainscanner import standardize, subpixel_match
+from trainscanner.image import standardize, subpixel_match
 from tiledimage import Rect, Range
 
 

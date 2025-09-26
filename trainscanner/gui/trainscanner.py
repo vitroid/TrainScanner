@@ -48,7 +48,6 @@ from PyQt6.QtGui import QKeySequence, QShortcut
 # sub dialog windows
 # private modules
 from trainscanner.gui import pass1, stitch
-from trainscanner import trainscanner
 from trainscanner.pass1 import prepare_parser as pp1
 from trainscanner.stitch import prepare_parser as pp2
 from trainscanner.gui.preprocess import EditorGUI
