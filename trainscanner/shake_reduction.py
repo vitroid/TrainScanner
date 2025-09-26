@@ -5,8 +5,8 @@ import numpy as np
 import sys
 from dataclasses import dataclass
 import logging
-from trainscanner.image import standardize, subpixel_match
-from tiledimage import Rect, Range
+from trainscanner.image import standardize, match
+from tiffeditor import Rect, Range
 
 
 @dataclass
@@ -30,6 +30,7 @@ def antishake(
     logger = logging.getLogger()
     frame0 = next(video_iter)
     gray0 = cv2.cvtColor(frame0, cv2.COLOR_BGR2GRAY)
+    std_gray0 = standardize(gray0)
 
     assert 0 < len(foci) <= 2
 
@@ -59,47 +60,31 @@ def antishake(
 
     for frame2 in video_iter:
         gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY).astype(np.int32)
+        std_gray2 = standardize(gray2)
 
         for fi, focus in enumerate(foci):
             # 基準画像のfocusの位置。
-            rect = Rect(
-                x_range=Range(min_val=focus.rect.left, max_val=focus.rect.right),
-                y_range=Range(min_val=focus.rect.top, max_val=focus.rect.bottom),
+            rect = Rect.from_bounds(
+                focus.rect.left + focus.shift[0] - max_shift,
+                focus.rect.right + focus.shift[0] + max_shift,
+                focus.rect.top + focus.shift[1] - max_shift,
+                focus.rect.bottom + focus.shift[1] + max_shift,
             )
-            logger.info(f"{rect=}")
             # 直前のフレームで、focusの位置を移動した。
-            rect.x_range.min_val += focus.shift[0] - max_shift
-            rect.y_range.min_val += focus.shift[1] - max_shift
-            rect.x_range.max_val += focus.shift[0] + max_shift
-            rect.y_range.max_val += focus.shift[1] + max_shift
-            logger.info(f"{rect=} {gray2.shape=}")
             # 照合したい画像のうち、マッチングに使う領域を切り取るための枠。
             # 初期値0は平均値を意味する。
-            target_area = np.zeros(
-                [rect.height, rect.width],
-                dtype=np.float32,
-            )
             # 画面外に出てしまわない範囲を計算する。
             trimmed_rect = rect.trim(gray2.shape)
-            logger.info(f"{trimmed_rect=}")
-            # 照合したい画像のうち、マッチングに使う領域を切り取る。
-            # 画面外の領域は0になる。
-            target_area[
-                trimmed_rect.top - rect.top : trimmed_rect.bottom - rect.top,
-                trimmed_rect.left - rect.left : trimmed_rect.right - rect.left,
-            ] = standardize(
-                gray2[
-                    trimmed_rect.top : trimmed_rect.bottom,
-                    trimmed_rect.left : trimmed_rect.right,
-                ].astype(float)
+            trimmed_std_gray2 = std_gray2[
+                trimmed_rect.top : trimmed_rect.bottom,
+                trimmed_rect.left : trimmed_rect.right,
+            ]
+            matchscore = match(
+                trimmed_std_gray2, trimmed_rect, focus.match_area, focus.rect
             )
+            _, _, _, maxloc = cv2.minMaxLoc(matchscore.value)
 
-            logger.info(f"{target_area.shape=} {focus.match_area.shape=}")
-            min_loc, fractional_shift, _ = subpixel_match(target_area, focus.match_area)
-
-            accel = (min_loc[0] - max_shift, min_loc[1] - max_shift)
-            focus.shift = (focus.shift[0] + accel[0], focus.shift[1] + accel[1])
-            focus.subpixel_shift = fractional_shift
+            focus.shift = (matchscore.dx[maxloc[0]], matchscore.dy[maxloc[1]])
         if len(foci) == 1:
             # cv2.imshow(
             #     "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)
@@ -108,8 +93,8 @@ def antishake(
             if logfile is not None:
                 logfile.write(f"{m.shift[0]} {m.shift[1]}\n")
             translation_matrix = np.eye(3)
-            translation_matrix[0, 2] = -m.shift[0] - m.subpixel_shift[0]
-            translation_matrix[1, 2] = -m.shift[1] - m.subpixel_shift[1]
+            translation_matrix[0, 2] = -m.shift[0]  # - m.subpixel_shift[0]
+            translation_matrix[1, 2] = -m.shift[1]  # - m.subpixel_shift[1]
             frame2_shifted = cv2.warpAffine(
                 frame2,
                 translation_matrix[:2],
@@ -153,12 +138,8 @@ def antishake(
         angle = np.arctan2(center1[1] - center0[1], center1[0] - center0[0])
 
         # 平行移動後のmatch_areaの中心
-        displaced0 = (
-            center0 + np.array(foci[0].shift) + np.array(foci[0].subpixel_shift)
-        )
-        displaced1 = (
-            center1 + np.array(foci[1].shift) + np.array(foci[1].subpixel_shift)
-        )
+        displaced0 = center0 + np.array(foci[0].shift)
+        displaced1 = center1 + np.array(foci[1].shift)
         angle2 = np.arctan2(
             displaced1[1] - displaced0[1], displaced1[0] - displaced0[0]
         )
@@ -211,7 +192,7 @@ def antishake(
 
 
 def main(
-    filename="/Users/matto/Dropbox/ArtsAndIllustrations/Stitch tmp2/antishake test/Untitled.mp4",
+    filename="/Users/matto/Dropbox/ArtsAndIllustrations/Stitch tmp2/TrainScannerWorkArea/他人の動画/antishake test/Untitled.mp4",
 ):
     from trainscanner.video import video_iter
     import os
