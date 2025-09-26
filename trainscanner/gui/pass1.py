@@ -47,26 +47,14 @@ class Worker(QObject):
         super(Worker, self).__init__()
         self._isRunning = True
         self.pass1 = pass1.Pass1(argv=argv)
-        self.v = diffview(
-            focus=Rect(
-                x_range=Range(
-                    min_val=self.pass1.params.focus[0],
-                    max_val=self.pass1.params.focus[1],
-                ),
-                y_range=Range(
-                    min_val=self.pass1.params.focus[2],
-                    max_val=self.pass1.params.focus[3],
-                ),
-            )
-        )
         self.motions_plot = []  # リアルタイムプロット用のデータ
         self.last_plot_update_time = 0  # 最後のプロット更新時刻
         self.plot_update_interval = 0.1  # プロット更新間隔（秒）
-        self.pending_frameposition = None  # 待機中のフレーム位置
+        # self.pending_frameposition = None  # 待機中のフレーム位置
 
     def view(self, frameposition: pass1.FramePosition) -> None:
         # 最新のフレーム位置を保存（QTimerで制御）
-        self.pending_frameposition = frameposition
+        # self.pending_frameposition = frameposition
 
         # プロット更新（頻度制限付き）
         current_time = time.time()
@@ -98,7 +86,7 @@ class Worker(QObject):
         def stop_check():
             return not self._isRunning
 
-        self.pass1.run(hook=self.view, stop_callback=stop_check)
+        self.pass1.run(stop_callback=stop_check)
         # self.pass1.run(hook=None, stop_callback=stop_check)
 
         successful = len(self.pass1.framepositions) > 0
@@ -260,21 +248,16 @@ class MatcherUI(QDialog):
 
     def update_frame_display(self):
         """QTimerで定期的にフレーム表示を更新"""
-        if (
-            hasattr(self.worker, "pending_frameposition")
-            and self.worker.pending_frameposition is not None
-        ):
-            try:
-                # 最新のフレーム位置から画像を生成
-                diff = self.worker.v.view(self.worker.pending_frameposition)
-                if diff is not None:
-                    qimage = cv2toQImage(diff)
-                    if not qimage.isNull():
-                        pixmap = QPixmap.fromImage(qimage)
-                        if not pixmap.isNull():
-                            self.image_pane.setPixmap(pixmap)
-            except Exception as e:
-                print(f"フレーム表示更新でエラーが発生しました: {e}")
+        # 最新のフレーム位置から画像を生成
+        diff = self.worker.pass1.diff_image
+        if diff is not None:
+            qimage = cv2toQImage(diff)
+            if not qimage.isNull():
+                pixmap = QPixmap.fromImage(qimage)
+                if not pixmap.isNull():
+                    self.image_pane.setPixmap(pixmap)
+        # except Exception as e:
+        #     print(f"フレーム表示更新でエラーが発生しました: {e}")
 
     def stop_processing(self):
         """停止ボタンが押された時の処理"""

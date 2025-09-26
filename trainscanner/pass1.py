@@ -700,6 +700,15 @@ class Pass1:
         #############Open the video file #############################
         self.vl = video.video_loader_factory(found)
 
+        self.focus = Rect.from_bounds(
+            self.params.focus[0],
+            self.params.focus[1],
+            self.params.focus[2],
+            self.params.focus[3],
+        )
+        self.v = diffview(focus=self.focus)
+        self.diff_image = None
+
     def cue(self):
         """
         prepare for the loop
@@ -708,21 +717,23 @@ class Pass1:
         logger = getLogger()
         self.vl.seek(self.params.skip)
 
+    def diff_update(self, matchresult: MatchResult):
+        self.diff_image = self.v.view(matchresult)
+
     def run(self, hook=None, stop_callback=None):
         # for the compatibility
         logger = getLogger()
-        focus = Rect(
-            x_range=Range(min_val=self.params.focus[0], max_val=self.params.focus[1]),
-            y_range=Range(min_val=self.params.focus[2], max_val=self.params.focus[3]),
-        )
+        # hook = self.diff_update
         transform = Transformation(
             angle=self.params.rotate,
             pers=self.params.perspective,
             crop=self.params.crop,
         )
+        if hook is None:
+            hook = self.diff_update
         self.framepositions, self.prematches = iterations(
             videoloader=self.vl,
-            focus=focus,
+            focus=self.focus,
             transform=transform,
             coldstart=self.params.stall,
             yfixed=self.params.zero,

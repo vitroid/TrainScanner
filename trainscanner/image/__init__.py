@@ -45,9 +45,9 @@ def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=No
     """
     2枚のcv2画像の差を返す．
     """
+    affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
+    h, w = frame1.shape[0:2]
     if mode == "diff":
-        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
-        h, w = frame1.shape[0:2]
         std2 = standardize(frame2)
         frame1 = cv2.warpAffine(frame1, affine, (w, h))
         std1 = standardize(frame1)
@@ -58,8 +58,6 @@ def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=No
         #     draw_slit_position(diff, slitpos, dx)
         return diff
     elif mode == "stack":
-        affine = np.matrix(((1.0, 0.0, dx), (0.0, 1.0, dy)))
-        h, w = frame1.shape[0:2]
         flags = np.arange(h) * 16 % h > h // 2
         frame1 = cv2.warpAffine(frame1, affine, (w, h))
         frame1[flags] = frame2[flags]
@@ -241,6 +239,10 @@ def match(
 ) -> MatchScore:
     # 大きな画像の一部(座標範囲はtarget_rect)であるtarget_areaの中に、同じく大きな画像(座標範囲はfocus_rect)の一部であるfocusがある。
     # その場所をさがし、変位ベクトルとスコアを返す。
+    assert target_area.shape[0] == target_rect.height
+    assert target_area.shape[1] == target_rect.width
+    assert focus.shape[0] == focus_rect.height
+    assert focus.shape[1] == focus_rect.width
     scores = cv2.matchTemplate(target_area, focus, cv2.TM_CCOEFF_NORMED)
     # scoresに座標を指示する。
     dx = range(
