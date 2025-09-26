@@ -3,11 +3,67 @@ import numpy as np
 from trainscanner.image import standardize
 import sys
 from matplotlib import pyplot as plt
+from scipy.signal import find_peaks
 
 # from sklearn.mixture import GaussianMixture
 import matplotlib as mpl
 from test_antishake import AntiShaker
 from test_antishake import standardize as standardize_antishake
+
+
+def find_2d_peaks(scores, num_peaks=4, min_distance=5):
+    """
+    2次元配列から高い順にピーク位置を検出する
+
+    Args:
+        scores: 2次元のスコア配列
+        num_peaks: 検出するピーク数（デフォルト4）
+        min_distance: ピーク間の最小距離
+
+    Returns:
+        peaks: [(y, x), ...] のリスト（高い順）
+    """
+    # 方法1: 各行でピークを検出
+    all_peaks = []
+
+    for i, row in enumerate(scores):
+        # 1次元のピーク検出
+        peaks_x, properties = find_peaks(
+            row, height=np.mean(scores), distance=min_distance
+        )
+        heights = properties["peak_heights"]
+
+        # 各ピークの座標と高さを記録
+        for x, height in zip(peaks_x, heights):
+            all_peaks.append((height, i, x))  # (高さ, y座標, x座標)
+
+    # 各列でもピークを検出
+    for j in range(scores.shape[1]):
+        col = scores[:, j]
+        peaks_y, properties = find_peaks(
+            col, height=np.mean(scores), distance=min_distance
+        )
+        heights = properties["peak_heights"]
+
+        # 各ピークの座標と高さを記録
+        for y, height in zip(peaks_y, heights):
+            all_peaks.append((height, y, j))  # (高さ, y座標, x座標)
+
+    # 重複を除去（近い位置のピークを統合）
+    unique_peaks = []
+    for height, y, x in sorted(all_peaks, reverse=True):
+        is_duplicate = False
+        for _, uy, ux in unique_peaks:
+            if abs(y - uy) <= min_distance and abs(x - ux) <= min_distance:
+                is_duplicate = True
+                break
+        if not is_duplicate:
+            unique_peaks.append((height, y, x))
+
+    # 高い順にソートして上位num_peaks個を取得
+    top_peaks = [(y, x) for _, y, x in unique_peaks[:num_peaks]]
+
+    return top_peaks
 
 
 # 残像マスクはけっこううまくいくみたい。
@@ -163,7 +219,7 @@ while cap.isOpened():
     )
     base_std_expanded[1:-1, 1:-1] = base_std
     # maskは、列車の部分ほど大きな値になっているので、背景を強調したい場合は逆に割り算すればいい。
-    scores = cv2.matchTemplate(base_std_expanded, next_std, cv2.TM_CCORR)
+    scores = cv2.matchTemplate(base_std_expanded, next_std, cv2.TM_CCORR_NORMED)
     min_val, max_val0, min_loc, max_loc = cv2.minMaxLoc(scores)
     base_matched = base_std_expanded[
         max_loc[1] : max_loc[1] + next_std.shape[0],
@@ -171,6 +227,9 @@ while cap.isOpened():
     ]
     diff = (base_matched - next_std) ** 2
     mask = blurmask.add_frame(diff)
+    # 今のやりかただと、maskは空間で不動。それはいいのか。背景が動かないようにフレームをいつも動かして重ねていくわけだから。
+    # 平均背景画像を表示してみたいな。
+
     # 差をとると、列車が動いている部分は、ある場所が鋭く正に、すこしずれて鋭く負になる。
     # 差が小さい部分は背景の可能性が高いので、照合から除外する。
     # つまり、原画上で0にしてしまう。
@@ -192,13 +251,16 @@ while cap.isOpened():
         dtype=np.float32,
     )
     base_masked_extended[max_shift:-max_shift, max_shift:-max_shift] = base_masked
-    scores = cv2.matchTemplate(base_masked_extended, next_masked, cv2.TM_CCORR)
+    scores = cv2.matchTemplate(base_masked_extended, next_masked, cv2.TM_CCORR_NORMED)
 
     # 画面中心はいつもピークがあるが、それは列車の移動と関係ないので除去する。
     peak_suppression(scores, (max_shift, max_shift))
     # これによってすべてのピクセルが0になってしまう場合がありうる。
 
     min_val, max_val1, min_loc, max_loc = cv2.minMaxLoc(scores)
+
+    # ピーク検出（後でプロットに使用）
+    print(f"Top 4 peaks: {find_2d_peaks(scores, num_peaks=4)}")
 
     if min_val == max_val1:
         # assume the displace vector is same as the previous one
@@ -246,8 +308,45 @@ while cap.isOpened():
     cv2.imshow("reversed mask", np.exp(-mask))
     cv2.imshow("base_masked", base_masked)
     cv2.imshow("next_masked", next_masked)
+    # cv2.imshow("raw_diff", frames[0] - frames[1])
+    # cv2.imshow("as_diff", frames[0] - frame)
 
     plt.imshow(scores, extent=[-max_shift, max_shift, -max_shift, max_shift])
+
+    # ピーク位置に赤い丸を描画
+    peaks = find_2d_peaks(scores, num_peaks=10)
+    for i, (y, x) in enumerate(peaks):
+        # スコア座標系をプロット座標系に変換
+        print(x, y)
+        if (x - max_shift) ** 2 + (y - max_shift) ** 2 < 12:
+            continue
+
+        plot_x = (x / scores.shape[1]) * (2 * max_shift) - max_shift
+        plot_y = (y / scores.shape[0]) * (2 * max_shift) - max_shift
+
+        plt.plot(
+            plot_x,
+            plot_y,
+            "ro",
+            markersize=8,
+            markerfacecolor=None,
+            # markeredgecolor="red",
+            markeredgewidth=1,
+        )
+        # ピークの順位を表示
+        plt.text(
+            plot_x + 2,
+            plot_y + 2,
+            str(i + 1),
+            color="white",
+            fontsize=10,
+            fontweight="bold",
+        )
+
+    plt.colorbar(label="Correlation Score")
+    plt.title(f"Correlation Scores with Top 4 Peaks (Frame {len(deltas)})")
+    plt.xlabel("X Shift")
+    plt.ylabel("Y Shift")
     plt.savefig("scores.png")
     plt.close()
     cv2.imshow("scores", cv2.imread("scores.png"))
