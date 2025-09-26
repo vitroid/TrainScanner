@@ -1,3 +1,22 @@
+## [1.0.0] - 2025-09-26
+
+### 変更
+
+- 🎉 **メジャーバージョンアップ**: TrainScanner 1.0.0 リリース
+- デバッグログ出力の問題を修正：`--debug`オプションが意図せず`.tsconf`ファイルに保存される問題を解決
+- `trainscanner.trainscanner`から`trainscanner.image.Transformation`への移行
+- ファイルエンコーディングを UTF-8 に明示的に指定
+
+### 追加
+
+- Transformation クラスの独立したモジュール化
+
+### 修正
+
+- `pass1.py`: `--debug`オプションが`action="store_true"`の適切な処理を追加
+- `stitch.py`: ファイル読み込み時のエンコーディング指定
+- crop_image 関数: GeoTIFF メタデータ削除による Preview 互換性向上
+
 ## [0.36.2] - 2025-09-24
 
 ### 変更
