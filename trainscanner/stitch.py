@@ -327,14 +327,6 @@ class Stitcher:
         """
         if len(self.locations) == 0:
             return
-        # initial seek
-
-        # self.vl.seek(self.locations[0][0])
-        # while self.currentFrame + 1 < self.locations[0][0]:
-        #     self.logger.debug((self.currentFrame, self.locations[0][0]))
-        #     # このyieldは要るのか?
-        #     yield self.currentFrame, self.locations[0][0]
-        #     self.currentFrame = self.vl.skip()
 
     def set_hook(self, hook):
         self.hook = hook

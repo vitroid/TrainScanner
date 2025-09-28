@@ -117,23 +117,13 @@ def antishake(
         # 2箇所の場合。
 
         # もとのmatch_areaの中心
-        center0 = (
-            np.array(
-                [
-                    foci[0].rect.top + foci[0].rect.bottom,
-                    foci[0].rect.left + foci[0].rect.right,
-                ]
-            )
-            / 2
+        center0 = np.array(
+            (foci[0].rect.top + foci[0].rect.bottom) / 2,
+            (foci[0].rect.left + foci[0].rect.right) / 2,
         )
-        center1 = (
-            np.array(
-                [
-                    foci[1].rect.top + foci[1].rect.bottom,
-                    foci[1].rect.left + foci[1].rect.right,
-                ]
-            )
-            / 2
+        center1 = np.array(
+            (foci[1].rect.top + foci[1].rect.bottom) / 2,
+            (foci[1].rect.left + foci[1].rect.right) / 2,
         )
         angle = np.arctan2(center1[1] - center0[1], center1[0] - center0[0])
 
@@ -208,19 +198,9 @@ def main(
             viter,
             # foci=[(1520, 430, 150, 80), (100, 465, 100, 50)],  # for Untitled.mp4
             foci=[
-                Rect(
-                    x_range=Range(min_val=1520, max_val=1670),
-                    y_range=Range(min_val=430, max_val=510),
-                ),
-                Rect(
-                    x_range=Range(min_val=100, max_val=200),
-                    y_range=Range(min_val=465, max_val=515),
-                ),
+                Rect.from_bounds(1520, 1670, 430, 510),
+                Rect.from_bounds(100, 200, 465, 515),
             ],  # for Untitled.mp4
-            # foci=[
-            #     (1520, 430, 150, 80),
-            # ],  # for Untitled.mp4
-            # foci=[(400, 768, 80, 139), (1089, 746, 178, 134)],
         )
     ):
         cv2.imwrite(f"{os.path.basename(filename)}.dir/{i:06d}.png", frame)
