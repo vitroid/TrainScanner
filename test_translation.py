@@ -7,8 +7,7 @@ from scipy.signal import find_peaks
 
 # from sklearn.mixture import GaussianMixture
 import matplotlib as mpl
-from test_antishake import AntiShaker
-from test_antishake import standardize as standardize_antishake
+from test_antishake2 import AntiShaker2
 
 
 def find_2d_peaks(scores, num_peaks=4, min_distance=5):
@@ -174,7 +173,7 @@ if frame0.shape[1] > 1000:
 frames.append(frame0)
 
 blurmask = BlurMask(lifetime=20)
-antishaker = AntiShaker()
+antishaker = AntiShaker2()
 # 背景のずれ
 antishakes = []
 deltas = []
@@ -191,11 +190,12 @@ while cap.isOpened():
     if frame.shape[1] > 1000:
         frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
 
-    frames.append(frame)
-
     antimask = np.exp(-mask)
 
-    frame, delta = antishaker.add_frame(frame, antimask)
+    frame, delta, abs_loc = antishaker.add_frame(frame, antimask)
+
+    frames.append(frame)
+
     antishakes.append(delta)
     # まずてぶれ補正。これは最初のフレームと照合したほうがいいかも。
     # フレームを細分し、それぞれの場所でのずれを別々に計算すれば、回転も検出できる。
@@ -214,21 +214,14 @@ while cap.isOpened():
         )
         * antimask
     )
-    base_std_expanded = np.zeros(
-        [base_std.shape[0] + 2, base_std.shape[1] + 2], dtype=np.float32
-    )
-    base_std_expanded[1:-1, 1:-1] = base_std
-    # maskは、列車の部分ほど大きな値になっているので、背景を強調したい場合は逆に割り算すればいい。
-    scores = cv2.matchTemplate(base_std_expanded, next_std, cv2.TM_CCORR_NORMED)
-    min_val, max_val0, min_loc, max_loc = cv2.minMaxLoc(scores)
-    base_matched = base_std_expanded[
-        max_loc[1] : max_loc[1] + next_std.shape[0],
-        max_loc[0] : max_loc[0] + next_std.shape[1],
-    ]
-    diff = (base_matched - next_std) ** 2
+    diff = (base_std - next_std) ** 2
+    cv2.imshow("differ", diff)
     mask = blurmask.add_frame(diff)
     # 今のやりかただと、maskは空間で不動。それはいいのか。背景が動かないようにフレームをいつも動かして重ねていくわけだから。
     # 平均背景画像を表示してみたいな。
+
+    # 2025-09 ここからあとは、本家Trainscanner同様に、変位速度が落ちつくまで様子を見てから、以後はそれを第一予測として利用する。また、leadingの処理も行う。
+    # しばらくはこれから離れて仕事する。
 
     # 差をとると、列車が動いている部分は、ある場所が鋭く正に、すこしずれて鋭く負になる。
     # 差が小さい部分は背景の可能性が高いので、照合から除外する。
@@ -239,7 +232,7 @@ while cap.isOpened():
     print(f"mask {np.min(mask)}, {np.max(mask)}")
     mask += np.min(mask)
 
-    base_masked = base_matched.copy() * mask
+    base_masked = base_std.copy() * mask
     # マスクで重みづけした上で、内積で照合する(TM_CCORR)
     next_masked = next_std.copy() * mask
 
@@ -262,11 +255,11 @@ while cap.isOpened():
     # ピーク検出（後でプロットに使用）
     print(f"Top 4 peaks: {find_2d_peaks(scores, num_peaks=4)}")
 
-    if min_val == max_val1:
-        # assume the displace vector is same as the previous one
-        deltas.append(deltas[-1])
-    else:
-        deltas.append((max_loc[0] - max_shift, max_loc[1] - max_shift))
+    # if min_val == max_val1:
+    #     # assume the displace vector is same as the previous one
+    #     deltas.append(deltas[-1])
+    # else:
+    deltas.append((max_loc[0] - max_shift, max_loc[1] - max_shift))
 
     max_vals.append(max_val1)
 
@@ -302,10 +295,9 @@ while cap.isOpened():
     plt.plot(x[stabilized:], d[stabilized:, 1], "o-", label="y")
     plt.legend()
 
-    print(max_loc, max_val0, max_val1)
     cv2.imshow("frame", frames[0])
     cv2.imshow("mask", mask)
-    cv2.imshow("reversed mask", np.exp(-mask))
+    cv2.imshow("reversed mask", antimask)
     cv2.imshow("base_masked", base_masked)
     cv2.imshow("next_masked", next_masked)
     # cv2.imshow("raw_diff", frames[0] - frames[1])
