@@ -22,35 +22,38 @@ def shift(frame, dx, dy):
 
 class AntiShaker2:
     # 直前のフレームとの差を返しつつ、変位の総量(最初のフレームからの累積変位)を記憶しておく。
-    def __init__(self):
-        self.absx = 0
-        self.absy = 0
-        self.last_frame = None
+    def __init__(self, velocity=1):
+        self._absx = 0
+        self._absy = 0
+        self._last_frame = None
+        self._velocity = velocity
 
     def add_frame(self, frame, mask):
         h, w = frame.shape[:2]
         frame_std = standardize(frame)
 
-        if self.last_frame is None:
-            self.last_frame = frame_std.copy()
+        if self._last_frame is None:
+            self._last_frame = frame_std.copy()
             return frame, (0, 0), (0, 0)
 
-        max_shift = 1
         frame0_extend = np.zeros(
-            (h + 2 * max_shift, w + 2 * max_shift), dtype=np.float32
+            (h + 2 * self._velocity, w + 2 * self._velocity), dtype=np.float32
         )
-        frame0_extend[max_shift:-max_shift, max_shift:-max_shift] = self.last_frame
-        print(frame0_extend.dtype, frame_std.dtype, mask.dtype)
+        frame0_extend[
+            self._velocity : -self._velocity, self._velocity : -self._velocity
+        ] = self._last_frame
         scores = cv2.matchTemplate(frame0_extend, frame_std * mask, cv2.TM_CCORR)
+        print(scores)
         _, _, _, max_loc = cv2.minMaxLoc(scores)
-        dx, dy = (max_loc[0] - max_shift, max_loc[1] - max_shift)
-        self.absx += dx
-        self.absy += dy
-        diff_img = self.last_frame.copy()
+        dx, dy = (max_loc[0] - self._velocity, max_loc[1] - self._velocity)
+        print(f"{dx=} {dy=}")
+        self._absx += dx
+        self._absy += dy
+        diff_img = self._last_frame.copy()
         shifted_frame = shift(frame_std, dx, dy)
         cv2.imshow("diff", diff_img - shifted_frame)
-        self.last_frame = frame_std.copy()
-        return shift(frame, self.absx, self.absy), (dx, dy), (self.absx, self.absy)
+        self._last_frame = frame_std.copy()
+        return shift(frame, self._absx, self._absy), (dx, dy), (self._absx, self._absy)
 
 
 if __name__ == "__main__":

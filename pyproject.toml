@@ -39,6 +39,7 @@ memory_monitor      = 'trainscanner.memory_monitor:main'
 jinja2 = "^3.1.6"
 toml = "^0.10.2"
 jupyter = "^1.1.1"
+tiledimage = {path = "../TiledImage"}
 
 [build-system]
 requires = ["poetry-core"]

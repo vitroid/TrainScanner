@@ -1,3 +1,64 @@
+## [] - 2025-09-28
+
+### 変更
+
+- c9707f6 Add AntiShaker2 class and update video handling in tests
+- b509708 Refactor shake reduction calculations and clean up code
+
+### 追加
+
+### 修正
+
+## [] - 2025-09-28
+
+### 変更
+
+- b509708 Refactor shake reduction calculations and clean up code
+
+### 追加
+
+### 修正
+
+## [1.0.3] - 2025-09-27
+
+### 変更
+
+- ebd9781 peak検出。
+
+### 追加
+
+### 修正
+
+## [1.0.2] - 2025-09-26
+
+### 変更
+
+- f079111 Remove unused image and video processing modules
+
+### 追加
+
+### 修正
+
+## [1.0.2] - 2025-09-26
+
+### 変更
+
+- 7d7d5b4 Auto stash before merge of "origin/main" and "beta"
+
+### 追加
+
+### 修正
+
+## [1.0.1] - 2025-09-26
+
+### 変更
+
+- 2582ed1 Release TrainScanner version 1.0.0 with major updates
+
+### 追加
+
+### 修正
+
 ## [1.0.0] - 2025-09-26
 
 ### 変更
