@@ -1,7 +1,6 @@
 from attr import dataclass
 import cv2
 import numpy as np
-from trainscanner.image import standardize
 import sys
 from matplotlib import pyplot as plt
 from scipy.signal import find_peaks
@@ -9,10 +8,18 @@ from scipy.signal import find_peaks
 # from sklearn.mixture import GaussianMixture
 import matplotlib as mpl
 from test_antishake2 import AntiShaker2
-from trainscanner.image import match, MatchScore
+from trainscanner.image import match, linear_alpha, standardize
 from tiffeditor import Rect
 from trainscanner.video import video_loader_factory
 from tiledimage.cachedimage import CachedImage
+
+# Stitchは問題なく動いているので、速度予測の精度を上げることにもうちょっと注力する。
+# 今の考え方だけだと、もともとの画像が周期的だった場合に、それを速度と勘違いしてしまう。
+# 背景画像から背景画像を引いてしまうのはどうか。
+#
+# あと、透視図に対応していない。これのためには、以前試したような、ブロック分割が良いとおもうが、まだ不完全。
+#
+# Rectを使うためだけにtiffeditorを読むのは不便。
 
 
 @dataclass
@@ -173,6 +180,25 @@ def normalize(x):
     return (x - np.min(x)) / (np.max(x) - np.min(x))
 
 
+def alpha_mask(size, delta, width=20):
+    # 実際にはalphaを傾ける必要はなかった。
+    # 画像のほうを回すべきだった。
+    w, h = size
+    dx, dy = delta
+    L = (dx**2 + dy**2) ** 0.5
+    dx /= L
+    dy /= L
+    # 原点を通る平面。z = A x + B y
+    # (0、0、0)と(dx, dy, 1/w)を通るようにしたい。ただし1=dx^2+dy^2
+    # dx/A + dy/B = L/w
+    X, Y = np.meshgrid(np.arange(w), np.arange(h))
+    alpha = ((X - w / 2) * dx + (Y - h / 2) * dy) / width
+    print(alpha[int(dy * width) + h // 2, int(dx * width) + w // 2])
+    alpha[alpha > 1] = 1
+    alpha[alpha < 0] = 0
+    return alpha
+
+
 class FIFO:
     def __init__(self, maxlen: int):
         self.queue = []
@@ -195,6 +221,27 @@ class FIFO:
         return len(self.queue) == self.maxlen
 
 
+def rotated_placement(frame, sine, cosine, train_position):
+    h, w = frame.shape[:2]
+    rh = int(abs(h * cosine) + abs(w * sine))
+    rw = int(abs(h * sine) + abs(w * cosine))
+    halfw, halfh = w / 2, h / 2
+    R = np.matrix(
+        (
+            (cosine, sine, -cosine * halfw - sine * halfh + rw / 2),
+            (-sine, cosine, sine * halfw - cosine * halfh + rh / 2),
+        )
+    )
+    alpha = linear_alpha(img_width=rw, mixing_width=20, slit_pos=0, head_right=True)
+    rotated = cv2.warpAffine(frame, R, (rw, rh))
+    # 画像中心をそろえる
+    canvas.put_image(
+        (int(train_position) - rw // 2, -rh // 2),
+        rotated,
+        linear_alpha=alpha,
+    )
+
+
 # 動画を読み込む
 if len(sys.argv) < 2:
     videofile = "examples/sample3.mov"
@@ -203,13 +250,18 @@ else:
     videofile = sys.argv[1]
 
 
+# cv2.imshow("alpha", alpha_mask((1000, 2000), (50, 15), width=50))
+# cv2.waitKey(0)
+# sys.exit(0)
+
 frames = FIFO(2)
 vl = video_loader_factory(videofile)
 if "0835" in videofile:
     vl.seek(47 * 30)
 frame0 = vl.next()
 if frame0.shape[1] > 1000:
-    frame0 = cv2.resize(frame0, (0, 0), fx=0.5, fy=0.5)
+    ratio = 1000 / frame0.shape[1]
+    frame0 = cv2.resize(frame0, (0, 0), fx=ratio, fy=ratio)
 frames.append(frame0)
 
 blurmask = BlurMask(lifetime=20)
@@ -224,7 +276,7 @@ estimate = 5
 velx_history = FIFO(estimate)
 vely_history = FIFO(estimate)
 train_deltas = []
-train_position = [0, 0]
+train_position = 0
 mask = np.ones(frames.queue[0].shape[:2], dtype=np.float32)
 averaged_background = np.zeros_like(frames.queue[0], dtype=np.float32)
 matchscores = []
@@ -236,7 +288,8 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
 
         # 大きい場合は半分に縮小
         if frame.shape[1] > 1000:
-            frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+            ratio = 1000 / frame.shape[1]
+            frame = cv2.resize(frame, (0, 0), fx=ratio, fy=ratio)
 
         # antimask = np.exp(-mask)
         if np.max(mask) == np.min(mask):
@@ -336,30 +389,41 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
         velx_history.append(delta[0])
         vely_history.append(delta[1])
         if stabilized:
-            framepositions[frame_index].train_velocity = (
-                velx_history.queue[-1],
-                vely_history.queue[-1],
-            )
-            train_position[0] += velx_history.queue[-1]
-            train_position[1] += vely_history.queue[-1]
-            absx, absy = train_position
-            canvas.put_image((absx, absy), frame)
+
+            framepositions[frame_index].train_velocity = delta
+            dx, dy = delta
+            dd = -((dx**2 + dy**2) ** 0.5)
+            train_position += dd
+            cosine = dx / dd
+            sine = dy / dd
+            rotated_placement(frame, sine, cosine, train_position)
         elif (
             velx_history.filled
             and velx_history.fluctuation() < 3
             and vely_history.fluctuation() < 3
         ):
+            # pass
             stabilized = True
             for fi in range(estimate):
                 # 最後のestimate個の速度は安定しているので、さかのぼって採用する。
-                framepositions[frame_index - estimate + fi + 1].train_velocity = (
-                    velx_history.queue[fi],
-                    vely_history.queue[fi],
-                )
-                train_position[0] += velx_history.queue[fi]
-                train_position[1] += vely_history.queue[fi]
-                absx, absy = train_position
-                canvas.put_image((absx, absy), frame)
+                delta = (velx_history.queue[fi], vely_history.queue[fi])
+                framepositions[frame_index].train_velocity = delta
+                dx, dy = delta
+                dd = -((dx**2 + dy**2) ** 0.5)
+                train_position += dd
+                cosine = dx / dd
+                sine = dy / dd
+                rotated_placement(frame, sine, cosine, train_position)
+            #         vely_history.queue[fi],
+            #     )
+            #     train_position[0] += velx_history.queue[fi]
+            #     train_position[1] += vely_history.queue[fi]
+            #     absx, absy = train_position
+            #     h, w = frame.shape[:2]
+            #     alpha = alpha_mask(
+            #         (w, h), (velx_history.queue[fi], vely_history.queue[fi]), width=200
+            #     )
+            #     canvas.put_image((absx, absy), frame, full_alpha=alpha)
         for fp in list(framepositions.keys())[-6:]:
             print(framepositions[fp])
 
