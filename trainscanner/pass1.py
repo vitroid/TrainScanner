@@ -260,7 +260,7 @@ def prepare_parser():
     return parser
 
 
-class historyQueue:
+class FIFO:
     def __init__(self, maxlen: int):
         self.queue = []
         self.maxlen = maxlen
@@ -314,8 +314,8 @@ def iterations(
     # そして、変位がantishakeを越えたあとは、通常と同じように判定する。
 
     motions_plot = []  # リアルタイムプロット用のデータ
-    velx_history = historyQueue(estimate)  # store velocities
-    vely_history = historyQueue(estimate)  # store velocities
+    velx_history = FIFO(estimate)  # store velocities
+    vely_history = FIFO(estimate)  # store velocities
 
     if not valid_focus(focus):
         return
