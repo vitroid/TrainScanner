@@ -13,7 +13,7 @@ from logging import getLogger, basicConfig, WARN, DEBUG, INFO, WARNING
 # from canvas import Canvas    #On-memory canvas
 # from canvas2 import Canvas   #Cached canvas
 # from tiledimage import cachedimage as ci
-from trainscanner.image import Transformation
+from trainscanner.image import Transformation, linear_alpha
 from trainscanner import video
 from trainscanner.i18n import init_translations, tr
 
@@ -22,36 +22,6 @@ from tiffeditor import Rect, Range, TiffEditor, ScalableTiffEditor
 
 #  単体で実行する方法
 # poetry run python -m trainscanner.stitch --file examples/sample2.mov.94839.tsconf  examples/sample2.mov
-
-
-def linear_alpha(img_width: int, mixing_width: float, slit_pos: int, head_right: bool):
-    """2画面を混合するアルファマスクを作成する。幅は固定。
-
-    Args:
-        img_width (int): 画像の幅
-        mixing_width (float): ミキシング幅 (画面幅に対するパーセント)
-        slit_pos (int): スリット位置。+500が一番前(列車が左に向かってすすみ、画像を右へ右へ重ねている場合には左端)、-500が一番うしろ。
-        head_right (bool): 右向きならTrue
-
-    Returns:
-        np.ndarray: アルファマスク
-    """
-    # logger = getLogger()
-    left_pixels = int(img_width * (500 - slit_pos) / 1000)
-    mixing_pixels = int(img_width * mixing_width / 100)
-    # logger.info(
-    #     f"img_width: {img_width}, mixing_width: {mixing_width}, slit_pos: {slit_pos}, head_right: {head_right}, left_pixels: {left_pixels}, mixing_pixels: {mixing_pixels}"
-    # )
-    alpha = np.zeros(left_pixels + mixing_pixels + img_width)
-    alpha[left_pixels : left_pixels + mixing_pixels] = np.linspace(
-        0.0, 1.0, mixing_pixels
-    )
-    alpha[left_pixels + mixing_pixels :] = 1.0
-    alpha = alpha[:img_width]
-    if head_right:
-        return alpha[::-1]
-    else:
-        return alpha
 
 
 def prepare_parser(parser=None):
