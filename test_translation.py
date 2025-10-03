@@ -1,4 +1,3 @@
-from attr import dataclass
 import cv2
 import numpy as np
 import sys
@@ -12,6 +11,7 @@ from trainscanner.image import match, linear_alpha, standardize
 from tiffeditor import Rect
 from trainscanner.video import video_loader_factory
 from tiledimage.cachedimage import CachedImage
+from dataclasses import dataclass
 
 # Stitchは問題なく動いているので、速度予測の精度を上げることにもうちょっと注力する。
 # 今の考え方だけだと、もともとの画像が周期的だった場合に、それを速度と勘違いしてしまう。
@@ -259,8 +259,8 @@ vl = video_loader_factory(videofile)
 if "0835" in videofile:
     vl.seek(47 * 30)
 frame0 = vl.next()
-if frame0.shape[1] > 1000:
-    ratio = 1000 / frame0.shape[1]
+if frame0.shape[1] > 500:
+    ratio = 500 / frame0.shape[1]
     frame0 = cv2.resize(frame0, (0, 0), fx=ratio, fy=ratio)
 frames.append(frame0)
 
@@ -275,21 +275,21 @@ longest_span = (0, 0)
 estimate = 5
 velx_history = FIFO(estimate)
 vely_history = FIFO(estimate)
+frame_history = FIFO(estimate)
 train_deltas = []
 train_position = 0
 mask = np.ones(frames.queue[0].shape[:2], dtype=np.float32)
-averaged_background = np.zeros_like(frames.queue[0], dtype=np.float32)
 matchscores = []
 with CachedImage("new", dir="test_translation.pngs") as canvas:
     while True:
-        frame = vl.next()
-        if frame is None:
+        raw_frame = vl.next()
+        if raw_frame is None:
             break
 
         # 大きい場合は半分に縮小
-        if frame.shape[1] > 1000:
-            ratio = 1000 / frame.shape[1]
-            frame = cv2.resize(frame, (0, 0), fx=ratio, fy=ratio)
+        if raw_frame.shape[1] > 500:
+            ratio = 500 / raw_frame.shape[1]
+            raw_frame = cv2.resize(raw_frame, (0, 0), fx=ratio, fy=ratio)
 
         # antimask = np.exp(-mask)
         if np.max(mask) == np.min(mask):
@@ -297,10 +297,11 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
         else:
             antimask = 1 - normalize(mask)
 
-        frame, delta, abs_loc = antishaker.add_frame(frame, antimask)
+        unshaken_frame, delta, abs_loc = antishaker.add_frame(raw_frame, antimask)
 
         # framesにはてぶれを修正し,最初のフレームの位置に背景がそろえられた画像が入るので、あとの処理は列車の動きだけ考えればいい。
-        frames.append(frame)
+        frames.append(unshaken_frame)
+        frame_history.append(unshaken_frame)
 
         frame_index = vl.head - 1
         print(f"{frame_index=} {delta=} {abs_loc=}")
@@ -308,10 +309,19 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
             index=frame_index, train_velocity=None, absolute_location=abs_loc
         )
 
-        averaged_background += frame
+        averaged_background = np.zeros_like(frames.queue[0], dtype=np.float32)
+        for fh in frame_history.queue:
+            averaged_background += fh
         cv2.imshow(
-            "averaged_background", averaged_background / len(framepositions) / 255
+            "averaged_background", averaged_background / len(frame_history.queue) / 255
         )
+        avg_std = standardize(
+            np.log(
+                cv2.cvtColor(averaged_background, cv2.COLOR_BGR2GRAY).astype(np.float32)
+                + 1
+            )
+        )
+        cv2.imshow("avg_std", avg_std)
         # グレースケールに変換
         base_std = (
             standardize(
@@ -331,6 +341,8 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
             )
             * antimask
         )
+        cv2.imshow("base_std", base_std)
+        cv2.imshow("next_std", next_std)
         diff = (base_std - next_std) ** 2
         cv2.imshow("differ", diff)
         mask = blurmask.add_frame(diff)
@@ -347,9 +359,9 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
         print(f"mask {np.min(mask)}, {np.max(mask)}")
         mask += np.min(mask)
 
-        base_masked = base_std.copy() * mask
+        base_masked = base_std.copy() - avg_std  # * mask
         # マスクで重みづけした上で、内積で照合する(TM_CCORR)
-        next_masked = next_std.copy() * mask
+        next_masked = next_std.copy() - avg_std  # * mask
 
         # こんどは移動量をたっぷりとる。
         max_shift = 100
@@ -376,7 +388,7 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
         )
 
         # 画面中心はいつもピークがあるが、それは列車の移動と関係ないので除去する。
-        peak_suppression(matchscore.value, (max_shift, max_shift))
+        # peak_suppression(matchscore.value, (max_shift, max_shift))
         # これによってすべてのピクセルが0になってしまう場合がありうる。
 
         # leading framesでの速度予測のために記録しておく。
@@ -393,10 +405,11 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
             framepositions[frame_index].train_velocity = delta
             dx, dy = delta
             dd = -((dx**2 + dy**2) ** 0.5)
-            train_position += dd
-            cosine = dx / dd
-            sine = dy / dd
-            rotated_placement(frame, sine, cosine, train_position)
+            if dd > 0:
+                train_position += dd
+                cosine = dx / dd
+                sine = dy / dd
+                rotated_placement(raw_frame, sine, cosine, train_position)
         elif (
             velx_history.filled
             and velx_history.fluctuation() < 3
@@ -410,10 +423,11 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
                 framepositions[frame_index].train_velocity = delta
                 dx, dy = delta
                 dd = -((dx**2 + dy**2) ** 0.5)
-                train_position += dd
-                cosine = dx / dd
-                sine = dy / dd
-                rotated_placement(frame, sine, cosine, train_position)
+                if dd > 0:
+                    train_position += dd
+                    cosine = dx / dd
+                    sine = dy / dd
+                    rotated_placement(raw_frame, sine, cosine, train_position)
             #         vely_history.queue[fi],
             #     )
             #     train_position[0] += velx_history.queue[fi]
@@ -436,11 +450,13 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
             x = [i - max_shift for i in range(len(train_deltas))]
 
         if stabilized:
-            cv2.imshow("canvas", canvas.get_image())
+            canvas_image = canvas.get_image()
+            if canvas_image is not None:
+                cv2.imshow("canvas", canvas_image)
         cv2.imshow("mask", mask)
         cv2.imshow("reversed mask", antimask)
-        cv2.imshow("base_masked", base_masked * 6)
-        cv2.imshow("next_masked", next_masked * 6)
+        cv2.imshow("base_masked", base_masked)
+        cv2.imshow("next_masked", next_masked)
         # cv2.imshow("raw_diff", frames[0] - frames[1])
         # cv2.imshow("as_diff", frames[0] - frame)
 
@@ -481,7 +497,24 @@ with CachedImage("new", dir="test_translation.pngs") as canvas:
         plt.savefig("scores.png")
         plt.close()
         cv2.imshow("scores", cv2.imread("scores.png"))
-        cv2.waitKey(0)
+        cv2.waitKey(1)
 
+
+import json
+
+j = dict()
+
+for i, matchscore in enumerate(matchscores):
+    dx = str(matchscore.dx)
+    dy = str(matchscore.dy)
+    value = matchscore.value
+    j[i] = dict()
+    j[i]["value"] = value.tolist()
+    j[i]["dx"] = dx
+    j[i]["dy"] = dy
+
+# ピークの追跡は別プログラムにまかせる。
+with open("motions.json", "w") as f:
+    json.dump(j, f)
 
 # けっこううまいこといくが、迷子にならないような工夫が必要。
