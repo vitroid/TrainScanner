@@ -23,34 +23,3 @@ def debug_log(func):
         return result
 
     return wrapper
-
-
-# このdecoratorはclass methodにも使えるのか?
-def deprecated(message=None):
-    """関数を廃止するデコレータ"""
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            logger = getLogger()
-            if message:
-                logger.warning(f"{func.__name__} is deprecated: {message}")
-            else:
-                logger.warning(
-                    f"{func.__name__} is deprecated and will be removed in the future."
-                )
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    # メッセージが文字列で渡された場合（@deprecated("message")）
-    if isinstance(message, str):
-        return decorator
-    # 関数が直接渡された場合（@deprecated）
-    elif callable(message):
-        func = message
-        message = None
-        return decorator(func)
-    # メッセージなしで呼び出された場合（@deprecated()）
-    else:
-        return decorator

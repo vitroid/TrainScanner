@@ -1,5 +1,5 @@
 import numpy as np
-from tiffeditor import Rect
+from pyperbox import Rect
 
 
 # Automatically extensible canvas.
