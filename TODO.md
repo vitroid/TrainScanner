@@ -1,3 +1,5 @@
+- Rect と Range を tiffeditor からも分離する。
+
 2025-08-24
 
 - Windows でやたら落ちる原因

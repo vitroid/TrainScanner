@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from tiffeditor import Rect, Range
+from pyperbox import Rect, Range
 import math
 from dataclasses import dataclass
 from trainscanner import MatchResult

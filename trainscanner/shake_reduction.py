@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 import logging
 from trainscanner.image import standardize, match
-from tiffeditor import Rect, Range
+from pyperbox import Rect, Range
 
 
 @dataclass

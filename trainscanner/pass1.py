@@ -23,7 +23,7 @@ from trainscanner.image import (
     MatchResult,
 )
 from trainscanner import video
-from tiffeditor import Rect, Range
+from pyperbox import Rect, Range
 
 
 def draw_slit_position(img, slitpos, dx):

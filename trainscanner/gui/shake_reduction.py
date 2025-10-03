@@ -16,7 +16,7 @@ from PyQt6.QtGui import QImage, QPixmap, QKeySequence, QShortcut
 from trainscanner.video import video_iter
 from trainscanner.shake_reduction import antishake
 from trainscanner.i18n import tr
-from tiledimage import Rect, Range
+from pyperbox import Rect, Range
 import sys
 import os
 import subprocess

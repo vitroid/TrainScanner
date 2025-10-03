@@ -18,7 +18,8 @@ from trainscanner import video
 from trainscanner.i18n import init_translations, tr
 
 # from trainscanner.image.rasterio_canvas import RasterioCanvas
-from tiffeditor import Rect, Range, TiffEditor, ScalableTiffEditor
+from pyperbox import Rect, Range
+from tiffeditor import TiffEditor, ScalableTiffEditor
 
 #  単体で実行する方法
 # poetry run python -m trainscanner.stitch --file examples/sample2.mov.94839.tsconf  examples/sample2.mov

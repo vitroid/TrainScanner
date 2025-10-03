@@ -25,8 +25,8 @@ from trainscanner.widget.imageselector2 import ImageSelector2
 import trainscanner.widget.qrangeslider as rs
 from trainscanner.i18n import tr, init_translations
 from trainscanner.widget import cv2toQImage
-from trainscanner.decorators import deprecated
 from trainscanner.image import fit_to_square, Transformation
+from deprecation import deprecated
 
 perspectiveCSS = """
 QRangeSlider > QSplitter::handle {

@@ -33,7 +33,7 @@ from matplotlib.figure import Figure
 from trainscanner import pass1
 from trainscanner.widget import cv2toQImage
 from trainscanner.image import diffview
-from tiffeditor import Rect, Range
+from pyperbox import Rect, Range
 
 
 class Worker(QObject):
