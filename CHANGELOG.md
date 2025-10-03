@@ -1,3 +1,13 @@
+## [1.0.5] - 2025-10-04
+
+### 変更
+
+- af8aa0c Update dependencies and refactor imports for improved organization
+
+### 追加
+
+### 修正
+
 ## [] - 2025-09-28
 
 ### 変更

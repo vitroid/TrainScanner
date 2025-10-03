@@ -6,9 +6,10 @@ import json
 from trainscanner.image import MatchScore
 import numpy as np
 import matplotlib.pyplot as plt
+from pyperbox import Rect, Range
 
 
-def find_peaks(arr: np.ndarray, rect: Rect, yra: Range, height: float = 0.5):
+def find_peaks(arr: np.ndarray, rect: Rect, height: float = 0.5):
     assert rect.width == arr.shape[1]
     assert rect.height == arr.shape[0]
     centers = arr[1:-1, 1:-1]
@@ -34,6 +35,11 @@ def find_peaks(arr: np.ndarray, rect: Rect, yra: Range, height: float = 0.5):
 with open("motions.json", "r") as f:
     motions = json.load(f)
 
+
+# 持続するpeak。番号は出現順でつける。
+persistent = {}
+n_persistent = 0
+
 for motion in motions:
     matchscore = MatchScore(
         dx=eval(motions[motion]["dx"]),
@@ -43,7 +49,28 @@ for motion in motions:
 
     # 高さが0.5以上の極大の位置を推定する。
     # random_scores = np.random.random([5, 5])
-    peaks = {(x, y): value for x, y, value in find_peaks(matchscore.value, height=0.5)}
+    peaks = {
+        (x, y): value
+        for x, y, value in sorted(
+            find_peaks(
+                matchscore.value,
+                Rect.from_bounds(
+                    0, matchscore.value.shape[1], 0, matchscore.value.shape[0]
+                ),
+                height=0.5,
+            ),
+            key=lambda x: x[2],
+            reverse=True,
+        )[:3]
+    }
+    # persistentに直前までのピーク位置の履歴が保存されていて、
+    # それぞれの新しい位置をカルマンフィルタで予測する。
+    for p in persistent.keys():
+        persistent[p].predict()
+    # 個々のpeakについて、
+    # 追跡しているpeak(
+    # の延長線上に極めて近い場所にあるなら、
+    # それを
     print(peaks)
     # とりあえず、matchscore.valueを2次元の等高線で表示したい。
     # x軸とy軸の範囲はmatchscore.dxとmatchscore.dyから決める。
