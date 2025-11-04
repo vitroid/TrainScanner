@@ -69,7 +69,7 @@ class SettingsGUI(QWidget):
         close_shortcut.activated.connect(self.close)
 
         # options
-        self.trailing = 30
+        self.trailing = 8
         self.editor = None
         self.antishake = 5
         self.estimate = 10

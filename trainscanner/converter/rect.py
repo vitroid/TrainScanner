@@ -7,8 +7,8 @@ import argparse
 from trainscanner.i18n import tr, init_translations
 import logging
 import os
-from tiffeditor import Rect, Range, TiffEditor
-
+from tiffeditor import  TiffEditor
+from pyperbox import Rect, Range
 
 def convert(
     src_canvas,

@@ -234,7 +234,6 @@ class StitcherUI(QDialog):
 
         init_translations()
 
-        self.setWindowTitle(tr("Stitcher Preview"))
         stitcher = stitch.Stitcher(argv=argv)
         # tilesize = (128, 512)  # can be smaller for smaller working memory
         # cachesize = 10
@@ -244,6 +243,12 @@ class StitcherUI(QDialog):
         #     )
         # )
         self.stitcher = stitcher
+
+        # ウィンドウタイトルにムービーのbasenameを追加
+        import os
+
+        movie_basename = os.path.basename(stitcher.params.filename)
+        self.setWindowTitle(f"{tr('Stitcher Preview')} - {movie_basename}")
         # stitcherの幅
         width = stitcher.dimen.width
         # このwidthは原寸の幅。

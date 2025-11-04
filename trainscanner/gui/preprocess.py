@@ -567,7 +567,15 @@ class EditorGUI(QWidget):
         # glayout.addWidget(finish_layout_gbox)
         glayout.addWidget(self.start_button)
         self.setLayout(glayout)
-        self.setWindowTitle("Editor")
+
+        # ウィンドウタイトルにムービーのbasenameを追加
+        import os
+
+        if filename:
+            movie_basename = os.path.basename(filename)
+            self.setWindowTitle(f"Editor - {movie_basename}")
+        else:
+            self.setWindowTitle("Editor")
 
         # Set minimum size instead of fixed size
         self.setMinimumSize(800, 600)
