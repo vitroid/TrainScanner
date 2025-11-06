@@ -3,6 +3,7 @@
 import math
 import sys
 from logging import DEBUG, WARN, basicConfig, getLogger, INFO
+import os
 
 import cv2
 import numpy as np
@@ -316,6 +317,8 @@ class StitcherUI(QDialog):
         file_name = self.stitcher.outfilename
         cropped_file_name = file_name.replace(".tiff", "_cropped.tiff")
         crop_image(file_name, left_cut, right_cut, cropped_file_name)
+        # file_nameのほうは削除する。
+        os.remove(file_name)
 
         self.stopbutton_pressed()
 
