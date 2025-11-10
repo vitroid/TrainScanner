@@ -5,7 +5,7 @@ import numpy as np
 import sys
 from dataclasses import dataclass
 import logging
-from trainscanner.image import standardize, match
+from trainscanner.image import standardize, match_rect
 from pyperbox import Rect, Range
 
 
@@ -79,12 +79,15 @@ def antishake(
                 trimmed_rect.top : trimmed_rect.bottom,
                 trimmed_rect.left : trimmed_rect.right,
             ]
-            matchscore = match(
+            matchrect = match_rect(
                 trimmed_std_gray2, trimmed_rect, focus.match_area, focus.rect
             )
-            _, _, _, maxloc = cv2.minMaxLoc(matchscore.value)
+            _, _, _, maxloc = cv2.minMaxLoc(matchrect.value)
 
-            focus.shift = (matchscore.dx[maxloc[0]], matchscore.dy[maxloc[1]])
+            focus.shift = (
+                maxloc[0] + matchrect.rect.left,
+                maxloc[1] + matchrect.rect.top,
+            )
         if len(foci) == 1:
             # cv2.imshow(
             #     "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)

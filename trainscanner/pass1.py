@@ -17,9 +17,9 @@ from trainscanner.image import (
     diffview,
     standardize,
     Transformation,
-    match,
-    MatchScore,
-    PreMatchScore,
+    match_rect,
+    MatchRect,
+    PreMatchRect,
     MatchResult,
 )
 from trainscanner import video
@@ -90,10 +90,10 @@ def displacements(
         ]
 
         # matchは座標換算つき照合
-        return match(subimage, match_area, template, template_rect)
+        return match_rect(subimage, match_area, template, template_rect)
 
     else:
-        match_scores = {}
+        matchrects = {}
         # maxmax_loc = None
         # maxmax_val = 0
         # maxmax_hop = 0
@@ -115,9 +115,9 @@ def displacements(
             subimage = new_image[
                 match_area.top : match_area.bottom, match_area.left : match_area.right
             ]
-            match_score = match(subimage, match_area, template, template_rect)
-            match_scores[hop] = match_score
-        return match_scores
+            matchrect = match_rect(subimage, match_area, template, template_rect)
+            matchrects[hop] = matchrect
+        return matchrects
 
 
 def prepare_parser():
@@ -368,7 +368,7 @@ def iterations(
         if in_action or coldstart:
             # 現在の速度に加え、加速度の範囲内で、マッチングを行う。
             logger.debug(f"velx: {velx} vely: {vely}")
-            match_scores = displacements(
+            matchrects = displacements(
                 lastframe,
                 cropped,
                 focus=focus,
@@ -380,16 +380,17 @@ def iterations(
             maxmax_val = 0
             maxmax_loc = None
             maxmax_hop = 0
-            for hop in match_scores:
-                scores = match_scores[hop].value
+            for hop in matchrects:
+                scores = matchrects[hop].value
                 _, maxval, _, maxloc = cv2.minMaxLoc(scores)
                 if maxmax_val <= maxval:
                     maxmax_val = maxval
                     maxmax_hop = hop
                     maxmax_loc = maxloc
+            matchrect = matchrects[maxmax_hop]
             delta = (
-                match_scores[maxmax_hop].dx[maxmax_loc[0]],
-                match_scores[maxmax_hop].dy[maxmax_loc[1]],
+                matchrect.rect.left + maxmax_loc[0],
+                matchrect.rect.top + maxmax_loc[1],
             )
             hop = maxmax_hop
             value = maxmax_val
@@ -401,19 +402,18 @@ def iterations(
                 break
         else:
             # 速度不明なので、広い範囲でマッチングを行う。
-            match_score = displacements(lastframe, cropped, focus=focus, yfixed=yfixed)
+            matchrect = displacements(lastframe, cropped, focus=focus, yfixed=yfixed)
             # あとで、focus突入時の速度予測に使う。
             prematches.append(
-                PreMatchScore(
+                PreMatchRect(
                     frame_index=videoloader.head - 1,
-                    dx=match_score.dx,
-                    dy=match_score.dy,
-                    value=match_score.value,
+                    rect=matchrect.rect,
+                    value=matchrect.value,
                 )
             )
-            _, maxval, _, maxloc = cv2.minMaxLoc(match_score.value)
+            _, maxval, _, maxloc = cv2.minMaxLoc(matchrect.value)
             # print(dx.shape, dy.shape, scores.shape, maxloc)
-            delta = (match_score.dx[maxloc[0]], match_score.dy[maxloc[1]])
+            delta = maxloc[0] + matchrect.rect.left, maxloc[1] + matchrect.rect.top
             hop = 1
             value = maxval
         hopx, hopy = delta
@@ -553,7 +553,7 @@ def add_trailing_frames(
 
 def add_leading_frames(
     framepositions: list[FramePosition],
-    prepatches: list[PreMatchScore],
+    prepatches: list[PreMatchRect],
     accel: int = 1,
     yfixed: bool = False,
     dropframe: int = 0,
@@ -580,21 +580,20 @@ def add_leading_frames(
 
     leading_frames = []
 
-    for prematchscore in reversed:
-        frame_index = prematchscore.frame_index
+    for prematchrect in reversed:
+        frame_index = prematchrect.frame_index
         # dx, dyはscoresの目盛り、等間隔
-        dx = prematchscore.dx
-        dy = prematchscore.dy
-        scores = prematchscore.value
+        rect = prematchrect.rect
+        scores = prematchrect.value
 
         maxmax_hop = 0
         maxmax_val = 0
         maxmax_loc = None
         for hop in range(1, dropframe + 2):
-            dx_min = int(vx * hop - dx[0] - xaccel)
-            dx_max = int(vx * hop - dx[0] + xaccel + 1)
-            dy_min = int(vy * hop - dy[0] - yaccel)
-            dy_max = int(vy * hop - dy[0] + yaccel + 1)
+            dx_min = int(vx * hop - rect.left - xaccel)
+            dx_max = int(vx * hop - rect.left + xaccel + 1)
+            dy_min = int(vy * hop - rect.top - yaccel)
+            dy_max = int(vy * hop - rect.top + yaccel + 1)
 
             # print(scores.shape)
             # print(dx_min, dx_max, dy_min, dy_max)
@@ -807,7 +806,7 @@ def main():
         diff = v.view(matchresult)
         if diff is not None:
             cv2.imshow("pass1", diff)
-            cv2.waitKey(0)
+            cv2.waitKey(1)
 
     # for num, den in pass1.cue():
     #     pass
