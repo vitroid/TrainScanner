@@ -4,12 +4,111 @@ from pyperbox import Rect, Range
 import math
 from dataclasses import dataclass
 from trainscanner import MatchResult
+import matplotlib.pyplot as plt
+
+
+def _find_peaks(arr: np.ndarray):
+    """
+    周囲8点のいずれよりも値が大きい点を極値とし、その位置と値を返す。
+    """
+    centers = arr[1:-1, 1:-1]
+    non_max = np.zeros_like(centers, dtype=bool)
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            if dx or dy:
+                cmp = (
+                    arr[
+                        1 + dy : centers.shape[0] + 1 + dy,
+                        1 + dx : centers.shape[1] + 1 + dx,
+                    ]
+                    > centers
+                )
+                non_max |= cmp
+    is_max = ~non_max
+    return [(x + 1, y + 1) for y, x in np.argwhere(is_max)]
 
 
 @dataclass
 class MatchRect:
+    """
+    目盛りつきのmatch score行列
+    """
+
     value: np.ndarray
     rect: Rect
+
+    _figure = None
+    _axes = None
+    _colorbar = None
+
+    # used in trainscanner2
+    def peak(self):
+        _, maxval, _, maxloc = cv2.minMaxLoc(self.value)
+        return (maxloc[0] + self.rect.left, maxloc[1] + self.rect.top), maxval
+
+    def peaks(self, height: float = 0.5):
+        """
+        周囲8点のいずれよりも値が大きい点を極値とし、その位置と値を返す。
+        """
+        for x, y in _find_peaks(self.value):
+            if self.value[y, x] > height:
+                yield self.coord(x, y), self.value[y, x]
+
+    def coord(self, x: int, y: int):
+        return x + self.rect.left, y + self.rect.top
+
+    def plot(self, label=""):
+        # とりあえず、matchscore.valueを2次元の等高線で表示したい。
+        # x軸とy軸の範囲はmatchscore.dxとmatchscore.dyから決める。
+        x = np.linspace(self.rect.left, self.rect.right - 1, self.rect.width)
+        y = np.linspace(self.rect.top, self.rect.bottom - 1, self.rect.height)
+        # 値そのものをグラデーション表示
+        # 位置をあわせる。
+        X, Y = np.meshgrid(x, y)
+
+        # 既存のFigureがあれば再利用。なければ生成。
+        if MatchRect._figure is None or MatchRect._axes is None:
+            if not plt.isinteractive():
+                plt.ion()
+            MatchRect._figure, MatchRect._axes = plt.subplots(figsize=(10, 8))
+            plt.show(block=False)
+        else:
+            if MatchRect._colorbar is not None:
+                MatchRect._colorbar.remove()
+                MatchRect._colorbar = None
+            MatchRect._axes.clear()
+
+        # imshowで背景画像を表示（extentで座標範囲を指定）
+        im = MatchRect._axes.imshow(
+            self.value,
+            cmap="jet",
+            extent=[
+                self.rect.left,
+                self.rect.right - 1,
+                self.rect.bottom - 1,
+                self.rect.top,
+            ],  # y軸は反転
+            aspect="auto",
+            alpha=0.8,
+        )
+
+        # contourで等高線を重ねて描画
+        contours = MatchRect._axes.contour(
+            X, Y, self.value, colors="white", linewidths=1.5
+        )
+        MatchRect._axes.clabel(contours, inline=True, fontsize=8)
+
+        # カラーバーを追加（imshowの色情報を使用）
+        MatchRect._colorbar = MatchRect._figure.colorbar(im, label="Score")
+
+        # 軸ラベルとタイトル
+        MatchRect._axes.set_xlabel("dx")
+        MatchRect._axes.set_ylabel("dy")
+        MatchRect._axes.set_title(f"Motion Analysis {label}")
+
+        MatchRect._figure.canvas.draw_idle()
+        MatchRect._figure.canvas.flush_events()
+        # print(np.min(matchscore.value), np.max(matchscore.value))
 
 
 @dataclass
@@ -58,6 +157,15 @@ def diffImage(frame1, frame2, dx, dy, mode="stack"):  # , focus=None, slitpos=No
         return diff
     elif mode == "stack":
         flags = np.arange(h) * 16 % h > h // 2
+        frame1 = cv2.warpAffine(frame1, affine, (w, h))
+        frame1[flags] = frame2[flags]
+        return frame1
+    elif mode == "checker":
+        sq = 32
+        flags = np.zeros(frame1.shape[:2], dtype=bool)
+        X, Y = np.meshgrid(np.arange(w), np.arange(h))
+        flags[X % (sq * 2) < sq] = ~flags[X % (sq * 2) < sq]
+        flags[Y % (sq * 2) < sq] = ~flags[Y % (sq * 2) < sq]
         frame1 = cv2.warpAffine(frame1, affine, (w, h))
         frame1[flags] = frame2[flags]
         return frame1
