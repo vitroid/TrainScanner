@@ -21,6 +21,7 @@ from trainscanner.image import (
     MatchRect,
     PreMatchRect,
     MatchResult,
+    ImageRect,
 )
 from trainscanner import video
 from pyperbox import Rect, Range
@@ -57,7 +58,6 @@ def displacements(
     maxaccelとdeltaが指定されている場合は、探索範囲を絞り高速にマッチングできる。
     dropfameが0でない場合、N+1倍の移動がありうる。
     """
-    logger = getLogger()
     old_height, old_width = old_image.shape[0:2]
     template_rect = Rect(
         x_range=Range(
@@ -69,11 +69,16 @@ def displacements(
             max_val=old_height * focus.bottom // 1000,
         ),
     )
-    template = old_image[
-        template_rect.top : template_rect.bottom,
-        template_rect.left : template_rect.right,
-    ]
+    template = ImageRect(
+        image=old_image[
+            template_rect.top : template_rect.bottom,
+            template_rect.left : template_rect.right,
+        ],
+        lefttop=(template_rect.left, template_rect.top),
+    )
+
     new_height, new_width = new_image.shape[0:2]
+    lefttop = (0, 0)
     match_area = Rect.from_bounds(0, new_width, 0, new_height)
 
     # Apply template Matching
@@ -85,12 +90,15 @@ def displacements(
             match_area = Rect.from_bounds(
                 0, new_width, template_rect.top, template_rect.bottom
             )
-        subimage = new_image[
-            match_area.top : match_area.bottom, match_area.left : match_area.right
-        ]
-
+            lefttop = (0, template_rect.top)
+        subimagerect = ImageRect(
+            lefttop=lefttop,
+            image=new_image[
+                match_area.top : match_area.bottom, match_area.left : match_area.right
+            ],
+        )
         # matchは座標換算つき照合
-        return match_rect(subimage, match_area, template, template_rect)
+        return match_rect(subimagerect, template)
 
     else:
         matchrects = {}
@@ -101,21 +109,15 @@ def displacements(
         for hop in range(1, dropframe + 2):
             # subpixel_matchingする時に必要なマージン
             fit_margins = [min(2, maxaccel[0]), min(2, maxaccel[1])]
-
             # 探査する範囲。整数にしておく。
             roix0 = int(np.floor(template_rect.left + delta[0] * hop - maxaccel[0]))
             roiy0 = int(np.floor(template_rect.top + delta[1] * hop - maxaccel[1]))
             roix1 = int(np.ceil(template_rect.right + delta[0] * hop + maxaccel[0]))
             roiy1 = int(np.ceil(template_rect.bottom + delta[1] * hop + maxaccel[1]))
-            match_area = Rect(
-                x_range=Range(min_val=roix0, max_val=roix1),
-                y_range=Range(min_val=roiy0, max_val=roiy1),
+            subimagerect = ImageRect(
+                lefttop=(roix0, roiy0), image=new_image[roiy0:roiy1, roix0:roix1]
             )
-
-            subimage = new_image[
-                match_area.top : match_area.bottom, match_area.left : match_area.right
-            ]
-            matchrect = match_rect(subimage, match_area, template, template_rect)
+            matchrect = match_rect(subimagerect, template)
             matchrects[hop] = matchrect
         return matchrects
 
