@@ -5,7 +5,7 @@ import numpy as np
 import sys
 from dataclasses import dataclass
 import logging
-from trainscanner.image import standardize, match_rect
+from trainscanner.image import standardize, match_rect, ImageRect
 from pyperbox import Rect, Range
 
 
@@ -62,32 +62,37 @@ def antishake(
         gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY).astype(np.int32)
         std_gray2 = standardize(gray2)
 
+        def safe_round(x):
+            return int(np.floor(x + 0.5))
+
         for fi, focus in enumerate(foci):
             # 基準画像のfocusの位置。
             rect = Rect.from_bounds(
-                focus.rect.left + focus.shift[0] - max_shift,
-                focus.rect.right + focus.shift[0] + max_shift,
-                focus.rect.top + focus.shift[1] - max_shift,
-                focus.rect.bottom + focus.shift[1] + max_shift,
+                focus.rect.left + safe_round(focus.shift[0]) - max_shift,
+                focus.rect.right + safe_round(focus.shift[0]) + max_shift,
+                focus.rect.top + safe_round(focus.shift[1]) - max_shift,
+                focus.rect.bottom + safe_round(focus.shift[1]) + max_shift,
             )
             # 直前のフレームで、focusの位置を移動した。
             # 照合したい画像のうち、マッチングに使う領域を切り取るための枠。
             # 初期値0は平均値を意味する。
             # 画面外に出てしまわない範囲を計算する。
             trimmed_rect = rect.trim(gray2.shape)
+            print(trimmed_rect)
             trimmed_std_gray2 = std_gray2[
                 trimmed_rect.top : trimmed_rect.bottom,
                 trimmed_rect.left : trimmed_rect.right,
             ]
             matchrect = match_rect(
-                trimmed_std_gray2, trimmed_rect, focus.match_area, focus.rect
+                ImageRect(
+                    image=trimmed_std_gray2,
+                    lefttop=(trimmed_rect.left, trimmed_rect.top),
+                ),
+                ImageRect(
+                    image=focus.match_area, lefttop=(focus.rect.left, focus.rect.top)
+                ),
             )
-            _, _, _, maxloc = cv2.minMaxLoc(matchrect.value)
-
-            focus.shift = (
-                maxloc[0] + matchrect.rect.left,
-                maxloc[1] + matchrect.rect.top,
-            )
+            focus.shift = matchrect.peak(subpixel=True)[0]
         if len(foci) == 1:
             # cv2.imshow(
             #     "match_area", np.abs(focus.match_area - match_area).astype(np.uint8)

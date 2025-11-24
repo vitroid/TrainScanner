@@ -127,6 +127,46 @@ def find_paraboloid_extremum(values):
     }
 
 
+def find_parabola_extremum(values):
+    """
+    格子点(x in [-1, 0, 1])の値から、
+    最小二乗法で放物面をフィッティングし、その極値を計算する。
+
+    引数:
+        values (list of list or np.ndarray): 1次元の配列。
+                                             values[x_idx] が
+                                             x = x_idx - 1
+                                             に対応するものとする。
+
+    戻り値:
+        dict: 極値に関する情報。
+              {"status": "success", "x": x0, "z": z0, "type": ext_type}
+              またはエラー時は
+              {"status": "error", "message": "..."}
+    """
+
+    # 1. データ準備 (Data Preparation)
+    z = np.array(values).flatten()
+
+    # y=ax**2 + bx + c
+    # z[0] = a - b + c
+    # z[1] = c
+    # z[2] = a + b + c
+    a = (z[0] + z[2]) / 2 - z[1]
+    b = (z[2] - z[0]) / 2
+    c = z[1]
+
+    # 2ax + b=0, x=-b/2a
+    x0 = -b / (2 * a)
+    z0 = a * x0**2 + b * x0 + c
+
+    return {
+        "status": "success",
+        "x": x0,
+        "z": z0,
+    }
+
+
 @dataclass
 class MatchRect:
     """
@@ -141,15 +181,33 @@ class MatchRect:
     _colorbar = None
 
     # used in trainscanner2
-    def peak(self, subpixel=False):
-        _, maxval, _, (x, y) = cv2.minMaxLoc(self.value)
-        if subpixel:
+    def _peak_subpixel(self):
+        if self.value.shape[0] == 1:
+            # y方向の変位を無視する場合
+            x = np.argmax(self.value[0])
+            if 0 < x < self.rect.width - 1:
+                values = self.value[0, x - 1 : x + 2]
+                result = find_parabola_extremum(values)
+                return self.coord(x + result["x"], 0), result["z"]
+            else:
+                print(
+                    f"x range is {0}..{self.rect.width-1}. A peak at {x=} is out of range"
+                )
+            return
+        else:
+            _, maxval, _, (x, y) = cv2.minMaxLoc(self.value)
             if 0 < x < self.rect.width - 1 and 0 < y < self.rect.height - 1:
                 # (x,y)の周囲9点を放物面近似して頂点の位置と値を求める。
                 values = self.value[y - 1 : y + 2, x - 1 : x + 2]
                 result = find_paraboloid_extremum(values)
                 if result["status"] == "success":
                     return self.coord(x + result["x"], y + result["y"]), result["z"]
+            return
+
+    def peak(self, subpixel=False):
+        if subpixel:
+            return self._peak_subpixel()
+        _, maxval, _, (x, y) = cv2.minMaxLoc(self.value)
         return self.coord(x, y), maxval
 
     def peaks(self, height: float = 0.5, subpixel=False):

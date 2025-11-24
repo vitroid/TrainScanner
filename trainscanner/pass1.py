@@ -229,7 +229,7 @@ def prepare_parser():
         "-m",
         "--maxaccel",
         type=int,
-        default=1,
+        default=2,
         dest="maxaccel",
         metavar="N",
         help="Interframe acceleration in pixels.",
@@ -295,7 +295,7 @@ def iterations(
     coldstart: bool = False,
     yfixed: bool = False,
     dropframe: int = 0,
-    maxaccel: int = 1,
+    maxaccel: int = 2,
     identity: float = 1.0,
     antishake: int = 5,
     estimate: int = 10,
@@ -381,27 +381,28 @@ def iterations(
             # dropframeの数だけscoresが帰ってくるので、その中の最大のものをさがしたいのだが、もっと簡単にしたいなあ。
             maxmax_val = 0
             maxmax_loc = None
-            maxmax_hop = 0
-            for hop in matchrects:
-                scores = matchrects[hop].value
-                _, maxval, _, maxloc = cv2.minMaxLoc(scores)
-                if maxmax_val <= maxval:
-                    maxmax_val = maxval
+            maxmax_hop = None
+            maxmax_delta = None
+            for hop, matchrect in matchrects.items():
+                result = matchrect.peak(subpixel=True)
+                if result is None:
+                    continue
+                x, y = result[0]
+                score = result[1]
+                if maxmax_val <= score:
+                    maxmax_val = score
                     maxmax_hop = hop
-                    maxmax_loc = maxloc
-            matchrect = matchrects[maxmax_hop]
-            delta = (
-                matchrect.rect.left + maxmax_loc[0],
-                matchrect.rect.top + maxmax_loc[1],
-            )
-            hop = maxmax_hop
-            value = maxmax_val
-            motions_plot.append([delta[0], delta[1], value])
-            if delta is None:
+                    maxmax_delta = (x, y)
+            if maxmax_hop is not None:
+                matchrect = matchrects[maxmax_hop]
+                delta = maxmax_delta
+                hop = maxmax_hop
+                value = maxmax_val
+                motions_plot.append([delta[0], delta[1], value])
+            else:
                 logger.error(
-                    "Matching failed (probabily the motion detection window goes out of the image)."
+                    "No apparent matching found. (maybe no peak in the score matrix)"
                 )
-                break
         else:
             # 速度不明なので、広い範囲でマッチングを行う。
             matchrect = displacements(lastframe, cropped, focus=focus, yfixed=yfixed)
@@ -413,11 +414,14 @@ def iterations(
                     value=matchrect.value,
                 )
             )
-            _, maxval, _, maxloc = cv2.minMaxLoc(matchrect.value)
-            # print(dx.shape, dy.shape, scores.shape, maxloc)
-            delta = maxloc[0] + matchrect.rect.left, maxloc[1] + matchrect.rect.top
+            result = matchrect.peak(subpixel=True)
+            if result is None:
+                continue
+            delta, score = result
             hop = 1
-            value = maxval
+            value = score
+
+        # この時点でdeltaが更新されていない場合は、peakが見付からなかったケース。直前の値を流用する。
         hopx, hopy = delta
         velx, vely = delta[0] / hop, delta[1] / hop
         logger.debug(f"hop: {hop} velx: {velx} vely: {vely}")
