@@ -15,12 +15,13 @@ echo "新しいバージョン: $NEW_VERSION"
 
 # README.mdの自動更新は無効化
 # 必要に応じて手動で `make README.md` を実行してください
-echo "README.mdを更新中..."
-if [ -f "temp_README.md" ]; then
-    poetry run python replacer.py < temp_README.md > README.md
-fi
+# echo "README.mdを更新中..."
+# if [ -f "temp_README.md" ]; then
+#     poetry run python replacer.py < temp_README.md > README.md
+# fi
 
 # 更新されたファイルをステージングエリアに追加
 git add pyproject.toml
+# git add README.md  # 自動更新を止めるのでここもコメントアウトまたは削除
 
 echo "pre-commitフック完了: バージョン $NEW_VERSION に更新されました" 

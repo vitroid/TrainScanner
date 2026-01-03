@@ -28,7 +28,7 @@ make setup-hooks
 ### pre-commit フック
 
 - コミット時にバージョン番号を自動的に増加（patch）
-- README.md を更新（temp_README.md が存在する場合）
+- README.md の自動更新は現在無効化されています
 - 更新されたファイルをステージングエリアに追加
 
 ### post-commit フック
